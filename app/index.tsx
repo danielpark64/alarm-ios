@@ -16,7 +16,7 @@ import { Alarm, DAYS } from '../src/constants';
 const C = {
   bg:'#0b0b1c', bg2:'#141430', bg3:'#1c1c40',
   border:'#24244a', border2:'#30306a',
-  txt:'#f0f0ff', txt2:'#8888bb', txt3:'#50508a',
+  txt:'#f0f0ff', txt2:'#e0e0f5', txt3:'#c8c8e0',
   accent:'#a29bfe', accent2:'#6c5ce7',
 };
 
@@ -282,29 +282,6 @@ export default function App() {
         </ScrollView>
       )}
 
-      {/* 하단 네비 — 알람 / 달력 / 추가 */}
-      <View style={[s.nav,{paddingBottom:Math.max(insets.bottom,14)}]}>
-        <TouchableOpacity style={s.navBtn} onPress={()=>setTab('alarms')}>
-          <View style={[s.navI, tab==='alarms' && s.navIA]}>
-            <Text style={s.navIT}>⏰</Text>
-          </View>
-          <Text style={[s.navL, tab==='alarms' && s.navLA]}>알람</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={s.navBtn} onPress={()=>setTab('calendar')}>
-          <View style={[s.navI, tab==='calendar' && s.navIA]}>
-            <Text style={s.navIT}>📅</Text>
-          </View>
-          <Text style={[s.navL, tab==='calendar' && s.navLA]}>달력</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={s.navBtn} onPress={()=>setTab('add')}>
-          <View style={[s.navIC, tab==='add' && s.navICA]}>
-            <Text style={{fontSize:22,color:'#fff',fontWeight:'900'}}>＋</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-
       {/* 편집 모달 */}
       <Modal visible={!!editAlarm} transparent animationType="slide" onRequestClose={()=>setEditAlarm(null)}>
         <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS==='ios'?'padding':'height'}>
@@ -327,6 +304,29 @@ export default function App() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* 하단 네비 — 알람 / 달력 / 추가 */}
+      <View style={[s.nav,{paddingBottom:Math.max(insets.bottom,14)}]}>
+        <TouchableOpacity style={s.navBtn} onPress={()=>setTab('alarms')}>
+          <View style={[s.navI, tab==='alarms' && s.navIA]}>
+            <Text style={s.navIT}>⏰</Text>
+          </View>
+          <Text style={[s.navL, tab==='alarms' && s.navLA]}>알람</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={s.navBtn} onPress={()=>setTab('calendar')}>
+          <View style={[s.navI, tab==='calendar' && s.navIA]}>
+            <Text style={s.navIT}>📅</Text>
+          </View>
+          <Text style={[s.navL, tab==='calendar' && s.navLA]}>달력</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={s.navBtn} onPress={()=>setTab('add')}>
+          <View style={[s.navIC, tab==='add' && s.navICA]}>
+            <Text style={{fontSize:22,color:'#fff',fontWeight:'900'}}>＋</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -378,6 +378,7 @@ const s = StyleSheet.create({
   navBtn:    { alignItems:'center', gap:3, paddingHorizontal:20, paddingVertical:4 },
   navI:      { width:34, height:34, borderRadius:17, alignItems:'center', justifyContent:'center' },
   navIA:     { backgroundColor:'rgba(162,155,254,0.18)' },
+  navOverModal: { position:'absolute', bottom:0, left:0, right:0, zIndex:10 },
   navIT:     { fontSize:18 },
   navIC:     { width:50, height:50, borderRadius:15, backgroundColor:C.bg3, borderWidth:1, borderColor:C.border2, alignItems:'center', justifyContent:'center' },
   navICA:    { backgroundColor:C.accent2, borderColor:'transparent', shadowColor:C.accent, shadowOffset:{width:0,height:4}, shadowOpacity:0.45, shadowRadius:12, elevation:8 },
