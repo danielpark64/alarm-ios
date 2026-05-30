@@ -48,7 +48,7 @@ function alarmsForDate(alarms: Alarm[], dateStr: string): Alarm[] {
 }
 
 // 달력 화면
-function CalendarView({ alarms }: { alarms: Alarm[] }) {
+function CalendarView({ alarms, onEditAlarm }: { alarms: Alarm[]; onEditAlarm: (a: Alarm) => void }) {
   const today = todayStr();
   const todayDate = new Date(today);
   const [year,  setYear]  = useState(todayDate.getFullYear());
@@ -111,9 +111,9 @@ function CalendarView({ alarms }: { alarms: Alarm[] }) {
                 isToday && cv.dayNumToday,
               ]}>{d}</Text>
               {dayAlarms.slice(0,3).map((al, ai) => (
-                <Text key={ai} style={cv.alarmChip} numberOfLines={1}>
-                  {al.label}
-                </Text>
+                <TouchableOpacity key={ai} onPress={() => onEditAlarm(al)} activeOpacity={0.7}>
+                  <Text style={cv.alarmChip} numberOfLines={1}>{al.label}</Text>
+                </TouchableOpacity>
               ))}
               {dayAlarms.length > 3 && (
                 <Text style={cv.moreChip}>+{dayAlarms.length-3}</Text>
@@ -134,6 +134,7 @@ export default function App() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [editAlarm, setEditAlarm] = useState<Alarm|null>(null);
+  const [highlightId, setHighlightId] = useState<number|null>(null);
   const [notifGranted, setNotifGranted] = useState(false);
 
   useEffect(() => {
@@ -253,12 +254,17 @@ export default function App() {
               onEdit={()=>setEditAlarm(al)}
               selectMode={selectMode} selected={selectedIds.has(al.id)}
               onSelect={()=>toggleSelect(al.id)}
+                highlighted={highlightId === al.id}
             />
           ))}
         </ScrollView>
       )}
 
-      {tab==='calendar' && <CalendarView alarms={alarms}/>}
+      {tab==='calendar' && <CalendarView alarms={alarms} onEditAlarm={al => {
+          setTab('alarms');
+          setHighlightId(al.id);
+          setTimeout(() => setHighlightId(null), 5000);
+        }}/>}
 
       {tab==='add' && (
         <ScrollView style={s.scroll} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
