@@ -171,7 +171,7 @@ export default function App() {
     const s2 = Notifications.addNotificationResponseReceivedListener(r => {
       if (r.actionIdentifier === 'snooze')
         Notifications.scheduleNotificationAsync({
-          content: { ...r.notification.request.content, title:'⏰ 스누즈' },
+          content: { ...r.notification.request.content, title:'⏰ 스누즈', sound:'alarm_long.wav' },
           trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(Date.now()+5*60*1000) },
         });
     });

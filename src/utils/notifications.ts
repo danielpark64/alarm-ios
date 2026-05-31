@@ -31,14 +31,8 @@ export async function cancelAllNotifications() {
 }
 
 function getVibrationPattern(vib: string): number[] | undefined {
-  switch (vib) {
-    case 'none':  return undefined;
-    case 'short': return [0, 200];
-    case 'long':  return [0, 800];
-    case 'pulse': return [0, 200, 150, 200, 150, 200];
-    case 'sos':   return [0,300,100,300,100,300,200,600,200,600,200,300,100,300,100,300];
-    default:      return [0, 300];
-  }
+  if (vib === 'none') return undefined;
+  return [0, 200, 150, 200, 150, 200];
 }
 
 // 같은 시간 여러 알람이 각각 별도로 울리도록 alarmId 포함한 고유 identifier 사용
@@ -54,7 +48,7 @@ export async function scheduleAlarm(alarm: Alarm) {
   const baseContent: Notifications.NotificationContentInput = {
     title: `${type.icon} ${alarm.label || type.label}`,
     body: `${pad(alarm.hour)}:${pad(alarm.min)} 알람`,
-    sound: alarm.vib === 'none' ? undefined : 'default',
+    sound: alarm.vib === 'none' ? undefined : 'alarm_long.wav',
     vibrationPattern: getVibrationPattern(alarm.vib),
     data: { alarmId: alarm.id },
     categoryIdentifier: 'alarm',

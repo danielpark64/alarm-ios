@@ -15,19 +15,16 @@ export const DAYS = ['월','화','수','목','금','토','일'];
 export const SOUNDS = [
   { id: 'none',    label: '없음', icon: '🔇' },
   { id: 'default', label: '기본', icon: '🔔' },
-  { id: 'loud',    label: '크게', icon: '📢' },
 ] as const;
 export const VIBS = [
   { id: 'none',  label: '없음', icon: '📵' },
-  { id: 'short', label: '짧게', icon: '📳' },
-  { id: 'long',  label: '길게', icon: '📳' },
-  { id: 'pulse', label: '반복', icon: '〰️' },
+  { id: 'pulse', label: '진동', icon: '〰️' },
 ] as const;
 export const CYCLE_PRESETS = [2,3,5,7,10,14,21,30];
 export type AlarmType  = typeof TYPES[number]['id'];
 export type RepeatMode = typeof REPEAT[number]['id'] | 'weekdays' | 'weekends';
-export type SoundMode  = typeof SOUNDS[number]['id'];
-export type VibMode    = typeof VIBS[number]['id'];
+export type SoundMode  = 'none' | 'default';
+export type VibMode    = 'none' | 'pulse';
 export interface Alarm {
   id: number; typeId: AlarmType; hour: number; min: number;
   label: string; rm: RepeatMode; days: number[];

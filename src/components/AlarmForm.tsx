@@ -145,7 +145,7 @@ export function AlarmForm({ initial, onSubmit, onCancel, submitLabel='⏰ 알람
   const [cd,     setCd]     = useState(initial.cd      ?? 2);
   const [rd,     setRd]     = useState(initial.rd      ?? 1);
   const [snd,    setSnd]    = useState(initial.snd     ?? 'default');
-  const [vib,    setVib]    = useState(initial.vib     ?? 'short');
+  const [vib,    setVib]    = useState(initial.vib     ?? 'pulse');
   const [sd,     setSd]     = useState(initial.sd      ?? todayStr());
   const [showCal, setShowCal] = useState(false);
 
@@ -271,7 +271,7 @@ export function AlarmForm({ initial, onSubmit, onCancel, submitLabel='⏰ 알람
         </View>
       )}
 
-      <Text style={s.sLabel}>소리</Text>
+      <Text style={s.sLabel}>소리 / 진동</Text>
       <View style={s.vibGrid}>
         {SOUNDS.map(v => (
           <TouchableOpacity key={v.id} style={[s.vibBtn, snd===v.id && s.vibBtnActive]} onPress={() => setSnd(v.id)}>
@@ -279,10 +279,7 @@ export function AlarmForm({ initial, onSubmit, onCancel, submitLabel='⏰ 알람
             <Text style={[s.vibLabel, snd===v.id && {color:'#fff'}]}>{v.label}</Text>
           </TouchableOpacity>
         ))}
-      </View>
-
-      <Text style={s.sLabel}>진동</Text>
-      <View style={s.vibGrid}>
+        <View style={s.vibDivider}/>
         {VIBS.map(v => (
           <TouchableOpacity key={v.id} style={[s.vibBtn, vib===v.id && s.vibBtnActive]} onPress={() => setVib(v.id)}>
             <Text style={s.vibIcon}>{v.icon}</Text>
@@ -354,7 +351,8 @@ const s = StyleSheet.create({
   presetText:    { fontSize:13, fontWeight:'700', color:'#333' },
   cycleInfoBox:  { backgroundColor:'#e0e0e0', borderRadius:10, padding:10, marginTop:12 },
   cycleInfo:     { textAlign:'center', fontSize:13, fontWeight:'800', color:'#333' },
-  vibGrid:       { flexDirection:'row', gap:7 },
+  vibGrid:       { flexDirection:'row', gap:7, alignItems:'stretch' },
+  vibDivider:    { width:1, backgroundColor:'#ccc', marginVertical:4 },
   vibBtn:        { flex:1, alignItems:'center', padding:10, borderRadius:13, borderWidth:2, borderColor:'#d0d4e8', backgroundColor:'#f0f2fa' },
   vibBtnActive:  { backgroundColor:'#444', borderColor:'#444' },
   vibIcon:       { fontSize:24, marginBottom:4 },

@@ -6,7 +6,7 @@ import { scheduleAlarm, cancelAlarmNotifications, rescheduleAll } from '../utils
 
 const KEY = 'alarms_v1_rn';
 const DEFAULT: Alarm[] = [
-  { id:1, typeId:'commute', hour:8,  min:0, label:'출근', rm:'daily', days:[], cd:1, rd:1, snd:'default', vib:'short', sd:todayStr(), active:true },
+  { id:1, typeId:'commute', hour:8,  min:0, label:'출근', rm:'daily', days:[], cd:1, rd:1, snd:'default', vib:'pulse', sd:todayStr(), active:true },
   { id:2, typeId:'offwork', hour:18, min:0, label:'퇴근', rm:'daily', days:[], cd:1, rd:1, snd:'default', vib:'pulse', sd:todayStr(), active:true },
 ];
 
