@@ -22,7 +22,7 @@
     },
     "plugins": [
       "expo-router",
-      ["expo-notifications", {"color": "#000000"}]
+      ["expo-notifications", {"color": "#000000", "sounds": ["./assets/alarm_long.wav"]}]
     ],
     "experiments": { "typedRoutes": true }
   }
