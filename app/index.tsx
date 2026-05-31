@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, Alert,
   StyleSheet, StatusBar, Platform, Modal, KeyboardAvoidingView
@@ -46,6 +46,26 @@ function alarmsForDate(alarms: Alarm[], dateStr: string): Alarm[] {
     return false;
   });
 }
+
+// 시계 헤더 — 1초마다 리렌더되는 범위를 이 컴포넌트 안으로 격리
+const ClockHeader = memo(function ClockHeader() {
+  const [clock, setClock] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setClock(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <>
+      <Text style={s.date}>
+        {clock.toLocaleDateString('ko-KR',{weekday:'long',month:'long',day:'numeric'})}
+      </Text>
+      <Text style={s.clock}>
+        {pad(clock.getHours())}:{pad(clock.getMinutes())}
+        <Text style={s.sec}>:{pad(clock.getSeconds())}</Text>
+      </Text>
+    </>
+  );
+});
 
 // 달력 화면
 function CalendarView({ alarms, onEditAlarm }: { alarms: Alarm[]; onEditAlarm: (a: Alarm) => void }) {
@@ -130,17 +150,11 @@ export default function App() {
   const insets = useSafeAreaInsets();
   const { alarms, loaded, addAlarm, updateAlarm, deleteAlarms, toggleAlarm, toggleAll } = useAlarms();
   const [tab, setTab] = useState<'alarms'|'calendar'|'add'>('alarms');
-  const [clock, setClock] = useState(new Date());
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [editAlarm, setEditAlarm] = useState<Alarm|null>(null);
   const [highlightId, setHighlightId] = useState<number|null>(null);
   const [notifGranted, setNotifGranted] = useState(false);
-
-  useEffect(() => {
-    const t = setInterval(() => setClock(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
 
   useEffect(() => {
     (async () => {
@@ -178,9 +192,9 @@ export default function App() {
     ]);
   };
 
-  const sorted = [...alarms].sort((a,b) => a.hour*60+a.min-(b.hour*60+b.min));
-  const activeCount = alarms.filter(a=>a.active).length;
-  const nextText = nextAlarmText(alarms);
+  const sorted = useMemo(() => [...alarms].sort((a,b) => a.hour*60+a.min-(b.hour*60+b.min)), [alarms]);
+  const activeCount = useMemo(() => alarms.filter(a=>a.active).length, [alarms]);
+  const nextText = useMemo(() => nextAlarmText(alarms), [alarms]);
 
   if (!loaded)
     return <View style={s.loading}><Text style={s.loadingT}>⏰</Text></View>;
@@ -192,13 +206,7 @@ export default function App() {
       {/* 헤더 */}
       <View style={s.header}>
         <View style={{flex:1}}>
-          <Text style={s.date}>
-            {clock.toLocaleDateString('ko-KR',{weekday:'long',month:'long',day:'numeric'})}
-          </Text>
-          <Text style={s.clock}>
-            {pad(clock.getHours())}:{pad(clock.getMinutes())}
-            <Text style={s.sec}>:{pad(clock.getSeconds())}</Text>
-          </Text>
+          <ClockHeader />
           <Text style={s.stat}>
             활성 <Text style={s.statN}>{activeCount}</Text>개
             {nextText ? `  ·  ${nextText}` : `  ·  전체 ${alarms.length}개`}

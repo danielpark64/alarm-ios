@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { memo, useEffect, useRef } from 'react';
 import { Animated } from 'react-native';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Alarm } from '../constants';
@@ -16,7 +16,7 @@ function fmtDisplayDate(s: string): string {
   return String(y).slice(2) + '.' + m + '.' + d;
 }
 
-export function AlarmCard({ alarm, onToggle, onEdit, selectMode, selected, onSelect, highlighted }: Props) {
+export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, selectMode, selected, onSelect, highlighted }: Props) {
   const type = getType(alarm.typeId);
   const snd  = getSound(alarm.snd ?? 'default');
   const vib  = getVib(alarm.vib);
@@ -79,7 +79,7 @@ export function AlarmCard({ alarm, onToggle, onEdit, selectMode, selected, onSel
     </TouchableOpacity>
     </Animated.View>
   );
-}
+});
 
 const s = StyleSheet.create({
   card: { flexDirection:"row", alignItems:"center", padding:14, borderRadius:16, marginBottom:10, backgroundColor:"#fff", shadowColor:"#000", shadowOffset:{width:0,height:2}, shadowOpacity:0.07, shadowRadius:6, elevation:2, borderWidth:1 },
