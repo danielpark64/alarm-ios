@@ -48,7 +48,7 @@ export async function scheduleAlarm(alarm: Alarm) {
   const baseContent: Notifications.NotificationContentInput = {
     title: `${type.icon} ${alarm.label || type.label}`,
     body: `${pad(alarm.hour)}:${pad(alarm.min)} 알람`,
-    sound: alarm.vib === 'none' ? undefined : 'alarm_long.wav',
+    sound: alarm.vib === 'none' ? undefined : (__DEV__ ? true : 'alarm_long.wav'),
     vibrationPattern: getVibrationPattern(alarm.vib),
     data: { alarmId: alarm.id },
     categoryIdentifier: 'alarm',
@@ -95,9 +95,10 @@ export async function scheduleAlarm(alarm: Alarm) {
   }
 
   // once / cycle / rest — date-based
+  // iOS 로컬 알림 최대 64개 제한: 14일치만 등록 후 앱 재진입 시 재스케줄링
   const p2 = (n: number) => String(n).padStart(2, '0');
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 14; i++) {
     const date = new Date(today); date.setDate(today.getDate() + i);
     const ds = `${date.getFullYear()}-${p2(date.getMonth()+1)}-${p2(date.getDate())}`;
     if (alarm.sd && ds < alarm.sd) continue;

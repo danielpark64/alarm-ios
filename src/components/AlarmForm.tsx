@@ -13,31 +13,54 @@ interface Props {
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINS  = Array.from({ length: 12 }, (_, i) => i * 5);
 const PICK_H = 56;
+const LOOP_COUNT = 20; // 무한 루프용 반복 횟수 (시간 20×24=480개, 분 20×12=240개)
 
 function ScrollPicker({ value, items, onChange }: {
   value: number; items: number[]; onChange: (v: number) => void;
 }) {
-  const scrollRef = useRef<ScrollView>(null);
-  const didMount  = useRef(false);
+  const scrollRef  = useRef<ScrollView>(null);
+  const isScrolling = useRef(false);
 
+  // 무한 루프: 아이템을 LOOP_COUNT번 반복
+  const loopedItems = Array.from({ length: LOOP_COUNT }, () => items).flat();
+  const totalCount  = loopedItems.length;
+  const midOffset   = Math.floor(LOOP_COUNT / 2) * items.length; // 가운데 블록 시작 인덱스
+
+  // value에 해당하는 가운데 블록의 y 위치
+  const getTargetY = (v: number) => {
+    const localIdx = items.indexOf(v);
+    return (midOffset + localIdx) * PICK_H;
+  };
+
+  // 초기 스크롤: 가운데 블록의 value 위치로 이동
   useEffect(() => {
-    const idx = items.indexOf(value);
-    if (idx < 0) return;
     const timer = setTimeout(() => {
-      scrollRef.current?.scrollTo({ y: idx * PICK_H, animated: false });
+      scrollRef.current?.scrollTo({ y: getTargetY(value), animated: false });
     }, 80);
     return () => clearTimeout(timer);
   }, []);
 
+  // 외부에서 value 변경 시(화살표 버튼) 스크롤 동기화
   useEffect(() => {
-    if (!didMount.current) { didMount.current = true; return; }
-    const idx = items.indexOf(value);
-    if (idx >= 0) scrollRef.current?.scrollTo({ y: idx * PICK_H, animated: true });
+    if (isScrolling.current) return;
+    scrollRef.current?.scrollTo({ y: getTargetY(value), animated: true });
   }, [value]);
 
   const handleEnd = (y: number) => {
-    const i = Math.max(0, Math.min(items.length - 1, Math.round(y / PICK_H)));
-    if (items[i] !== value) onChange(items[i]);
+    isScrolling.current = false;
+    const rawIdx  = Math.round(y / PICK_H);
+    const clipped = Math.max(0, Math.min(totalCount - 1, rawIdx));
+    const newVal  = loopedItems[clipped];
+    if (newVal !== value) onChange(newVal);
+
+    // 끝에 너무 가까워지면 가운데 블록으로 순간이동 (무한 루프 유지)
+    const localIdx = items.indexOf(newVal);
+    const targetY  = (midOffset + localIdx) * PICK_H;
+    if (Math.abs(clipped - (midOffset + localIdx)) > items.length * 10) {
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({ y: targetY, animated: false });
+      }, 50);
+    }
   };
 
   return (
@@ -50,12 +73,13 @@ function ScrollPicker({ value, items, onChange }: {
         snapToInterval={PICK_H}
         decelerationRate="fast"
         nestedScrollEnabled
+        onScrollBeginDrag={() => { isScrolling.current = true; }}
         onMomentumScrollEnd={(e: any) => handleEnd(e.nativeEvent.contentOffset.y)}
-        onScrollEndDrag={(e: any) => handleEnd(e.nativeEvent.contentOffset.y)}
+        onScrollEndDrag={(e: any)     => handleEnd(e.nativeEvent.contentOffset.y)}
         contentContainerStyle={{ paddingVertical: PICK_H }}
       >
-        {items.map(item => (
-          <TouchableOpacity key={item} style={pick.item} onPress={() => onChange(item)} activeOpacity={0.6}>
+        {loopedItems.map((item, idx) => (
+          <TouchableOpacity key={idx} style={pick.item} onPress={() => onChange(item)} activeOpacity={0.6}>
             <Text style={[pick.num, item === value ? pick.numSel : pick.numDim]}>
               {pad(item)}
             </Text>

@@ -12,6 +12,19 @@
       "resizeMode": "contain",
       "backgroundColor": "#f5f6fa"
     },
+    "android": {
+      "package": "com.danielpark.alarmapp",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#f5f6fa"
+      },
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "USE_EXACT_ALARM",
+        "SCHEDULE_EXACT_ALARM"
+      ]
+    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.danielpark.alarmapp",

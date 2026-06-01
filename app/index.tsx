@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo, memo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, memo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, Alert,
-  StyleSheet, StatusBar, Platform, Modal, KeyboardAvoidingView
+  StyleSheet, StatusBar, Platform, Modal, KeyboardAvoidingView, AppState,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
@@ -10,7 +10,8 @@ import { useAlarms } from '../src/hooks/useAlarms';
 import { AlarmCard } from '../src/components/AlarmCard';
 import { AlarmForm } from '../src/components/AlarmForm';
 import { pad, nextAlarmText, todayStr } from '../src/utils';
-import { requestNotificationPermission, registerNotificationCategories } from '../src/utils/notifications';
+import { requestNotificationPermission, registerNotificationCategories, rescheduleAll, scheduleAlarm } from '../src/utils/notifications';
+import { AlarmRinging } from '../src/components/AlarmRinging';
 import { Alarm, DAYS } from '../src/constants';
 
 const C = {
@@ -155,6 +156,13 @@ export default function App() {
   const [editAlarm, setEditAlarm] = useState<Alarm|null>(null);
   const [highlightId, setHighlightId] = useState<number|null>(null);
   const [notifGranted, setNotifGranted] = useState(false);
+  const [ringing, setRinging] = useState<{ title: string; body: string } | null>(null);
+  const [tick, setTick]  = useState(0); // 1분마다 다음 알람 텍스트 강제 갱신
+  const appStateRef  = useRef(AppState.currentState);
+  const alarmsRef    = useRef(alarms);
+  const ringingRef   = useRef(ringing); // 이미 떠있는지 확인용
+  alarmsRef.current  = alarms;
+  ringingRef.current = ringing;
 
   useEffect(() => {
     (async () => {
@@ -164,16 +172,50 @@ export default function App() {
     })();
   }, []);
 
+  // 1분마다 "다음 알람" 텍스트 갱신
   useEffect(() => {
-    const s1 = Notifications.addNotificationReceivedListener(() =>
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
-    );
+    const t = setInterval(() => setTick(n => n + 1), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  // 앱이 포그라운드로 돌아오면 전체 재스케줄링 (지나간 슬롯 보충)
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', async (next) => {
+      if (appStateRef.current.match(/inactive|background/) && next === 'active') {
+        await rescheduleAll(alarmsRef.current);
+        setTick(n => n + 1);
+      }
+      appStateRef.current = next;
+    });
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    const s1 = Notifications.addNotificationReceivedListener(async n => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      const { title, body } = n.request.content;
+      // 이미 알람 화면이 떠있으면 덮어쓰지 않음 (dismiss 후에만 다음 알람 표시)
+      if (!ringingRef.current) {
+        setRinging({ title: title ?? '⏰ 알람', body: body ?? '' });
+      }
+      // 울린 알람의 다음 발화를 즉시 재스케줄링 (14일치 슬롯 유지)
+      const firedId = n.request.content.data?.alarmId as number | undefined;
+      if (firedId != null) {
+        const fired = alarmsRef.current.find(a => a.id === firedId);
+        if (fired?.active) await scheduleAlarm(fired);
+      }
+      setTick(t => t + 1);
+    });
     const s2 = Notifications.addNotificationResponseReceivedListener(r => {
-      if (r.actionIdentifier === 'snooze')
+      if (r.actionIdentifier === 'snooze') {
         Notifications.scheduleNotificationAsync({
-          content: { ...r.notification.request.content, title:'⏰ 스누즈', sound:'alarm_long.wav' },
+          content: { ...r.notification.request.content, title:'⏰ 스누즈', sound: __DEV__ ? true : 'alarm_long.wav' },
           trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(Date.now()+5*60*1000) },
         });
+      } else {
+        // 배너 탭(기본 액션) → 알람 화면 닫기
+        setRinging(null);
+      }
     });
     return () => { s1.remove(); s2.remove(); };
   }, []);
@@ -194,7 +236,8 @@ export default function App() {
 
   const sorted = useMemo(() => [...alarms].sort((a,b) => a.hour*60+a.min-(b.hour*60+b.min)), [alarms]);
   const activeCount = useMemo(() => alarms.filter(a=>a.active).length, [alarms]);
-  const nextText = useMemo(() => nextAlarmText(alarms), [alarms]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const nextText = useMemo(() => nextAlarmText(alarms), [alarms, tick]);
 
   if (!loaded)
     return <View style={s.loading}><Text style={s.loadingT}>⏰</Text></View>;
@@ -312,6 +355,21 @@ export default function App() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <AlarmRinging
+        visible={!!ringing}
+        title={ringing?.title ?? ''}
+        body={ringing?.body ?? ''}
+        onStop={() => setRinging(null)}
+        onSnooze={() => {
+          if (ringing)
+            Notifications.scheduleNotificationAsync({
+              content: { title: '⏰ 스누즈', body: ringing.body, sound: 'alarm_long.wav' },
+              trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(Date.now() + 5 * 60 * 1000) },
+            });
+          setRinging(null);
+        }}
+      />
 
       {/* 하단 네비 — 알람 / 달력 / 추가 */}
       <View style={[s.nav,{paddingBottom:Math.max(insets.bottom,14)}]}>

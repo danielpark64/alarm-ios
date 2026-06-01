@@ -17,11 +17,14 @@ export function useAlarms() {
 
   useEffect(() => {
     (async () => {
+      let loaded: Alarm[] = DEFAULT;
       try {
         const raw = await AsyncStorage.getItem(KEY);
-        if (raw) { const d = JSON.parse(raw); setAlarms(d.alarms??DEFAULT); setNextId(d.nextId??100); }
-        else setAlarms(DEFAULT);
-      } catch { setAlarms(DEFAULT); }
+        if (raw) { const d = JSON.parse(raw); loaded = d.alarms ?? DEFAULT; setNextId(d.nextId ?? 100); }
+      } catch {}
+      setAlarms(loaded);
+      // 앱 시작 시 전체 재스케줄링 — 사운드 설정 변경 등 즉시 반영
+      await rescheduleAll(loaded);
       setLoaded(true);
     })();
   }, []);
