@@ -2,10 +2,12 @@ import * as Notifications from 'expo-notifications';
 import { Alarm } from '../constants';
 import { getType, pad } from './index';
 
+// 포그라운드에서도 iOS 시스템이 직접 처리 → 애플워치 미러링 정상 동작
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true, shouldPlaySound: true,
     shouldSetBadge: false, shouldShowBanner: true, shouldShowList: true,
+    shouldShowInForeground: true,
   }),
 });
 

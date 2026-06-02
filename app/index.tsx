@@ -11,7 +11,6 @@ import { AlarmCard } from '../src/components/AlarmCard';
 import { AlarmForm } from '../src/components/AlarmForm';
 import { pad, nextAlarmText, todayStr } from '../src/utils';
 import { requestNotificationPermission, registerNotificationCategories, rescheduleAll, scheduleAlarm } from '../src/utils/notifications';
-import { AlarmRinging } from '../src/components/AlarmRinging';
 import { Alarm, DAYS } from '../src/constants';
 
 const C = {
@@ -156,13 +155,10 @@ export default function App() {
   const [editAlarm, setEditAlarm] = useState<Alarm|null>(null);
   const [highlightId, setHighlightId] = useState<number|null>(null);
   const [notifGranted, setNotifGranted] = useState(false);
-  const [ringing, setRinging] = useState<{ title: string; body: string } | null>(null);
   const [tick, setTick]  = useState(0); // 1분마다 다음 알람 텍스트 강제 갱신
   const appStateRef  = useRef(AppState.currentState);
   const alarmsRef    = useRef(alarms);
-  const ringingRef   = useRef(ringing); // 이미 떠있는지 확인용
   alarmsRef.current  = alarms;
-  ringingRef.current = ringing;
 
   useEffect(() => {
     (async () => {
@@ -192,12 +188,8 @@ export default function App() {
 
   useEffect(() => {
     const s1 = Notifications.addNotificationReceivedListener(async n => {
+      // 포그라운드에서도 햅틱만 추가 (시스템이 배너/소리/워치 처리)
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      const { title, body } = n.request.content;
-      // 이미 알람 화면이 떠있으면 덮어쓰지 않음 (dismiss 후에만 다음 알람 표시)
-      if (!ringingRef.current) {
-        setRinging({ title: title ?? '⏰ 알람', body: body ?? '' });
-      }
       // 울린 알람의 다음 발화를 즉시 재스케줄링 (14일치 슬롯 유지)
       const firedId = n.request.content.data?.alarmId as number | undefined;
       if (firedId != null) {
@@ -212,9 +204,6 @@ export default function App() {
           content: { ...r.notification.request.content, title:'⏰ 스누즈', sound: __DEV__ ? true : 'alarm_long.wav' },
           trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(Date.now()+5*60*1000) },
         });
-      } else {
-        // 배너 탭(기본 액션) → 알람 화면 닫기
-        setRinging(null);
       }
     });
     return () => { s1.remove(); s2.remove(); };
@@ -356,20 +345,6 @@ export default function App() {
         </KeyboardAvoidingView>
       </Modal>
 
-      <AlarmRinging
-        visible={!!ringing}
-        title={ringing?.title ?? ''}
-        body={ringing?.body ?? ''}
-        onStop={() => setRinging(null)}
-        onSnooze={() => {
-          if (ringing)
-            Notifications.scheduleNotificationAsync({
-              content: { title: '⏰ 스누즈', body: ringing.body, sound: 'alarm_long.wav' },
-              trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(Date.now() + 5 * 60 * 1000) },
-            });
-          setRinging(null);
-        }}
-      />
 
       {/* 하단 네비 — 알람 / 달력 / 추가 */}
       <View style={[s.nav,{paddingBottom:Math.max(insets.bottom,14)}]}>
