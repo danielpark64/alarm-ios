@@ -14,7 +14,7 @@ export const REPEAT = [
 export const DAYS = ['월','화','수','목','금','토','일'];
 export const SOUNDS = [
   { id: 'none',    label: '없음', icon: '🔇' },
-  { id: 'default', label: '기본', icon: '🔔' },
+  { id: 'default', label: '소리', icon: '🔔' },
 ] as const;
 export const VIBS = [
   { id: 'none',  label: '없음', icon: '📵' },
