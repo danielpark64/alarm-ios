@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, memo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, Alert,
-  StyleSheet, StatusBar, Platform, Modal, KeyboardAvoidingView, AppState,
+  StyleSheet, StatusBar, Platform, Modal, KeyboardAvoidingView, AppState, NativeModules, Linking,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
@@ -9,9 +9,12 @@ import * as Haptics from 'expo-haptics';
 import { useAlarms } from '../src/hooks/useAlarms';
 import { AlarmCard } from '../src/components/AlarmCard';
 import { AlarmForm } from '../src/components/AlarmForm';
+import { AlarmRinging } from '../src/components/AlarmRinging';
 import { pad, nextAlarmText, todayStr } from '../src/utils';
 import { requestNotificationPermission, registerNotificationCategories, rescheduleAll, scheduleAlarm } from '../src/utils/notifications';
 import { Alarm, DAYS } from '../src/constants';
+
+const { AlarmModule } = NativeModules;
 
 const C = {
   bg:'#0b0b1c', bg2:'#141430', bg3:'#1c1c40',
@@ -155,7 +158,8 @@ export default function App() {
   const [editAlarm, setEditAlarm] = useState<Alarm|null>(null);
   const [highlightId, setHighlightId] = useState<number|null>(null);
   const [notifGranted, setNotifGranted] = useState(false);
-  const [tick, setTick]  = useState(0); // 1분마다 다음 알람 텍스트 강제 갱신
+  const [tick, setTick]  = useState(0);
+  const [ringing, setRinging] = useState<{ title: string; body: string } | null>(null); // 1분마다 다음 알람 텍스트 강제 갱신
   const appStateRef  = useRef(AppState.currentState);
   const alarmsRef    = useRef(alarms);
   alarmsRef.current  = alarms;
@@ -188,8 +192,12 @@ export default function App() {
 
   useEffect(() => {
     const s1 = Notifications.addNotificationReceivedListener(async n => {
-      // 포그라운드에서도 햅틱만 추가 (시스템이 배너/소리/워치 처리)
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      // Android: 포그라운드 알람 모달 표시 (ForegroundService는 백그라운드 담당)
+      if (Platform.OS === 'android') {
+        const { title, body } = n.request.content;
+        setRinging({ title: title ?? '⏰ 알람', body: body ?? '' });
+      }
       // 울린 알람의 다음 발화를 즉시 재스케줄링 (14일치 슬롯 유지)
       const firedId = n.request.content.data?.alarmId as number | undefined;
       if (firedId != null) {
@@ -297,6 +305,13 @@ export default function App() {
                 highlighted={highlightId === al.id}
             />
           ))}
+          <TouchableOpacity
+            style={s.promoBanner}
+            activeOpacity={0.75}
+            onPress={() => Linking.openURL('https://www.youtube.com/@susumusic_ai')}
+          >
+            <Text style={s.promoTitle}>🎵 수수뮤직{'    '}<Text style={s.promoSub}>Enjoy Together</Text></Text>
+          </TouchableOpacity>
         </ScrollView>
       )}
 
@@ -320,6 +335,28 @@ export default function App() {
             submitLabel="⏰ 알람 추가"
           />
         </ScrollView>
+      )}
+
+      {/* Android 알람 울림 모달 (포그라운드) */}
+      {Platform.OS === 'android' && (
+        <AlarmRinging
+          visible={!!ringing}
+          title={ringing?.title ?? ''}
+          body={ringing?.body ?? ''}
+          onStop={() => {
+            if (AlarmModule) AlarmModule.stopAlarm();
+            setRinging(null);
+          }}
+          onSnooze={() => {
+            if (AlarmModule) AlarmModule.stopAlarm();
+            if (ringing)
+              Notifications.scheduleNotificationAsync({
+                content: { title: '⏰ 스누즈', body: ringing.body, sound: 'alarm_long.wav' },
+                trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(Date.now() + 5 * 60 * 1000) },
+              });
+            setRinging(null);
+          }}
+        />
       )}
 
       {/* 편집 모달 */}
@@ -419,6 +456,9 @@ const s = StyleSheet.create({
   navBtn:    { alignItems:'center', gap:3, paddingHorizontal:20, paddingVertical:4 },
   navI:      { width:34, height:34, borderRadius:17, alignItems:'center', justifyContent:'center' },
   navIA:     { backgroundColor:'rgba(162,155,254,0.18)' },
+  promoBanner:  { alignItems:'center', justifyContent:'center', marginTop:14, padding:14, borderRadius:14, backgroundColor:'rgba(162,155,254,0.08)', borderWidth:1, borderColor:'rgba(162,155,254,0.25)' },
+  promoTitle:   { fontSize:15, fontWeight:'900', color:C.txt, textAlign:'center', letterSpacing:8 },
+  promoSub:     { fontSize:11, fontWeight:'600', color:C.txt3, textAlign:'center', marginTop:3, letterSpacing:0 },
   navOverModal: { position:'absolute', bottom:0, left:0, right:0, zIndex:10 },
   navIT:     { fontSize:18 },
   navIC:     { width:50, height:50, borderRadius:15, backgroundColor:C.bg3, borderWidth:1, borderColor:C.border2, alignItems:'center', justifyContent:'center' },
