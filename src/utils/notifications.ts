@@ -35,6 +35,9 @@ export async function cancelAlarmNotifications(alarmId: number) {
   if (Platform.OS === 'android' && AlarmModule) {
     for (let i = 0; i < 10; i++) AlarmModule.cancelAlarm(alarmId * 100  + i);
     for (let i = 0; i < 14; i++) AlarmModule.cancelAlarm(alarmId * 1000 + i);
+    // rep 슬롯 취소 (+1분: 51, +2분: 52)
+    AlarmModule.cancelAlarm(alarmId * 100 + 51);
+    AlarmModule.cancelAlarm(alarmId * 100 + 52);
   }
 }
 

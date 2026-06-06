@@ -159,7 +159,7 @@ export default function App() {
   const [highlightId, setHighlightId] = useState<number|null>(null);
   const [notifGranted, setNotifGranted] = useState(false);
   const [tick, setTick]  = useState(0);
-  const [ringing, setRinging] = useState<{ title: string; body: string } | null>(null); // 1분마다 다음 알람 텍스트 강제 갱신
+  const [ringing, setRinging] = useState<{ title: string; body: string; alarmId?: number; groupKey?: string } | null>(null);
   const appStateRef     = useRef(AppState.currentState);
   const alarmsRef       = useRef(alarms);
   const updateAlarmRef  = useRef(updateAlarm);
@@ -197,7 +197,11 @@ export default function App() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       if (Platform.OS === 'android') {
         const { title, body } = n.request.content;
-        setRinging({ title: title ?? '⏰ 알람', body: body ?? '' });
+        const d = n.request.content.data as any;
+        setRinging({
+          title: title ?? '⏰ 알람', body: body ?? '',
+          alarmId: d?.alarmId, groupKey: d?.groupKey,
+        });
       }
       const isRepeat = n.request.content.data?.isRepeat as boolean | undefined;
       const repIndex = n.request.content.data?.repIndex as number | undefined;
@@ -369,12 +373,27 @@ export default function App() {
           visible={!!ringing}
           title={ringing?.title ?? ''}
           body={ringing?.body ?? ''}
-          onStop={() => {
+          onStop={async () => {
             if (AlarmModule) AlarmModule.stopAlarm();
+            // expo-notifications rep 슬롯 취소
+            if (ringing?.groupKey) {
+              await Notifications.cancelScheduledNotificationAsync(`grp_${ringing.groupKey}_rep1`);
+              await Notifications.cancelScheduledNotificationAsync(`grp_${ringing.groupKey}_rep2`);
+            } else if (ringing?.alarmId != null) {
+              await Notifications.cancelScheduledNotificationAsync(`alarm_${ringing.alarmId}_rep1`);
+              await Notifications.cancelScheduledNotificationAsync(`alarm_${ringing.alarmId}_rep2`);
+            }
             setRinging(null);
           }}
-          onSnooze={() => {
+          onSnooze={async () => {
             if (AlarmModule) AlarmModule.stopAlarm();
+            if (ringing?.groupKey) {
+              await Notifications.cancelScheduledNotificationAsync(`grp_${ringing.groupKey}_rep1`);
+              await Notifications.cancelScheduledNotificationAsync(`grp_${ringing.groupKey}_rep2`);
+            } else if (ringing?.alarmId != null) {
+              await Notifications.cancelScheduledNotificationAsync(`alarm_${ringing.alarmId}_rep1`);
+              await Notifications.cancelScheduledNotificationAsync(`alarm_${ringing.alarmId}_rep2`);
+            }
             if (ringing)
               Notifications.scheduleNotificationAsync({
                 content: { title: '⏰ 스누즈', body: ringing.body, sound: 'alarm_long.wav' },
