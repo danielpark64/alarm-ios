@@ -7,7 +7,7 @@ import { getType, getSound, getVib, repeatLabel, pad, todayStr } from '../utils'
 interface Props {
   alarm: Alarm; onToggle: ()=>void; onEdit: ()=>void;
   selectMode: boolean; selected: boolean; onSelect: ()=>void;
-  highlighted?: boolean;
+  highlighted?: boolean; repLimited?: boolean;
 }
 
 function fmtDisplayDate(s: string): string {
@@ -16,7 +16,7 @@ function fmtDisplayDate(s: string): string {
   return String(y).slice(2) + '.' + m + '.' + d;
 }
 
-export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, selectMode, selected, onSelect, highlighted }: Props) {
+export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, selectMode, selected, onSelect, highlighted, repLimited }: Props) {
   const type = getType(alarm.typeId);
   const snd  = getSound(alarm.snd ?? 'default');
   const vib  = getVib(alarm.vib);
@@ -63,6 +63,9 @@ export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, sele
           <View style={s.badge}><Text style={s.badgeT}>{'🔄 ' + repeatLabel(alarm)}</Text></View>
           <View style={s.badge}><Text style={s.badgeT}>{snd.icon + ' ' + snd.label}</Text></View>
           <View style={s.badge}><Text style={s.badgeT}>{vib.icon + ' ' + vib.label}</Text></View>
+          {repLimited && alarm.active && (
+            <View style={s.badgeWarn}><Text style={s.badgeWarnT}>⚠ 1회만 울림</Text></View>
+          )}
         </View>
       </View>
       {!selectMode && (
@@ -98,8 +101,10 @@ const s = StyleSheet.create({
   dim:      { color:"#aaa" },
   dateText: { fontSize:12, fontWeight:"700", color:"#7777aa", marginTop:3 },
   badges:   { flexDirection:"row", flexWrap:"wrap", gap:5, marginTop:5 },
-  badge:    { paddingHorizontal:10, paddingVertical:3, borderRadius:99, borderWidth:1, borderColor:"#333", backgroundColor:"#f0f0f0" },
-  badgeT:   { fontSize:12, fontWeight:"700", color:"#000" },
+  badge:     { paddingHorizontal:10, paddingVertical:3, borderRadius:99, borderWidth:1, borderColor:"#333", backgroundColor:"#f0f0f0" },
+  badgeT:    { fontSize:12, fontWeight:"700", color:"#000" },
+  badgeWarn: { paddingHorizontal:10, paddingVertical:3, borderRadius:99, borderWidth:1, borderColor:"#e07030", backgroundColor:"#fff4ee" },
+  badgeWarnT:{ fontSize:12, fontWeight:"700", color:"#e07030" },
   actions:  { alignItems:"center", gap:6 },
   toggle:   { width:51, height:31, borderRadius:16, justifyContent:"center", paddingHorizontal:2 },
   toggleOn: { backgroundColor:"#333" },

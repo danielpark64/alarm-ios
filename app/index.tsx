@@ -10,8 +10,8 @@ import { useAlarms } from '../src/hooks/useAlarms';
 import { AlarmCard } from '../src/components/AlarmCard';
 import { AlarmForm } from '../src/components/AlarmForm';
 import { AlarmRinging } from '../src/components/AlarmRinging';
-import { pad, nextAlarmText, todayStr } from '../src/utils';
-import { requestNotificationPermission, registerNotificationCategories, rescheduleAll, scheduleAlarm } from '../src/utils/notifications';
+import { pad, nextAlarmText, todayStr, getRepLimitedIds } from '../src/utils';
+import { requestNotificationPermission, registerNotificationCategories, rescheduleAll } from '../src/utils/notifications';
 import { Alarm, DAYS } from '../src/constants';
 
 const { AlarmModule } = NativeModules;
@@ -160,9 +160,11 @@ export default function App() {
   const [notifGranted, setNotifGranted] = useState(false);
   const [tick, setTick]  = useState(0);
   const [ringing, setRinging] = useState<{ title: string; body: string } | null>(null); // 1분마다 다음 알람 텍스트 강제 갱신
-  const appStateRef  = useRef(AppState.currentState);
-  const alarmsRef    = useRef(alarms);
-  alarmsRef.current  = alarms;
+  const appStateRef     = useRef(AppState.currentState);
+  const alarmsRef       = useRef(alarms);
+  const updateAlarmRef  = useRef(updateAlarm);
+  alarmsRef.current     = alarms;
+  updateAlarmRef.current = updateAlarm;
 
   useEffect(() => {
     (async () => {
@@ -193,25 +195,47 @@ export default function App() {
   useEffect(() => {
     const s1 = Notifications.addNotificationReceivedListener(async n => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      // Android: 포그라운드 알람 모달 표시 (ForegroundService는 백그라운드 담당)
       if (Platform.OS === 'android') {
         const { title, body } = n.request.content;
         setRinging({ title: title ?? '⏰ 알람', body: body ?? '' });
       }
-      // 울린 알람의 다음 발화를 즉시 재스케줄링 (14일치 슬롯 유지)
-      const firedId = n.request.content.data?.alarmId as number | undefined;
-      if (firedId != null) {
-        const fired = alarmsRef.current.find(a => a.id === firedId);
-        if (fired?.active) await scheduleAlarm(fired);
+      const isRepeat = n.request.content.data?.isRepeat as boolean | undefined;
+      const repIndex = n.request.content.data?.repIndex as number | undefined;
+      const rm       = n.request.content.data?.rm as string | undefined;
+      const firedId  = n.request.content.data?.alarmId as number | undefined;
+
+      // '한 번' 알람의 마지막 반복(+2분)까지 울렸으면 자동 비활성화
+      if (isRepeat && repIndex === 2 && rm === 'once' && firedId != null) {
+        await updateAlarmRef.current(firedId, { active: false });
       }
       setTick(t => t + 1);
     });
-    const s2 = Notifications.addNotificationResponseReceivedListener(r => {
+    const s2 = Notifications.addNotificationResponseReceivedListener(async r => {
+      const data     = r.notification.request.content.data as any;
+      const alarmId  = data?.alarmId  as number | undefined;
+      const groupKey = data?.groupKey as string | undefined;
+      const rm       = data?.rm       as string | undefined;
+
+      // 그룹 또는 개별 rep 슬롯 취소
+      if (groupKey) {
+        await Notifications.cancelScheduledNotificationAsync(`grp_${groupKey}_rep1`);
+        await Notifications.cancelScheduledNotificationAsync(`grp_${groupKey}_rep2`);
+      } else if (alarmId != null) {
+        await Notifications.cancelScheduledNotificationAsync(`alarm_${alarmId}_rep1`);
+        await Notifications.cancelScheduledNotificationAsync(`alarm_${alarmId}_rep2`);
+      }
+
       if (r.actionIdentifier === 'snooze') {
+        // Android 전용 — iOS는 스누즈 버튼 없음
         Notifications.scheduleNotificationAsync({
           content: { ...r.notification.request.content, title:'⏰ 스누즈', sound: __DEV__ ? true : 'alarm_long.wav' },
           trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(Date.now()+5*60*1000) },
         });
+      } else {
+        // 끄기 또는 탭 — '한 번' 알람이면 자동 비활성화
+        if (rm === 'once' && alarmId != null) {
+          await updateAlarmRef.current(alarmId, { active: false });
+        }
       }
     });
     return () => { s1.remove(); s2.remove(); };
@@ -231,8 +255,9 @@ export default function App() {
     ]);
   };
 
-  const sorted = useMemo(() => [...alarms].sort((a,b) => a.hour*60+a.min-(b.hour*60+b.min)), [alarms]);
-  const activeCount = useMemo(() => alarms.filter(a=>a.active).length, [alarms]);
+  const sorted        = useMemo(() => [...alarms].sort((a,b) => a.hour*60+a.min-(b.hour*60+b.min)), [alarms]);
+  const activeCount   = useMemo(() => alarms.filter(a=>a.active).length, [alarms]);
+  const repLimitedIds = useMemo(() => getRepLimitedIds(alarms), [alarms]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const nextText = useMemo(() => nextAlarmText(alarms), [alarms, tick]);
 
@@ -302,7 +327,8 @@ export default function App() {
               onEdit={()=>setEditAlarm(al)}
               selectMode={selectMode} selected={selectedIds.has(al.id)}
               onSelect={()=>toggleSelect(al.id)}
-                highlighted={highlightId === al.id}
+              highlighted={highlightId === al.id}
+              repLimited={repLimitedIds.has(al.id)}
             />
           ))}
           <TouchableOpacity

@@ -1,11 +1,10 @@
 import * as Notifications from 'expo-notifications';
 import { Platform, NativeModules } from 'react-native';
 import { Alarm } from '../constants';
-import { getType, pad } from './index';
+import { getType, pad, getNextFireDate } from './index';
 
 const { AlarmModule } = NativeModules;
 
-// 포그라운드에서도 iOS 시스템이 직접 처리 → 애플워치 미러링 정상 동작
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true, shouldPlaySound: true,
@@ -23,16 +22,19 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return status === 'granted';
 }
 
+// alarmId 또는 그룹 alarmIds에 포함된 알림 전부 취소
 export async function cancelAlarmNotifications(alarmId: number) {
   const all = await Notifications.getAllScheduledNotificationsAsync();
   await Promise.all(
-    all.filter(n => n.content.data?.alarmId === alarmId)
-       .map(n => Notifications.cancelScheduledNotificationAsync(n.identifier))
+    all.filter(n => {
+      const d = n.content.data as any;
+      return d?.alarmId === alarmId ||
+             (Array.isArray(d?.alarmIds) && d.alarmIds.includes(alarmId));
+    }).map(n => Notifications.cancelScheduledNotificationAsync(n.identifier))
   );
-  // Android 네이티브 알람 취소
   if (Platform.OS === 'android' && AlarmModule) {
-    for (let i = 0; i < 10; i++)  AlarmModule.cancelAlarm(alarmId * 100  + i);
-    for (let i = 0; i < 14; i++)  AlarmModule.cancelAlarm(alarmId * 1000 + i);
+    for (let i = 0; i < 10; i++) AlarmModule.cancelAlarm(alarmId * 100  + i);
+    for (let i = 0; i < 14; i++) AlarmModule.cancelAlarm(alarmId * 1000 + i);
   }
 }
 
@@ -49,7 +51,7 @@ function makeId(alarmId: number, suffix: string): string {
   return `alarm_${alarmId}_${suffix}`;
 }
 
-// ── 네이티브 알람 스케줄 헬퍼 (Android 전용) ─────────────────────────
+// ── Android 네이티브 헬퍼 ───────────────────────────────────────────
 function scheduleNative(
   requestCode: number, triggerDate: Date,
   title: string, body: string,
@@ -59,13 +61,6 @@ function scheduleNative(
   AlarmModule.scheduleAlarm(requestCode, triggerDate.getTime(), title, body, recurrence, hour, min, calWeekday);
 }
 
-// 다음 매일 발동 시각
-function nextDaily(h: number, m: number): Date {
-  const d = new Date(); d.setHours(h, m, 0, 0);
-  if (d <= new Date()) d.setDate(d.getDate() + 1);
-  return d;
-}
-// 다음 특정 JS요일(0=일..6=토) 발동 시각
 function nextJsWeekday(h: number, m: number, jsDay: number): Date {
   const now = new Date();
   const d = new Date(); d.setHours(h, m, 0, 0);
@@ -74,78 +69,27 @@ function nextJsWeekday(h: number, m: number, jsDay: number): Date {
   d.setDate(d.getDate() + diff);
   return d;
 }
-// 다음 평일
-function nextWeekday(h: number, m: number): Date {
-  const d = new Date(); d.setHours(h, m, 0, 0);
-  if (d <= new Date()) d.setDate(d.getDate() + 1);
-  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
-  return d;
-}
-// 다음 주말
-function nextWeekend(h: number, m: number): Date {
-  const d = new Date(); d.setHours(h, m, 0, 0);
-  if (d <= new Date()) d.setDate(d.getDate() + 1);
-  while (d.getDay() !== 0 && d.getDay() !== 6) d.setDate(d.getDate() + 1);
-  return d;
-}
-// 앱 요일(0=월..6=일) → Java Calendar 요일(2=월..7=토, 1=일)
 function appDayToCalendar(d: number): number { return d === 6 ? 1 : d + 2; }
-// 앱 요일(0=월..6=일) → JS getDay 요일(0=일..6=토)
-function appDayToJs(d: number): number { return d === 6 ? 0 : d + 1; }
+function appDayToJs(d: number): number       { return d === 6 ? 0 : d + 1; }
 
-export async function scheduleAlarm(alarm: Alarm) {
+// ── 메인 트리거만 예약 (rep 슬롯 제외) ────────────────────────────────
+async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: string) {
   if (!alarm.active) return;
-  await cancelAlarmNotifications(alarm.id);
 
-  const type = getType(alarm.typeId);
+  const type     = getType(alarm.typeId);
   const title    = `${type.icon} ${alarm.label || type.label}`;
   const bodyText = `${pad(alarm.hour)}:${pad(alarm.min)} 알람`;
 
   const baseContent: Notifications.NotificationContentInput = {
-    title,
-    body: bodyText,
+    title, body: bodyText,
     sound: alarm.vib === 'none' ? undefined : (__DEV__ ? true : 'alarm_long.wav'),
     vibrationPattern: getVibrationPattern(alarm.vib),
-    data: { alarmId: alarm.id },
+    data: { alarmId: alarm.id, rm: alarm.rm },
     categoryIdentifier: 'alarm',
+    ...(threadIdentifier ? { threadIdentifier } : {}),
   };
 
-  // ── 매일 ──────────────────────────────────────────────────────────
-  if (alarm.rm === 'daily') {
-    await Notifications.scheduleNotificationAsync({
-      identifier: makeId(alarm.id, 'daily'),
-      content: baseContent,
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: alarm.hour, minute: alarm.min },
-    });
-    scheduleNative(alarm.id * 100, nextDaily(alarm.hour, alarm.min), title, bodyText, 'daily', alarm.hour, alarm.min, -1);
-    return;
-  }
-
-  // ── 평일 ──────────────────────────────────────────────────────────
-  if (alarm.rm === 'weekdays') {
-    for (let w = 2; w <= 6; w++)
-      await Notifications.scheduleNotificationAsync({
-        identifier: makeId(alarm.id, `wd${w}`),
-        content: baseContent,
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: w, hour: alarm.hour, minute: alarm.min },
-      });
-    scheduleNative(alarm.id * 100 + 1, nextWeekday(alarm.hour, alarm.min), title, bodyText, 'weekdays', alarm.hour, alarm.min, -1);
-    return;
-  }
-
-  // ── 주말 ──────────────────────────────────────────────────────────
-  if (alarm.rm === 'weekends') {
-    for (const w of [1, 7])
-      await Notifications.scheduleNotificationAsync({
-        identifier: makeId(alarm.id, `we${w}`),
-        content: baseContent,
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: w, hour: alarm.hour, minute: alarm.min },
-      });
-    scheduleNative(alarm.id * 100 + 2, nextWeekend(alarm.hour, alarm.min), title, bodyText, 'weekends', alarm.hour, alarm.min, -1);
-    return;
-  }
-
-  // ── 사용자 지정 요일 ───────────────────────────────────────────────
+  // ── wdcustom (요일 선택) ──────────────────────────────────────────
   if (alarm.rm === 'wdcustom' && alarm.days.length > 0) {
     const iw = (d: number) => (d + 2) % 7 || 7;
     for (const d of alarm.days) {
@@ -154,17 +98,12 @@ export async function scheduleAlarm(alarm: Alarm) {
         content: baseContent,
         trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: iw(d), hour: alarm.hour, minute: alarm.min },
       });
-      scheduleNative(
-        alarm.id * 100 + 3 + d,
-        nextJsWeekday(alarm.hour, alarm.min, appDayToJs(d)),
-        title, bodyText, 'weekly', alarm.hour, alarm.min, appDayToCalendar(d)
-      );
+      scheduleNative(alarm.id * 100 + 3 + d, nextJsWeekday(alarm.hour, alarm.min, appDayToJs(d)), title, bodyText, 'weekly', alarm.hour, alarm.min, appDayToCalendar(d));
     }
     return;
   }
 
   // ── 날짜 기반 (once / cycle / rest) ──────────────────────────────
-  // iOS 로컬 알림 최대 64개 제한: 14일치만 등록 후 앱 재진입 시 재스케줄링
   const p2 = (n: number) => String(n).padStart(2, '0');
   const today = new Date(); today.setHours(0, 0, 0, 0);
   let nativeIdx = 0;
@@ -198,14 +137,101 @@ export async function scheduleAlarm(alarm: Alarm) {
   }
 }
 
-export async function rescheduleAll(alarms: Alarm[]) {
-  await cancelAllNotifications();
-  for (const a of alarms) if (a.active) await scheduleAlarm(a);
+// ── 같은 시간대 알람 묶음 rep 슬롯 예약 (+1분/+2분) ───────────────────
+async function scheduleGroupReps(group: Alarm[]) {
+  const active = group.filter(a => a.active);
+  if (!active.length) return;
+
+  // 슬롯 여유 확인
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  if (scheduled.length + 2 > 62) return;
+
+  const [first] = active;
+  const gkey = `${first.hour}_${first.min}`;
+
+  const nextDates = active.map(a => getNextFireDate(a)).filter(Boolean) as Date[];
+  if (!nextDates.length) return;
+  const next = new Date(Math.min(...nextDates.map(d => d.getTime())));
+
+  // 묶음 라벨: 알람이 여러 개면 합침
+  const label = active.length === 1
+    ? (active[0].label || getType(active[0].typeId).label)
+    : active.map(a => a.label || getType(a.typeId).label).join(' · ');
+  const hasSound = active.some(a => a.vib !== 'none');
+
+  const repBase: Notifications.NotificationContentInput = {
+    title: `⏰ ${label}`,
+    body: `${pad(first.hour)}:${pad(first.min)} 알람`,
+    sound: hasSound ? (__DEV__ ? true : 'alarm_long.wav') : undefined,
+    vibrationPattern: hasSound ? [0,200,150,200,150,200] : undefined,
+    categoryIdentifier: 'alarm',
+    threadIdentifier: `grp_${gkey}`,
+  };
+
+  for (const offset of [1, 2]) {
+    await Notifications.scheduleNotificationAsync({
+      identifier: `grp_${gkey}_rep${offset}`,
+      content: {
+        ...repBase,
+        data: {
+          alarmIds: active.map(a => a.id),
+          groupKey: gkey,
+          isRepeat: true,
+          repIndex: offset,
+          rm: active.length === 1 ? active[0].rm : 'group',
+        },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: new Date(next.getTime() + offset * 60 * 1000),
+      },
+    });
+  }
 }
 
+// ── 공개 API ──────────────────────────────────────────────────────────
+
+// 전체 재스케줄 (같은 시간대 묶음 처리 포함)
+export async function rescheduleAll(alarms: Alarm[]) {
+  await cancelAllNotifications();
+  const active = alarms.filter(a => a.active);
+
+  // 시간대별 그룹화
+  const groups = new Map<string, Alarm[]>();
+  for (const a of active) {
+    const key = `${a.hour}_${a.min}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(a);
+  }
+
+  for (const [key, group] of groups) {
+    // 메인 트리거 (개별, 같은 threadIdentifier로 묶음)
+    for (const alarm of group) {
+      await scheduleAlarmTriggers(alarm, `grp_${key}`);
+    }
+    // 그룹 rep 슬롯 (시간대당 1세트)
+    await scheduleGroupReps(group);
+  }
+}
+
+// 단일 알람 재스케줄 (개별 변경 시 fallback용)
+export async function scheduleAlarm(alarm: Alarm) {
+  if (!alarm.active) return;
+  await cancelAlarmNotifications(alarm.id);
+  await scheduleAlarmTriggers(alarm, `grp_${alarm.hour}_${alarm.min}`);
+  await scheduleGroupReps([alarm]);
+}
+
+// iOS: 스누즈 없음 / Android: 스누즈 있음
 export async function registerNotificationCategories() {
-  await Notifications.setNotificationCategoryAsync('alarm', [
-    { identifier: 'stop',   buttonTitle: '알람 끄기', options: { isDestructive: false, isAuthenticationRequired: false } },
-    { identifier: 'snooze', buttonTitle: '5분 후',    options: { isDestructive: false, isAuthenticationRequired: false } },
-  ]);
+  if (Platform.OS === 'ios') {
+    await Notifications.setNotificationCategoryAsync('alarm', [
+      { identifier: 'stop', buttonTitle: '알람 끄기', options: { isDestructive: false, isAuthenticationRequired: false } },
+    ]);
+  } else {
+    await Notifications.setNotificationCategoryAsync('alarm', [
+      { identifier: 'stop',   buttonTitle: '알람 끄기', options: { isDestructive: false, isAuthenticationRequired: false } },
+      { identifier: 'snooze', buttonTitle: '5분 후',    options: { isDestructive: false, isAuthenticationRequired: false } },
+    ]);
+  }
 }

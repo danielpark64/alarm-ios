@@ -6,8 +6,7 @@ export const TYPES = [
 ] as const;
 export const REPEAT = [
   { id: 'once',     label: '한 번' },
-  { id: 'daily',    label: '매일' },
-  { id: 'wdcustom', label: '요일 선택' },
+  { id: 'wdcustom', label: '요일' },
   { id: 'cycle',    label: 'N일 주기' },
   { id: 'rest',     label: 'N일 후 휴식' },
 ] as const;

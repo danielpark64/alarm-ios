@@ -18,21 +18,21 @@ const LOOP_COUNT = 20; // 무한 루프용 반복 횟수 (시간 20×24=480개, 
 function ScrollPicker({ value, items, onChange }: {
   value: number; items: number[]; onChange: (v: number) => void;
 }) {
-  const scrollRef  = useRef<ScrollView>(null);
-  const isScrolling = useRef(false);
+  const scrollRef      = useRef<ScrollView>(null);
+  const isScrolling    = useRef(false);
+  const skipNextEffect = useRef(false); // 스크롤로 값이 바뀔 때 useEffect의 역방향 scrollTo 방지
 
   // 무한 루프: 아이템을 LOOP_COUNT번 반복
   const loopedItems = Array.from({ length: LOOP_COUNT }, () => items).flat();
   const totalCount  = loopedItems.length;
-  const midOffset   = Math.floor(LOOP_COUNT / 2) * items.length; // 가운데 블록 시작 인덱스
+  const midOffset   = Math.floor(LOOP_COUNT / 2) * items.length;
 
-  // value에 해당하는 가운데 블록의 y 위치
   const getTargetY = (v: number) => {
     const localIdx = items.indexOf(v);
     return (midOffset + localIdx) * PICK_H;
   };
 
-  // 초기 스크롤: 가운데 블록의 value 위치로 이동
+  // 초기 스크롤
   useEffect(() => {
     const timer = setTimeout(() => {
       scrollRef.current?.scrollTo({ y: getTargetY(value), animated: false });
@@ -40,8 +40,9 @@ function ScrollPicker({ value, items, onChange }: {
     return () => clearTimeout(timer);
   }, []);
 
-  // 외부에서 value 변경 시(화살표 버튼) 스크롤 동기화
+  // 외부(화살표 버튼)에서 value 변경 시 스크롤 동기화 — 스크롤 자체로 인한 변경은 건너뜀
   useEffect(() => {
+    if (skipNextEffect.current) { skipNextEffect.current = false; return; }
     if (isScrolling.current) return;
     scrollRef.current?.scrollTo({ y: getTargetY(value), animated: true });
   }, [value]);
@@ -51,7 +52,10 @@ function ScrollPicker({ value, items, onChange }: {
     const rawIdx  = Math.round(y / PICK_H);
     const clipped = Math.max(0, Math.min(totalCount - 1, rawIdx));
     const newVal  = loopedItems[clipped];
-    if (newVal !== value) onChange(newVal);
+    if (newVal !== value) {
+      skipNextEffect.current = true; // 이 값 변경은 스크롤에서 비롯됐으므로 effect 생략
+      onChange(newVal);
+    }
 
     // 끝에 너무 가까워지면 가운데 블록으로 순간이동 (무한 루프 유지)
     const localIdx = items.indexOf(newVal);
@@ -75,7 +79,11 @@ function ScrollPicker({ value, items, onChange }: {
         nestedScrollEnabled
         onScrollBeginDrag={() => { isScrolling.current = true; }}
         onMomentumScrollEnd={(e: any) => handleEnd(e.nativeEvent.contentOffset.y)}
-        onScrollEndDrag={(e: any)     => handleEnd(e.nativeEvent.contentOffset.y)}
+        onScrollEndDrag={(e: any) => {
+          // velocity가 있으면 momentum snap이 이어지므로 onMomentumScrollEnd에 위임
+          const vy = e.nativeEvent.velocity?.y ?? 0;
+          if (Math.abs(vy) < 0.01) handleEnd(e.nativeEvent.contentOffset.y);
+        }}
         contentContainerStyle={{ paddingVertical: PICK_H }}
       >
         {loopedItems.map((item, idx) => (
@@ -164,8 +172,16 @@ export function AlarmForm({ initial, onSubmit, onCancel, submitLabel='⏰ 알람
   const [hour,   setHour]   = useState(initial.hour   ?? 7);
   const [min,    setMin]    = useState(initial.min     ?? 0);
   const [label,  setLabel]  = useState(initial.label   ?? '');
-  const [rm,     setRm]     = useState(initial.rm      ?? 'daily');
-  const [days,   setDays]   = useState<number[]>(initial.days ?? []);
+  const [rm,     setRm]     = useState<string>(() => {
+    const r = initial.rm ?? 'wdcustom';
+    return (r === 'daily' || r === 'weekdays' || r === 'weekends') ? 'wdcustom' : r;
+  });
+  const [days,   setDays]   = useState<number[]>(() => {
+    if (initial.rm === 'daily')    return [0,1,2,3,4,5,6];
+    if (initial.rm === 'weekdays') return [0,1,2,3,4];
+    if (initial.rm === 'weekends') return [5,6];
+    return initial.days ?? [0,1,2,3,4];
+  });
   const [cd,     setCd]     = useState(initial.cd      ?? 2);
   const [rd,     setRd]     = useState(initial.rd      ?? 1);
   const [snd,    setSnd]    = useState(initial.snd     ?? 'default');
@@ -176,8 +192,13 @@ export function AlarmForm({ initial, onSubmit, onCancel, submitLabel='⏰ 알람
   const type = getType(typeId);
   const toggleDay = (i: number) =>
     setDays(prev => prev.includes(i) ? prev.filter(x => x!==i) : [...prev, i]);
-  const handleSubmit = () =>
-    onSubmit({ typeId, hour, min, label: label.trim()||type.label, rm, days, cd, rd, snd, vib, sd });
+  const handleSubmit = () => {
+    // 요일 미선택 시 오늘 요일로 기본값
+    const effectiveDays = (rm === 'wdcustom' && days.length === 0)
+      ? [(new Date().getDay() + 6) % 7]
+      : days;
+    onSubmit({ typeId, hour, min, label: label.trim()||type.label, rm, days: effectiveDays, cd, rd, snd, vib, sd });
+  };
   const adjHour = (d: number) => setHour(h => (h+d+24)%24);
   const adjMin  = (d: number) => setMin(m  => (Math.round(m/5)*5+d*5+60)%60);
   const isToday  = sd === todayStr();
@@ -242,17 +263,34 @@ export function AlarmForm({ initial, onSubmit, onCancel, submitLabel='⏰ 알람
       </View>
 
       {rm === 'wdcustom' && (
-        <View style={s.dayRow}>
-          {DAYS.map((d, i) => (
-            <TouchableOpacity
-              key={i}
-              style={[s.dayBtn, days.includes(i) && s.dayBtnActive]}
-              onPress={() => toggleDay(i)}
-            >
-              {/* 버그 수정: 미선택시 #000, 선택시 #fff 로 항상 보이게 */}
-              <Text style={[s.dayText, { color: days.includes(i) ? '#fff' : '#000' }]}>{d}</Text>
-            </TouchableOpacity>
-          ))}
+        <View style={{marginTop:10, gap:8}}>
+          {/* 빠른선택 */}
+          <View style={s.quickRow}>
+            {([
+              { label:'매일', days:[0,1,2,3,4,5,6] },
+              { label:'평일', days:[0,1,2,3,4] },
+              { label:'주말', days:[5,6] },
+            ] as const).map(p => {
+              const active = p.days.length === days.length && p.days.every(d => days.includes(d));
+              return (
+                <TouchableOpacity key={p.label} style={[s.quickBtn, active && s.dayBtnActive]} onPress={() => setDays([...p.days])}>
+                  <Text style={[s.quickBtnText, active && {color:'#fff'}]}>{p.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {/* 요일 개별 선택 */}
+          <View style={s.dayRow}>
+            {DAYS.map((d, i) => (
+              <TouchableOpacity
+                key={i}
+                style={[s.dayBtn, days.includes(i) && s.dayBtnActive]}
+                onPress={() => toggleDay(i)}
+              >
+                <Text style={[s.dayText, { color: days.includes(i) ? '#fff' : '#000' }]}>{d}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       )}
 
@@ -358,7 +396,10 @@ const s = StyleSheet.create({
   pill:          { paddingHorizontal:16, paddingVertical:9, borderRadius:99, borderWidth:2, borderColor:'#aaa', backgroundColor:'#f5f5f5' },
   pillActive:    { backgroundColor:'#444', borderColor:'#444' },
   pillText:      { fontSize:15, fontWeight:'800', color:'#000' },
-  dayRow:        { flexDirection:'row', flexWrap:'wrap', gap:7, marginTop:10 },
+  quickRow:      { flexDirection:'row', gap:8 },
+  quickBtn:      { flex:1, paddingVertical:8, borderRadius:10, borderWidth:2, borderColor:'#aaa', backgroundColor:'#f0f0f0', alignItems:'center' },
+  quickBtnText:  { fontSize:14, fontWeight:'800', color:'#333' },
+  dayRow:        { flexDirection:'row', flexWrap:'wrap', gap:7 },
   dayBtn:        { paddingHorizontal:14, paddingVertical:9, borderRadius:10, borderWidth:2, borderColor:'#aaa', backgroundColor:'#f0f0f0' },
   dayBtnActive:  { backgroundColor:'#444', borderColor:'#444' },
   dayText:       { fontSize:15, fontWeight:'800' },
