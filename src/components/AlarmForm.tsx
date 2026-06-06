@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, Modal } from 'react-native';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, FlatList, StyleSheet, Platform, Modal } from 'react-native';
 import { Alarm, TYPES, REPEAT, DAYS, SOUNDS, VIBS, CYCLE_PRESETS } from '../constants';
 import { getType, pad, todayStr } from '../utils';
 
@@ -12,88 +12,96 @@ interface Props {
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINS  = Array.from({ length: 12 }, (_, i) => i * 5);
-const PICK_H = 56;
-const LOOP_COUNT = 20; // 무한 루프용 반복 횟수 (시간 20×24=480개, 분 20×12=240개)
+const PICK_H    = 56;
+const LOOP_COUNT = 5; // 5×24=120, 5×12=60 — FlatList 가상화로 실렌더는 ~7개뿐
 
 function ScrollPicker({ value, items, onChange }: {
   value: number; items: number[]; onChange: (v: number) => void;
 }) {
-  const scrollRef      = useRef<ScrollView>(null);
+  const flatRef        = useRef<FlatList>(null);
   const isScrolling    = useRef(false);
-  const skipNextEffect = useRef(false); // 스크롤로 값이 바뀔 때 useEffect의 역방향 scrollTo 방지
+  const skipNextEffect = useRef(false);
 
-  // 무한 루프: 아이템을 LOOP_COUNT번 반복
-  const loopedItems = Array.from({ length: LOOP_COUNT }, () => items).flat();
-  const totalCount  = loopedItems.length;
-  const midOffset   = Math.floor(LOOP_COUNT / 2) * items.length;
+  const loopedItems = useMemo(
+    () => Array.from({ length: LOOP_COUNT }, () => items).flat(),
+    [items]
+  );
+  const totalCount = loopedItems.length;
+  const midOffset  = Math.floor(LOOP_COUNT / 2) * items.length;
 
-  const getTargetY = (v: number) => {
-    const localIdx = items.indexOf(v);
-    return (midOffset + localIdx) * PICK_H;
-  };
+  const getTargetY = useCallback((v: number) =>
+    (midOffset + items.indexOf(v)) * PICK_H,
+  [items, midOffset]);
 
-  // 초기 스크롤
+  // 초기 위치 설정
   useEffect(() => {
     const timer = setTimeout(() => {
-      scrollRef.current?.scrollTo({ y: getTargetY(value), animated: false });
+      flatRef.current?.scrollToOffset({ offset: getTargetY(value), animated: false });
     }, 80);
     return () => clearTimeout(timer);
   }, []);
 
-  // 외부(화살표 버튼)에서 value 변경 시 스크롤 동기화 — 스크롤 자체로 인한 변경은 건너뜀
+  // 화살표 버튼으로 value 변경 시 스크롤 동기화
   useEffect(() => {
     if (skipNextEffect.current) { skipNextEffect.current = false; return; }
     if (isScrolling.current) return;
-    scrollRef.current?.scrollTo({ y: getTargetY(value), animated: true });
+    flatRef.current?.scrollToOffset({ offset: getTargetY(value), animated: true });
   }, [value]);
 
-  const handleEnd = (y: number) => {
+  const handleEnd = useCallback((y: number) => {
     isScrolling.current = false;
     const rawIdx  = Math.round(y / PICK_H);
     const clipped = Math.max(0, Math.min(totalCount - 1, rawIdx));
     const newVal  = loopedItems[clipped];
     if (newVal !== value) {
-      skipNextEffect.current = true; // 이 값 변경은 스크롤에서 비롯됐으므로 effect 생략
+      skipNextEffect.current = true;
       onChange(newVal);
     }
-
-    // 끝에 너무 가까워지면 가운데 블록으로 순간이동 (무한 루프 유지)
+    // 끝에 가까워지면 가운데로 순간이동
     const localIdx = items.indexOf(newVal);
     const targetY  = (midOffset + localIdx) * PICK_H;
-    if (Math.abs(clipped - (midOffset + localIdx)) > items.length * 10) {
+    if (Math.abs(clipped - (midOffset + localIdx)) > items.length * 2) {
       setTimeout(() => {
-        scrollRef.current?.scrollTo({ y: targetY, animated: false });
+        flatRef.current?.scrollToOffset({ offset: targetY, animated: false });
       }, 50);
     }
-  };
+  }, [value, loopedItems, totalCount, items, midOffset, onChange]);
+
+  // getItemLayout: paddingTop(PICK_H) 포함
+  const getItemLayout = useCallback((_: any, index: number) => ({
+    length: PICK_H, offset: PICK_H * (index + 1), index,
+  }), []);
+
+  const renderItem = useCallback(({ item }: { item: number }) => (
+    <TouchableOpacity style={pick.item} onPress={() => onChange(item)} activeOpacity={0.6}>
+      <Text style={[pick.num, item === value ? pick.numSel : pick.numDim]}>
+        {pad(item)}
+      </Text>
+    </TouchableOpacity>
+  ), [value, onChange]);
 
   return (
     <View style={pick.wrap}>
       <View style={pick.highlight} pointerEvents="none"/>
-      <ScrollView
-        ref={scrollRef}
-        style={pick.scroll}
+      <FlatList
+        ref={flatRef}
+        data={loopedItems}
+        keyExtractor={(_, i) => String(i)}
+        renderItem={renderItem}
+        getItemLayout={getItemLayout}
         showsVerticalScrollIndicator={false}
         snapToInterval={PICK_H}
         decelerationRate="fast"
+        windowSize={3}
         nestedScrollEnabled
+        contentContainerStyle={{ paddingVertical: PICK_H }}
         onScrollBeginDrag={() => { isScrolling.current = true; }}
         onMomentumScrollEnd={(e: any) => handleEnd(e.nativeEvent.contentOffset.y)}
         onScrollEndDrag={(e: any) => {
-          // velocity가 있으면 momentum snap이 이어지므로 onMomentumScrollEnd에 위임
           const vy = e.nativeEvent.velocity?.y ?? 0;
           if (Math.abs(vy) < 0.01) handleEnd(e.nativeEvent.contentOffset.y);
         }}
-        contentContainerStyle={{ paddingVertical: PICK_H }}
-      >
-        {loopedItems.map((item, idx) => (
-          <TouchableOpacity key={idx} style={pick.item} onPress={() => onChange(item)} activeOpacity={0.6}>
-            <Text style={[pick.num, item === value ? pick.numSel : pick.numDim]}>
-              {pad(item)}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      />
     </View>
   );
 }
