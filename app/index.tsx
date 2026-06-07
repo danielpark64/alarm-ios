@@ -288,17 +288,17 @@ export default function App() {
             </TouchableOpacity>
           )}
           <TouchableOpacity style={s.hb} onPress={()=>toggleAll(true)}>
-            <Text style={s.hbt}>전체 ON</Text>
+            <Text style={s.hbt} numberOfLines={1} adjustsFontSizeToFit>전체 ON</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[s.hb,s.hbOff]} onPress={()=>toggleAll(false)}>
-            <Text style={[s.hbt,{color:C.txt2}]}>전체 OFF</Text>
+            <Text style={[s.hbt,{color:C.txt2}]} numberOfLines={1} adjustsFontSizeToFit>전체 OFF</Text>
           </TouchableOpacity>
           {tab==='alarms' && (
             <TouchableOpacity
               style={[s.hb,s.hbDel]}
               onPress={()=>selectMode?(setSelectMode(false),setSelectedIds(new Set())):setSelectMode(true)}
             >
-              <Text style={[s.hbt,{color:'#e07070'}]}>{selectMode?'취소':'선택'}</Text>
+              <Text style={[s.hbt,{color:'#e07070'}]} numberOfLines={1} adjustsFontSizeToFit>{selectMode?'취소':'선택'}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -481,7 +481,7 @@ const s = StyleSheet.create({
   stat:      { fontSize:12, fontWeight:'700', color:C.txt3, marginTop:6 },
   statN:     { fontSize:15, fontWeight:'900', color:C.accent },
   hbtns:     { flexDirection:'column', gap:5, alignItems:'flex-end', paddingTop:4 },
-  hb:        { paddingHorizontal:12, paddingVertical:6, borderRadius:20, backgroundColor:C.bg3, borderWidth:1, borderColor:C.border2 },
+  hb:        { width:84, height:32, alignItems:'center', justifyContent:'center', paddingHorizontal:8, paddingVertical:6, borderRadius:20, backgroundColor:C.bg3, borderWidth:1, borderColor:C.border2 },
   hbOff:     { backgroundColor:C.bg2, borderColor:C.border2 },
   hbDel:     { backgroundColor:'rgba(224,112,112,0.12)', borderColor:'#503030' },
   hbt:       { fontSize:12, fontWeight:'700', color:C.txt },
