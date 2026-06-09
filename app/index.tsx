@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useMemo, useRef, memo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, Alert,
-  StyleSheet, StatusBar, Platform, Modal, KeyboardAvoidingView, AppState, NativeModules, Linking,
+  StyleSheet, StatusBar, Platform, Modal, KeyboardAvoidingView, AppState, NativeModules, Linking, PanResponder,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
 import { useAlarms } from '../src/hooks/useAlarms';
 import { AlarmCard } from '../src/components/AlarmCard';
-import { AlarmForm } from '../src/components/AlarmForm';
+import { AlarmForm, AlarmFormHandle } from '../src/components/AlarmForm';
 import { AlarmRinging } from '../src/components/AlarmRinging';
-import { pad, nextAlarmText, todayStr, getRepLimitedIds } from '../src/utils';
+import { pad, nextAlarmText, todayStr, getRepLimitedIds, getType } from '../src/utils';
 import { requestNotificationPermission, registerNotificationCategories, rescheduleAll } from '../src/utils/notifications';
 import { Alarm, DAYS } from '../src/constants';
 
@@ -45,6 +45,24 @@ function alarmsForDate(alarms: Alarm[], dateStr: string): Alarm[] {
       const d = Math.round((date.getTime()-s.getTime())/86400000);
       const p = (a.cd||2) + (a.rd||1);
       return d >= 0 && (d % p) < (a.cd||2);
+    }
+    if (a.rm === 'monthly') {
+      if (a.lastDay) {
+        const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth()+1, 0).getDate();
+        return date.getDate() === lastDayOfMonth;
+      }
+      const sdDay = a.sd ? parseInt(a.sd.split('-')[2]) : 1;
+      return date.getDate() === sdDay;
+    }
+    if (a.rm === 'yearly') {
+      if (!a.sd) return false;
+      const [, sdM, sdD] = a.sd.split('-').map(Number);
+      if (sdM === 2 && sdD === 29) {
+        const y = date.getFullYear();
+        const isLeap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+        return date.getMonth() === 1 && date.getDate() === 29 && isLeap;
+      }
+      return date.getMonth() === sdM - 1 && date.getDate() === sdD;
     }
     return false;
   });
@@ -133,11 +151,17 @@ function CalendarView({ alarms, onEditAlarm }: { alarms: Alarm[]; onEditAlarm: (
                 dow >= 5 && {color:'#e07070'},
                 isToday && cv.dayNumToday,
               ]}>{d}</Text>
-              {dayAlarms.slice(0,3).map((al, ai) => (
-                <TouchableOpacity key={ai} onPress={() => onEditAlarm(al)} activeOpacity={0.7}>
-                  <Text style={cv.alarmChip} numberOfLines={1}>{al.label}</Text>
-                </TouchableOpacity>
-              ))}
+              {dayAlarms.slice(0,3).map((al, ai) => {
+                const alType = getType(al.typeId);
+                return (
+                  <TouchableOpacity key={ai} onPress={() => onEditAlarm(al)} activeOpacity={0.7}>
+                    <Text
+                      style={[cv.alarmChip, { color: alType.color, backgroundColor: alType.color + '22', borderColor: alType.color + '55', borderWidth: 0.5 }]}
+                      numberOfLines={1}
+                    >{al.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
               {dayAlarms.length > 3 && (
                 <Text style={cv.moreChip}>+{dayAlarms.length-3}</Text>
               )}
@@ -156,6 +180,17 @@ export default function App() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [editAlarm, setEditAlarm] = useState<Alarm|null>(null);
+  const [editTypeId, setEditTypeId] = useState<string>('commute');
+  const editFormRef = useRef<AlarmFormHandle>(null);
+  const handleEditCloseRef = useRef<() => void>(() => {});
+  const editSwipePan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => g.dy > 8 && Math.abs(g.dy) > Math.abs(g.dx),
+      onPanResponderRelease: (_, g) => {
+        if (g.dy > 60 || g.vy > 0.5) handleEditCloseRef.current();
+      },
+    })
+  ).current;
   const [highlightId, setHighlightId] = useState<number|null>(null);
   const [notifGranted, setNotifGranted] = useState(false);
   const [tick, setTick]  = useState(0);
@@ -259,6 +294,23 @@ export default function App() {
     ]);
   };
 
+  const handleEditClose = () => {
+    if (!editFormRef.current?.isDirty()) {
+      setEditAlarm(null);
+      return;
+    }
+    Alert.alert(
+      '저장하지 않을까요?',
+      '',
+      [
+        { text: '계속하기', style: 'cancel' },
+        { text: '저장 안 함', style: 'destructive', onPress: () => setEditAlarm(null) },
+        { text: '저장', onPress: () => editFormRef.current?.submit() },
+      ],
+    );
+  };
+  handleEditCloseRef.current = handleEditClose;
+
   const sorted        = useMemo(() => [...alarms].sort((a,b) => a.hour*60+a.min-(b.hour*60+b.min)), [alarms]);
   const activeCount   = useMemo(() => alarms.filter(a=>a.active).length, [alarms]);
   const repLimitedIds = useMemo(() => getRepLimitedIds(alarms), [alarms]);
@@ -276,9 +328,11 @@ export default function App() {
       <View style={s.header}>
         <View style={{flex:1}}>
           <ClockHeader />
-          <Text style={s.stat}>
+          <Text style={s.stat} numberOfLines={1}>
             활성 <Text style={s.statN}>{activeCount}</Text>개
-            {nextText ? `  ·  ${nextText}` : `  ·  전체 ${alarms.length}개`}
+            {nextText
+              ? <Text style={s.nextT}>{`  ·  ${nextText}`}</Text>
+              : `  ·  전체 ${alarms.length}개`}
           </Text>
         </View>
         <View style={s.hbtns}>
@@ -288,10 +342,10 @@ export default function App() {
             </TouchableOpacity>
           )}
           <TouchableOpacity style={s.hb} onPress={()=>toggleAll(true)}>
-            <Text style={s.hbt} numberOfLines={1} adjustsFontSizeToFit>전체 ON</Text>
+            <Text style={s.hbt} numberOfLines={1} adjustsFontSizeToFit>전체 켜기</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[s.hb,s.hbOff]} onPress={()=>toggleAll(false)}>
-            <Text style={[s.hbt,{color:C.txt2}]} numberOfLines={1} adjustsFontSizeToFit>전체 OFF</Text>
+            <Text style={[s.hbt,{color:C.txt2}]} numberOfLines={1} adjustsFontSizeToFit>전체 끄기</Text>
           </TouchableOpacity>
           {tab==='alarms' && (
             <TouchableOpacity
@@ -328,7 +382,7 @@ export default function App() {
             <AlarmCard
               key={al.id} alarm={al}
               onToggle={()=>{Haptics.selectionAsync();toggleAlarm(al.id);}}
-              onEdit={()=>setEditAlarm(al)}
+              onEdit={()=>{ setEditAlarm(al); setEditTypeId(al.typeId ?? 'commute'); }}
               selectMode={selectMode} selected={selectedIds.has(al.id)}
               onSelect={()=>toggleSelect(al.id)}
               highlighted={highlightId === al.id}
@@ -337,10 +391,15 @@ export default function App() {
           ))}
           <TouchableOpacity
             style={s.promoBanner}
-            activeOpacity={0.75}
+            activeOpacity={0.8}
             onPress={() => Linking.openURL('https://www.youtube.com/@susumusic_ai')}
           >
-            <Text style={s.promoTitle}>🎵 수수뮤직{'    '}<Text style={s.promoSub}>Enjoy Together</Text></Text>
+            <View style={s.promoIcon}><Text style={s.promoIconT}>🎵</Text></View>
+            <View style={{flex:1}}>
+              <Text style={s.promoTitle} numberOfLines={1}>수수뮤직과 함께 기분좋은 하루 되세요</Text>
+              <Text style={s.promoSub} numberOfLines={1}>채널 바로가기 · Enjoy Together</Text>
+            </View>
+            <Text style={s.promoArrow}>›</Text>
           </TouchableOpacity>
         </ScrollView>
       )}
@@ -353,9 +412,8 @@ export default function App() {
 
       {tab==='add' && (
         <ScrollView style={s.scroll} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          <Text style={s.formTitle}>새 알람 추가</Text>
           <AlarmForm
-            initial={{typeId:'commute',hour:8,min:0,rm:'weekdays',days:[],cd:2,rd:1,vib:'short'}}
+            initial={{typeId:'commute',hour:8,min:0,rm:'weekdays',days:[],cd:2,rd:1,vib:'pulse'}}
             onSubmit={async data=>{
               await addAlarm(data);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -405,21 +463,24 @@ export default function App() {
       )}
 
       {/* 편집 모달 */}
-      <Modal visible={!!editAlarm} transparent animationType="slide" onRequestClose={()=>setEditAlarm(null)}>
+      <Modal visible={!!editAlarm} transparent animationType="slide" onRequestClose={handleEditClose}>
         <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS==='ios'?'padding':'height'}>
-          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={()=>setEditAlarm(null)} activeOpacity={1}/>
+          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={handleEditClose} activeOpacity={1}/>
           <View style={[s.modal,{paddingBottom:Math.max(insets.bottom,20)}]}>
-            <View style={s.handle}/>
-            <Text style={s.modalTitle}>알람 편집</Text>
+            <View style={s.handleWrap} {...editSwipePan.panHandlers}>
+              <View style={s.handle}/>
+            </View>
             {editAlarm && (
               <AlarmForm
+                ref={editFormRef}
                 initial={editAlarm}
                 onSubmit={async data=>{
                   await updateAlarm(editAlarm.id, data);
                   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                   setEditAlarm(null);
                 }}
-                onCancel={()=>setEditAlarm(null)}
+                onCancel={handleEditClose}
+                onTypeChange={setEditTypeId}
                 submitLabel="✔ 저장"
               />
             )}
@@ -475,11 +536,12 @@ const s = StyleSheet.create({
   loading:   { flex:1, alignItems:'center', justifyContent:'center', backgroundColor:C.bg },
   loadingT:  { fontSize:60 },
   header:    { flexDirection:'row', alignItems:'flex-start', gap:10, paddingHorizontal:18, paddingTop:12, paddingBottom:14, backgroundColor:C.bg, borderBottomWidth:1, borderBottomColor:C.border },
-  date:      { fontSize:11, fontWeight:'700', color:C.txt3, letterSpacing:2, marginBottom:2, textTransform:'uppercase' },
+  date:      { fontSize:14, fontWeight:'800', color:C.txt3, letterSpacing:1, marginBottom:2 },
   clock:     { fontFamily:Platform.OS==='ios'?'Courier':'monospace', fontSize:52, fontWeight:'700', letterSpacing:-2, lineHeight:58, color:C.txt },
   sec:       { fontSize:18, opacity:0.28, color:C.txt },
-  stat:      { fontSize:12, fontWeight:'700', color:C.txt3, marginTop:6 },
+  stat:      { fontSize:14, fontWeight:'800', color:C.txt3, marginTop:6 },
   statN:     { fontSize:15, fontWeight:'900', color:C.accent },
+  nextT:     { fontSize:14, fontWeight:'800', color:C.txt2 },
   hbtns:     { flexDirection:'column', gap:5, alignItems:'flex-end', paddingTop:4 },
   hb:        { width:84, height:32, alignItems:'center', justifyContent:'center', paddingHorizontal:8, paddingVertical:6, borderRadius:20, backgroundColor:C.bg3, borderWidth:1, borderColor:C.border2 },
   hbOff:     { backgroundColor:C.bg2, borderColor:C.border2 },
@@ -501,9 +563,12 @@ const s = StyleSheet.create({
   navBtn:    { alignItems:'center', gap:3, paddingHorizontal:20, paddingVertical:4 },
   navI:      { width:34, height:34, borderRadius:17, alignItems:'center', justifyContent:'center' },
   navIA:     { backgroundColor:'rgba(162,155,254,0.18)' },
-  promoBanner:  { alignItems:'center', justifyContent:'center', marginTop:14, padding:14, borderRadius:14, backgroundColor:'rgba(162,155,254,0.08)', borderWidth:1, borderColor:'rgba(162,155,254,0.25)' },
-  promoTitle:   { fontSize:15, fontWeight:'900', color:C.txt, textAlign:'center', letterSpacing:8 },
-  promoSub:     { fontSize:11, fontWeight:'600', color:C.txt3, textAlign:'center', marginTop:3, letterSpacing:0 },
+  promoBanner:  { flexDirection:'row', alignItems:'center', marginTop:10, padding:12, borderRadius:14, backgroundColor:'rgba(162,155,254,0.08)', borderWidth:1, borderColor:'rgba(162,155,254,0.25)' },
+  promoIcon:    { width:38, height:38, borderRadius:12, alignItems:'center', justifyContent:'center', backgroundColor:'rgba(162,155,254,0.18)', marginRight:10 },
+  promoIconT:   { fontSize:18 },
+  promoTitle:   { fontSize:14, fontWeight:'800', color:C.txt },
+  promoSub:     { fontSize:11, fontWeight:'600', color:C.txt3, marginTop:2 },
+  promoArrow:   { fontSize:20, fontWeight:'700', color:C.txt3, marginLeft:6 },
   navOverModal: { position:'absolute', bottom:0, left:0, right:0, zIndex:10 },
   navIT:     { fontSize:18 },
   navIC:     { width:50, height:50, borderRadius:15, backgroundColor:C.bg3, borderWidth:1, borderColor:C.border2, alignItems:'center', justifyContent:'center' },
@@ -512,6 +577,9 @@ const s = StyleSheet.create({
   navLA:     { color:C.accent },
   overlay:   { ...StyleSheet.absoluteFillObject, backgroundColor:'rgba(0,0,0,0.72)', justifyContent:'flex-end', zIndex:100 },
   modal:     { backgroundColor:C.bg2, borderTopLeftRadius:24, borderTopRightRadius:24, padding:20, maxHeight:'90%', borderTopWidth:1, borderColor:C.border },
-  handle:    { width:36, height:4, borderRadius:2, backgroundColor:C.border2, alignSelf:'center', marginBottom:16 },
+  handleWrap: { alignSelf:'stretch', alignItems:'center', paddingVertical:12 },
+  handle:    { width:36, height:4, borderRadius:2, backgroundColor:C.border2 },
+  modalHeader:{ alignItems:'center', paddingTop:12, paddingBottom:4 },
+  modalIcon: { fontSize:32, marginTop:2 },
   modalTitle:{ fontSize:20, fontWeight:'900', marginBottom:8, color:C.txt },
 });
