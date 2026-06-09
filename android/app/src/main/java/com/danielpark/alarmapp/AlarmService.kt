@@ -26,6 +26,7 @@ class AlarmService : Service() {
         when (intent?.action) {
             ACTION_STOP -> {
                 stopRinging()
+                stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 return START_NOT_STICKY
             }
@@ -33,6 +34,7 @@ class AlarmService : Service() {
                 val title = intent.getStringExtra(EXTRA_TITLE) ?: "⏰ 알람"
                 val body  = intent.getStringExtra(EXTRA_BODY)  ?: ""
                 stopRinging()
+                stopForeground(STOP_FOREGROUND_REMOVE)
                 scheduleSnooze(title, body)
                 stopSelf()
                 return START_NOT_STICKY
@@ -112,7 +114,7 @@ class AlarmService : Service() {
         }
     }
 
-    override fun onDestroy() { stopRinging(); super.onDestroy() }
+    override fun onDestroy() { stopRinging(); stopForeground(STOP_FOREGROUND_REMOVE); super.onDestroy() }
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun createNotificationChannel() {
