@@ -18,8 +18,10 @@ export const repeatLabel = (al: Alarm): string => {
     const n = days.map(d => DAYS[d]).join(' ');
     return n || '요일 선택';
   }
-  if (al.rm==='cycle') return `${al.cd??1}일 주기`;
-  if (al.rm==='rest')  return `${al.cd??2}일 알람 후 ${al.rd??1}일 휴식`;
+  if (al.rm==='cycle')   return `${al.cd??1}일 주기`;
+  if (al.rm==='rest')    return `${al.cd??2}일 알람 후 ${al.rd??1}일 휴식`;
+  if (al.rm==='monthly') return al.lastDay ? '매월 말일' : `매월 ${new Date(al.sd||todayStr()).getDate()}일`;
+  if (al.rm==='yearly')  return `매년 ${new Date(al.sd||todayStr()).getMonth()+1}월 ${new Date(al.sd||todayStr()).getDate()}일`;
   return '한 번';
 };
 

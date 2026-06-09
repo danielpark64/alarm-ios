@@ -258,10 +258,11 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
       const newName = getType(newTypeId).label;
       setTypeId(newTypeId);
       setLabel(prev => {
-        if (newTypeId === 'custom')             return '';                 // 기타 → 비움 (직접 입력)
-        if (!prev || prev === oldName)          return newName;           // 비어있거나 타입명만 → 교체
-        if (prev.startsWith(oldName))           return newName + prev.slice(oldName.length); // 앞부분만 교체
-        return prev;                                                       // 완전 커스텀 → 유지
+        if (newTypeId === 'custom')             return '';                               // 기타 → 비움
+        if (!prev || prev === oldName)          return newName;                         // 비어있거나 타입명 그대로
+        if (oldName.startsWith(prev))           return newName;                         // 타입명 일부만 남은 경우 (예: "퇴" → "출근")
+        if (prev.startsWith(oldName))           return newName + prev.slice(oldName.length); // 타입명+추가텍스트
+        return prev;                                                                     // 완전 커스텀 → 유지
       });
     };
 

@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useRef } from 'react';
-import { Animated } from 'react-native';
+import { Animated, Platform } from 'react-native';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Alarm } from '../constants';
 import { getType, getSound, getVib, repeatLabel, pad, todayStr } from '../utils';
@@ -63,7 +63,9 @@ export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, sele
       <Text style={[s.iconT, !alarm.active && s.dim]}>{type.icon}</Text>
       <View style={[s.info, !alarm.active && s.infoDim]}>
         <View style={s.row1}>
-          <Text style={[s.time, !alarm.active && s.dim]}>{pad(alarm.hour)}:{pad(alarm.min)}</Text>
+          <Text style={[s.time, !alarm.active && s.dim]}>
+            {pad(alarm.hour)}<Text style={s.timeColon}>:</Text>{pad(alarm.min)}
+          </Text>
           <Text style={[s.label, { color: type.color }]} numberOfLines={1}>{alarm.label || type.label}</Text>
         </View>
         <Text style={s.metaT} numberOfLines={1}>{fmtDisplayDate(sd) + '부터'}</Text>
@@ -100,12 +102,13 @@ const s = StyleSheet.create({
   cbSel:    { backgroundColor:"#9C27B0", borderColor:"#9C27B0" },
   ck:       { color:"#fff", fontWeight:"900", fontSize:14 },
   iconDim:  { opacity:0.4 },
-  iconT:    { fontSize:22, marginRight:10, alignSelf:"center" },
+  iconT:    { fontSize:22, marginRight:10, alignSelf:"center", width: Platform.OS === 'android' ? 30 : undefined },
   info:     { flex:1, minWidth:0 },
   infoDim:  { opacity:0.45 },
   row1:     { flexDirection:"row", alignItems:"baseline" },
   row3:     { flexDirection:"row", alignItems:"center", marginTop:3, gap:6 },
-  time:     { fontFamily:"monospace", fontSize:24, fontWeight:"900", letterSpacing:-1, color:"#000", marginRight:8 },
+  time:     { fontFamily: Platform.OS === 'ios' ? 'Courier' : undefined, fontSize:24, fontWeight:"900", letterSpacing: Platform.OS === 'android' ? 0 : -1, color:"#000", marginRight:8 },
+  timeColon:{ fontFamily: Platform.OS === 'ios' ? 'Courier' : undefined, fontSize:24, fontWeight:"900", letterSpacing:0, marginHorizontal: Platform.OS === 'android' ? -2 : 0 },
   label:    { fontSize:15, fontWeight:"800", color:"#000", flexShrink:1 },
   dim:      { color:"#aaa" },
   repeatT:  { fontSize:13, fontWeight:"800", color:"#5555aa", flexShrink:1 },
