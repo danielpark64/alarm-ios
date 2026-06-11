@@ -40,7 +40,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 putExtra("isRep", true)
             }
             val repPi = PendingIntent.getBroadcast(
-                context, alarmId * 100 + 50 + repIdx, repIntent,
+                context, AlarmIds.repSlotId(alarmId, repIdx), repIntent,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
             val triggerAt = System.currentTimeMillis() + repIdx * 60_000L

@@ -96,6 +96,51 @@ export function getRepLimitedIds(alarms: Alarm[]): Set<number> {
   return limited;
 }
 
+// 해당 날짜에 울리는 알람 목록 계산
+export function alarmsForDate(alarms: Alarm[], dateStr: string): Alarm[] {
+  const date = new Date(dateStr);
+  const dow  = (date.getDay() + 6) % 7; // 0=월 ~ 6=일
+  return alarms.filter(a => {
+    if (!a.active) return false;
+    if (a.sd && dateStr < a.sd) return false;
+    if (a.rm === 'daily')    return true;
+    if (a.rm === 'weekdays') return dow < 5;
+    if (a.rm === 'weekends') return dow >= 5;
+    if (a.rm === 'once')     return dateStr === a.sd;
+    if (a.rm === 'wdcustom') return a.days.includes(dow);
+    if (a.rm === 'cycle') {
+      const s = new Date(a.sd || dateStr); s.setHours(0,0,0,0);
+      const d = Math.round((date.getTime()-s.getTime())/86400000);
+      return d >= 0 && d % (a.cd||1) === 0;
+    }
+    if (a.rm === 'rest') {
+      const s = new Date(a.sd || dateStr); s.setHours(0,0,0,0);
+      const d = Math.round((date.getTime()-s.getTime())/86400000);
+      const p = (a.cd||2) + (a.rd||1);
+      return d >= 0 && (d % p) < (a.cd||2);
+    }
+    if (a.rm === 'monthly') {
+      if (a.lastDay) {
+        const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth()+1, 0).getDate();
+        return date.getDate() === lastDayOfMonth;
+      }
+      const sdDay = a.sd ? parseInt(a.sd.split('-')[2]) : 1;
+      return date.getDate() === sdDay;
+    }
+    if (a.rm === 'yearly') {
+      if (!a.sd) return false;
+      const [, sdM, sdD] = a.sd.split('-').map(Number);
+      if (sdM === 2 && sdD === 29) {
+        const y = date.getFullYear();
+        const isLeap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+        return date.getMonth() === 1 && date.getDate() === 29 && isLeap;
+      }
+      return date.getMonth() === sdM - 1 && date.getDate() === sdD;
+    }
+    return false;
+  });
+}
+
 export const nextAlarmText = (alarms: Alarm[]): string => {
   const active = alarms.filter(a => a.active);
   if (!active.length) return '';

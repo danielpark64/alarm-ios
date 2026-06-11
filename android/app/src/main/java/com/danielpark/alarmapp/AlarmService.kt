@@ -62,7 +62,7 @@ class AlarmService : Service() {
         val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         for (repIdx in 1..2) {
             val pi = PendingIntent.getBroadcast(
-                this, alarmId * 100 + 50 + repIdx,
+                this, AlarmIds.repSlotId(alarmId, repIdx),
                 Intent(this, AlarmReceiver::class.java),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE
             )
@@ -136,7 +136,7 @@ class AlarmService : Service() {
             putExtra("recurrence", "once")
         }
         val pi = PendingIntent.getBroadcast(
-            this, SNOOZE_REQUEST_CODE, intent,
+            this, AlarmIds.SNOOZE_REQUEST_CODE, intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -210,6 +210,5 @@ class AlarmService : Service() {
         const val ACTION_SNOOZE       = "com.danielpark.alarmapp.SNOOZE"
         const val EXTRA_TITLE         = "title"
         const val EXTRA_BODY          = "body"
-        const val SNOOZE_REQUEST_CODE = 9002
     }
 }
