@@ -20,6 +20,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val svcIntent = Intent(context, AlarmService::class.java).apply {
             putExtra(AlarmService.EXTRA_TITLE, title)
             putExtra(AlarmService.EXTRA_BODY, body)
+            putExtra("alarmId", alarmId)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             context.startForegroundService(svcIntent)

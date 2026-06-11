@@ -38,6 +38,8 @@ export async function cancelAlarmNotifications(alarmId: number) {
     // rep 슬롯 취소 (+1분: 51, +2분: 52)
     AlarmModule.cancelAlarm(alarmId * 100 + 51);
     AlarmModule.cancelAlarm(alarmId * 100 + 52);
+    // 스누즈로 예약된 재알림(AlarmService.SNOOZE_REQUEST_CODE) 취소 — 삭제 후 고아 알림 방지
+    AlarmModule.cancelAlarm(9002);
   }
 }
 

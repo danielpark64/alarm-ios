@@ -6,13 +6,14 @@ interface Props {
   visible: boolean;
   title: string;
   body: string;
+  source?: 'native' | 'expo';
   onStop: () => void;
   onSnooze: () => void;
 }
 
 const REPEAT_INTERVAL_MS = 24000;
 
-export function AlarmRinging({ visible, title, body, onStop, onSnooze }: Props) {
+export function AlarmRinging({ visible, title, body, source = 'expo', onStop, onSnooze }: Props) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingIdsRef = useRef<string[]>([]);
 
@@ -33,6 +34,8 @@ export function AlarmRinging({ visible, title, body, onStop, onSnooze }: Props) 
 
   useEffect(() => {
     if (!visible) return;
+    // 네이티브 AlarmService가 이미 소리/진동/재알림(rep)을 처리 중이므로 중복 방지
+    if (source === 'native') return;
 
     scheduleRepeat();
 
@@ -47,19 +50,23 @@ export function AlarmRinging({ visible, title, body, onStop, onSnooze }: Props) 
       Vibration.cancel();
       cancelAll();
     };
-  }, [visible]);
+  }, [visible, source]);
 
   const stop = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    Vibration.cancel();
-    cancelAll();
+    if (source !== 'native') {
+      if (timerRef.current) clearInterval(timerRef.current);
+      Vibration.cancel();
+      cancelAll();
+    }
     onStop();
   };
 
   const snooze = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    Vibration.cancel();
-    cancelAll();
+    if (source !== 'native') {
+      if (timerRef.current) clearInterval(timerRef.current);
+      Vibration.cancel();
+      cancelAll();
+    }
     onSnooze();
   };
 

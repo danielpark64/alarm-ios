@@ -11,6 +11,8 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
+import com.facebook.react.ReactApplication
+import com.facebook.react.bridge.Arguments
 
 class AlarmService : Service() {
 
@@ -23,8 +25,11 @@ class AlarmService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val alarmId = intent?.getIntExtra("alarmId", -1) ?: -1
+
         when (intent?.action) {
             ACTION_STOP -> {
+                cancelReps(alarmId)
                 stopRinging()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
@@ -33,6 +38,7 @@ class AlarmService : Service() {
             ACTION_SNOOZE -> {
                 val title = intent.getStringExtra(EXTRA_TITLE) ?: "⏰ 알람"
                 val body  = intent.getStringExtra(EXTRA_BODY)  ?: ""
+                cancelReps(alarmId)
                 stopRinging()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 scheduleSnooze(title, body)
@@ -44,9 +50,38 @@ class AlarmService : Service() {
         val title = intent?.getStringExtra(EXTRA_TITLE) ?: "⏰ 알람"
         val body  = intent?.getStringExtra(EXTRA_BODY)  ?: ""
 
-        startForeground(NOTIFICATION_ID, buildNotification(title, body))
+        startForeground(NOTIFICATION_ID, buildNotification(title, body, alarmId))
         startRinging()
+        emitRingingEvent(title, body, alarmId)
         return START_STICKY
+    }
+
+    // 사용자가 끄기/스누즈 시 남은 +1분/+2분 rep 슬롯 즉시 취소
+    private fun cancelReps(alarmId: Int) {
+        if (alarmId < 0) return
+        val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        for (repIdx in 1..2) {
+            val pi = PendingIntent.getBroadcast(
+                this, alarmId * 100 + 50 + repIdx,
+                Intent(this, AlarmReceiver::class.java),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE
+            )
+            if (pi != null) { am.cancel(pi); pi.cancel() }
+        }
+    }
+
+    // 포그라운드 JS로 알람 울림 이벤트 전달 (인앱 끄기/스누즈 UI 표시용)
+    private fun emitRingingEvent(title: String, body: String, alarmId: Int) {
+        try {
+            val reactContext = (applicationContext as? ReactApplication)
+                ?.reactHost?.currentReactContext ?: return
+            val params = Arguments.createMap().apply {
+                putString("title", title)
+                putString("body", body)
+                putInt("alarmId", alarmId)
+            }
+            reactContext.emitDeviceEvent("alarmRinging", params)
+        } catch (e: Exception) { e.printStackTrace() }
     }
 
     private fun startRinging() {
@@ -127,10 +162,13 @@ class AlarmService : Service() {
         }
     }
 
-    private fun buildNotification(title: String, body: String): Notification {
+    private fun buildNotification(title: String, body: String, alarmId: Int): Notification {
         val stopPi = PendingIntent.getService(
             this, 10,
-            Intent(this, AlarmService::class.java).apply { action = ACTION_STOP },
+            Intent(this, AlarmService::class.java).apply {
+                action = ACTION_STOP
+                putExtra("alarmId", alarmId)
+            },
             PendingIntent.FLAG_IMMUTABLE
         )
         val snoozePi = PendingIntent.getService(
@@ -138,6 +176,7 @@ class AlarmService : Service() {
             Intent(this, AlarmService::class.java).apply {
                 action = ACTION_SNOOZE
                 putExtra(EXTRA_TITLE, title); putExtra(EXTRA_BODY, body)
+                putExtra("alarmId", alarmId)
             },
             PendingIntent.FLAG_IMMUTABLE
         )

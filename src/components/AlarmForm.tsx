@@ -29,7 +29,9 @@ interface Props {
 const HOURS      = Array.from({ length: 24 }, (_, i) => i);
 const MINS       = Array.from({ length: 12 }, (_, i) => i * 5);
 const PICK_H     = 44;
-const LOOP_COUNT = 5;
+// 항목 수가 적은 picker(분 등)도 양방향 스크롤 버퍼가 충분하도록
+// midOffset(중앙까지의 행 수)이 대략 같아지게 LOOP_COUNT를 동적으로 계산
+const TARGET_MID_OFFSET = 48;
 
 function ScrollPicker({
   value, items, onChange,
@@ -39,12 +41,16 @@ function ScrollPicker({
   const skipNextEffect = useRef(false);
   const [laid, setLaid] = useState(false);
 
-  const loopedItems = useMemo(
-    () => Array.from({ length: LOOP_COUNT }, () => items).flat(),
+  const loopCount = useMemo(
+    () => 2 * Math.ceil(TARGET_MID_OFFSET / items.length) + 1,
     [items],
   );
+  const loopedItems = useMemo(
+    () => Array.from({ length: loopCount }, () => items).flat(),
+    [items, loopCount],
+  );
   const totalCount = loopedItems.length;
-  const midOffset  = Math.floor(LOOP_COUNT / 2) * items.length;
+  const midOffset  = Math.floor(loopCount / 2) * items.length;
 
   const getTargetY = useCallback(
     (v: number) => (midOffset + items.indexOf(v)) * PICK_H,
@@ -99,12 +105,12 @@ function ScrollPicker({
   }), []);
 
   const renderItem = useCallback(({ item }: { item: number }) => (
-    <TouchableOpacity style={pick.item} onPress={() => onChange(item)} activeOpacity={0.6}>
+    <View style={pick.item}>
       <Text style={[pick.num, item === value ? pick.numSel : pick.numDim]}>
         {pad(item)}
       </Text>
-    </TouchableOpacity>
-  ), [value, onChange]);
+    </View>
+  ), [value]);
 
   return (
     <View style={pick.wrap} onLayout={() => setLaid(true)}>
@@ -123,8 +129,12 @@ function ScrollPicker({
         nestedScrollEnabled
         contentContainerStyle={{ paddingVertical: PICK_H }}
         onScrollBeginDrag={() => { isScrolling.current = true; }}
-        onMomentumScrollEnd={(e: any) => handleEnd(e.nativeEvent.contentOffset.y)}
+        onMomentumScrollEnd={(e: any) => {
+          if (!isScrolling.current) return;
+          handleEnd(e.nativeEvent.contentOffset.y);
+        }}
         onScrollEndDrag={(e: any) => {
+          if (!isScrolling.current) return;
           const vy = e.nativeEvent.velocity?.y ?? 0;
           if (Math.abs(vy) < 0.01) handleEnd(e.nativeEvent.contentOffset.y);
         }}
@@ -599,12 +609,12 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
 
 // ─── 스타일 ───────────────────────────────────────────────────────────────────
 const pick = StyleSheet.create({
-  wrap:      { position: 'relative', height: PICK_H * 3, overflow: 'hidden' },
+  wrap:      { position: 'relative', width: 64, height: PICK_H * 3, overflow: 'hidden' },
   highlight: { position: 'absolute', top: PICK_H, left: 4, right: 4, height: PICK_H, backgroundColor: '#e8e8e8', borderRadius: 12 },
-  item:      { height: PICK_H, justifyContent: 'center', alignItems: 'center' },
-  num:       { fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontWeight: '900' },
-  numSel:    { fontSize: 36, color: '#000', opacity: 1 },
-  numDim:    { fontSize: 20, color: '#000', opacity: 0.22 },
+  item:      { width: 64, height: PICK_H, justifyContent: 'center', alignItems: 'center' },
+  num:       { fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontWeight: '900', includeFontPadding: false, textAlignVertical: 'center', width: '100%', height: PICK_H, textAlign: 'center' },
+  numSel:    { fontSize: 36, lineHeight: PICK_H, color: '#000', opacity: 1 },
+  numDim:    { fontSize: 20, lineHeight: PICK_H, color: '#000', opacity: 0.22 },
 });
 
 const s = StyleSheet.create({

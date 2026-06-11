@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, memo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, Alert,
   StyleSheet, StatusBar, Platform, Modal, KeyboardAvoidingView, AppState, NativeModules, Linking, PanResponder,
+  DeviceEventEmitter,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
@@ -22,6 +23,15 @@ const C = {
   txt:'#f0f0ff', txt2:'#e0e0f5', txt3:'#c8c8e0',
   accent:'#a29bfe', accent2:'#6c5ce7',
 };
+
+// 네이티브 알람 울림(body="HH:MM 알람")에서 시간을 파싱해 expo 그룹 rep 슬롯(+1/+2분) 취소
+async function cancelExpoGroupReps(body: string) {
+  const m = body.match(/^(\d{2}):(\d{2})/);
+  if (!m) return;
+  const gkey = `${parseInt(m[1], 10)}_${parseInt(m[2], 10)}`;
+  await Notifications.cancelScheduledNotificationAsync(`grp_${gkey}_rep1`).catch(() => {});
+  await Notifications.cancelScheduledNotificationAsync(`grp_${gkey}_rep2`).catch(() => {});
+}
 
 // 해당 날짜에 울리는 알람 목록 계산
 function alarmsForDate(alarms: Alarm[], dateStr: string): Alarm[] {
@@ -194,7 +204,7 @@ export default function App() {
   const [highlightId, setHighlightId] = useState<number|null>(null);
   const [notifGranted, setNotifGranted] = useState(false);
   const [tick, setTick]  = useState(0);
-  const [ringing, setRinging] = useState<{ title: string; body: string; alarmId?: number; groupKey?: string } | null>(null);
+  const [ringing, setRinging] = useState<{ title: string; body: string; alarmId?: number; groupKey?: string; source?: 'native' | 'expo' } | null>(null);
   const appStateRef     = useRef(AppState.currentState);
   const alarmsRef       = useRef(alarms);
   const updateAlarmRef  = useRef(updateAlarm);
@@ -278,6 +288,20 @@ export default function App() {
       }
     });
     return () => { s1.remove(); s2.remove(); };
+  }, []);
+
+  // 네이티브 AlarmService 알람 울림 이벤트 (포그라운드 인앱 끄기/스누즈 UI)
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const sub = DeviceEventEmitter.addListener('alarmRinging', (e: { title: string; body: string; alarmId: number }) => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      setRinging({
+        title: e.title ?? '⏰ 알람', body: e.body ?? '',
+        alarmId: e.alarmId >= 0 ? e.alarmId : undefined,
+        source: 'native',
+      });
+    });
+    return () => sub.remove();
   }, []);
 
   const toggleSelect = (id: number) =>
@@ -431,10 +455,13 @@ export default function App() {
           visible={!!ringing}
           title={ringing?.title ?? ''}
           body={ringing?.body ?? ''}
+          source={ringing?.source ?? 'expo'}
           onStop={async () => {
-            if (AlarmModule) AlarmModule.stopAlarm();
+            if (AlarmModule) AlarmModule.stopAlarm(ringing?.alarmId ?? -1);
             // expo-notifications rep 슬롯 취소
-            if (ringing?.groupKey) {
+            if (ringing?.source === 'native') {
+              await cancelExpoGroupReps(ringing.body);
+            } else if (ringing?.groupKey) {
               await Notifications.cancelScheduledNotificationAsync(`grp_${ringing.groupKey}_rep1`);
               await Notifications.cancelScheduledNotificationAsync(`grp_${ringing.groupKey}_rep2`);
             } else if (ringing?.alarmId != null) {
@@ -444,7 +471,13 @@ export default function App() {
             setRinging(null);
           }}
           onSnooze={async () => {
-            if (AlarmModule) AlarmModule.stopAlarm();
+            if (ringing?.source === 'native') {
+              if (AlarmModule) AlarmModule.snoozeAlarm(ringing.alarmId ?? -1, ringing.title, ringing.body);
+              await cancelExpoGroupReps(ringing.body);
+              setRinging(null);
+              return;
+            }
+            if (AlarmModule) AlarmModule.stopAlarm(ringing?.alarmId ?? -1);
             if (ringing?.groupKey) {
               await Notifications.cancelScheduledNotificationAsync(`grp_${ringing.groupKey}_rep1`);
               await Notifications.cancelScheduledNotificationAsync(`grp_${ringing.groupKey}_rep2`);
