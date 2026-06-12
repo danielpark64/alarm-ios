@@ -6,10 +6,11 @@ const { AlarmModule } = NativeModules;
 export function scheduleNative(
   requestCode: number, triggerDate: Date,
   title: string, body: string,
-  recurrence: string, hour: number, min: number, calWeekday: number
+  recurrence: string, hour: number, min: number, calWeekday: number,
+  soundOn: boolean, vibOn: boolean
 ) {
   if (Platform.OS !== 'android' || !AlarmModule) return;
-  AlarmModule.scheduleAlarm(requestCode, triggerDate.getTime(), title, body, recurrence, hour, min, calWeekday);
+  AlarmModule.scheduleAlarm(requestCode, triggerDate.getTime(), title, body, recurrence, hour, min, calWeekday, soundOn, vibOn);
 }
 
 // alarmId에 연결된 모든 네이티브 AlarmManager 예약 취소 (요일 슬롯 + 날짜 슬롯 + rep 슬롯 + 스누즈)

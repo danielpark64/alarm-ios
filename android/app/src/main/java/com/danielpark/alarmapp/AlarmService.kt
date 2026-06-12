@@ -6,7 +6,9 @@ import android.content.Intent
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -18,6 +20,8 @@ class AlarmService : Service() {
 
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
+    private var fadeHandler: Handler? = null
+    private var fadeRunnable: Runnable? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -31,6 +35,7 @@ class AlarmService : Service() {
             ACTION_STOP -> {
                 cancelReps(alarmId)
                 stopRinging()
+                currentRinging = null
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 return START_NOT_STICKY
@@ -38,20 +43,26 @@ class AlarmService : Service() {
             ACTION_SNOOZE -> {
                 val title = intent.getStringExtra(EXTRA_TITLE) ?: "⏰ 알람"
                 val body  = intent.getStringExtra(EXTRA_BODY)  ?: ""
+                val soundOn = intent.getBooleanExtra("soundOn", true)
+                val vibOn   = intent.getBooleanExtra("vibOn", true)
                 cancelReps(alarmId)
                 stopRinging()
+                currentRinging = null
                 stopForeground(STOP_FOREGROUND_REMOVE)
-                scheduleSnooze(title, body)
+                scheduleSnooze(title, body, soundOn, vibOn)
                 stopSelf()
                 return START_NOT_STICKY
             }
         }
 
-        val title = intent?.getStringExtra(EXTRA_TITLE) ?: "⏰ 알람"
-        val body  = intent?.getStringExtra(EXTRA_BODY)  ?: ""
+        val title   = intent?.getStringExtra(EXTRA_TITLE) ?: "⏰ 알람"
+        val body    = intent?.getStringExtra(EXTRA_BODY)  ?: ""
+        val soundOn = intent?.getBooleanExtra("soundOn", true) ?: true
+        val vibOn   = intent?.getBooleanExtra("vibOn", true) ?: true
 
-        startForeground(NOTIFICATION_ID, buildNotification(title, body, alarmId))
-        startRinging()
+        startForeground(NOTIFICATION_ID, buildNotification(title, body, alarmId, soundOn, vibOn))
+        startRinging(soundOn, vibOn)
+        currentRinging = RingingInfo(title, body, alarmId)
         emitRingingEvent(title, body, alarmId)
         return START_STICKY
     }
@@ -84,44 +95,70 @@ class AlarmService : Service() {
         } catch (e: Exception) { e.printStackTrace() }
     }
 
-    private fun startRinging() {
-        if (mediaPlayer?.isPlaying == true) return // 이미 울리는 중 (rep 중복 방지)
-        try {
-            mediaPlayer = MediaPlayer().apply {
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                )
-                val afd = resources.openRawResourceFd(R.raw.alarm_long)
-                setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-                afd.close()
-                isLooping = true
-                prepare()
-                start()
-            }
-        } catch (e: Exception) { e.printStackTrace() }
+    private fun startRinging(soundOn: Boolean, vibOn: Boolean) {
+        if (soundOn && mediaPlayer?.isPlaying != true) {
+            try {
+                mediaPlayer = MediaPlayer().apply {
+                    setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ALARM)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
+                    )
+                    val afd = resources.openRawResourceFd(R.raw.alarm_long)
+                    setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                    afd.close()
+                    isLooping = true
+                    prepare()
+                    setVolume(FADE_START_VOLUME, FADE_START_VOLUME)
+                    start()
+                }
+                startVolumeFade()
+            } catch (e: Exception) { e.printStackTrace() }
+        }
 
         // 진동
-        try {
-            vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
-            } else {
-                @Suppress("DEPRECATION")
-                getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        if (vibOn) {
+            try {
+                vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+                } else {
+                    @Suppress("DEPRECATION")
+                    getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                }
+                val pattern = longArrayOf(0, 500, 300, 500, 300, 500)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator?.vibrate(VibrationEffect.createWaveform(pattern, 0))
+                } else {
+                    @Suppress("DEPRECATION")
+                    vibrator?.vibrate(pattern, 0)
+                }
+            } catch (e: Exception) { e.printStackTrace() }
+        }
+    }
+
+    // 알람 소리를 작게 시작해서 점점 최대 볼륨까지 올림
+    private fun startVolumeFade() {
+        val handler = Handler(Looper.getMainLooper())
+        val totalSteps = (FADE_DURATION_MS / FADE_STEP_MS).toInt()
+        var step = 0
+        val runnable = object : Runnable {
+            override fun run() {
+                step++
+                val volume = (FADE_START_VOLUME + (1f - FADE_START_VOLUME) * step / totalSteps).coerceAtMost(1f)
+                mediaPlayer?.setVolume(volume, volume)
+                if (step < totalSteps) handler.postDelayed(this, FADE_STEP_MS)
             }
-            val pattern = longArrayOf(0, 500, 300, 500, 300, 500)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator?.vibrate(VibrationEffect.createWaveform(pattern, 0))
-            } else {
-                @Suppress("DEPRECATION")
-                vibrator?.vibrate(pattern, 0)
-            }
-        } catch (e: Exception) { e.printStackTrace() }
+        }
+        fadeHandler = handler
+        fadeRunnable = runnable
+        handler.postDelayed(runnable, FADE_STEP_MS)
     }
 
     private fun stopRinging() {
+        fadeRunnable?.let { fadeHandler?.removeCallbacks(it) }
+        fadeHandler = null
+        fadeRunnable = null
         mediaPlayer?.stop()
         mediaPlayer?.release()
         mediaPlayer = null
@@ -129,11 +166,13 @@ class AlarmService : Service() {
         vibrator = null
     }
 
-    private fun scheduleSnooze(title: String, body: String) {
+    private fun scheduleSnooze(title: String, body: String, soundOn: Boolean, vibOn: Boolean) {
         val intent = Intent(this, AlarmReceiver::class.java).apply {
             putExtra(EXTRA_TITLE, title)
             putExtra(EXTRA_BODY, body)
             putExtra("recurrence", "once")
+            putExtra("soundOn", soundOn)
+            putExtra("vibOn", vibOn)
         }
         val pi = PendingIntent.getBroadcast(
             this, AlarmIds.SNOOZE_REQUEST_CODE, intent,
@@ -149,7 +188,12 @@ class AlarmService : Service() {
         }
     }
 
-    override fun onDestroy() { stopRinging(); stopForeground(STOP_FOREGROUND_REMOVE); super.onDestroy() }
+    override fun onDestroy() {
+        stopRinging()
+        currentRinging = null
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        super.onDestroy()
+    }
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun createNotificationChannel() {
@@ -162,7 +206,7 @@ class AlarmService : Service() {
         }
     }
 
-    private fun buildNotification(title: String, body: String, alarmId: Int): Notification {
+    private fun buildNotification(title: String, body: String, alarmId: Int, soundOn: Boolean, vibOn: Boolean): Notification {
         val stopPi = PendingIntent.getService(
             this, 10,
             Intent(this, AlarmService::class.java).apply {
@@ -177,6 +221,8 @@ class AlarmService : Service() {
                 action = ACTION_SNOOZE
                 putExtra(EXTRA_TITLE, title); putExtra(EXTRA_BODY, body)
                 putExtra("alarmId", alarmId)
+                putExtra("soundOn", soundOn)
+                putExtra("vibOn", vibOn)
             },
             PendingIntent.FLAG_IMMUTABLE
         )
@@ -184,8 +230,9 @@ class AlarmService : Service() {
             this, 12,
             Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("alarmRinging", true)
             },
-            PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
@@ -204,11 +251,20 @@ class AlarmService : Service() {
     }
 
     companion object {
+        // 현재 울리고 있는 알람 정보 (RN 쪽이 재시작/포그라운드 복귀해도 끄기 팝업을 복구할 수 있도록)
+        data class RingingInfo(val title: String, val body: String, val alarmId: Int)
+        @Volatile var currentRinging: RingingInfo? = null
+
         const val CHANNEL_ID          = "alarm_ringing_ch"
         const val NOTIFICATION_ID     = 9001
         const val ACTION_STOP         = "com.danielpark.alarmapp.STOP"
         const val ACTION_SNOOZE       = "com.danielpark.alarmapp.SNOOZE"
         const val EXTRA_TITLE         = "title"
         const val EXTRA_BODY          = "body"
+
+        // 알람 소리 페이드인 설정
+        private const val FADE_START_VOLUME = 0.15f
+        private const val FADE_DURATION_MS  = 15_000L
+        private const val FADE_STEP_MS      = 1_000L
     }
 }

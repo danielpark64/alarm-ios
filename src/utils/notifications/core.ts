@@ -31,12 +31,14 @@ export async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: str
   const type     = getType(alarm.typeId);
   const title    = `${type.icon} ${alarm.label || type.label}`;
   const bodyText = `${pad(alarm.hour)}:${pad(alarm.min)} 알람`;
+  const soundOn  = alarm.snd === 'default';
+  const vibOn    = alarm.vib === 'pulse';
 
   const baseContent: Notifications.NotificationContentInput = {
     title, body: bodyText,
-    sound: alarm.vib === 'none' ? undefined : (__DEV__ ? true : 'alarm_long.wav'),
+    sound: soundOn ? (__DEV__ ? true : 'alarm_long.wav') : undefined,
     vibrationPattern: getVibrationPattern(alarm.vib),
-    data: { alarmId: alarm.id, rm: alarm.rm },
+    data: { alarmId: alarm.id, rm: alarm.rm, groupKey: `${alarm.hour}_${alarm.min}` },
     categoryIdentifier: 'alarm',
     ...(threadIdentifier ? { threadIdentifier } : {}),
   };
@@ -50,7 +52,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: str
         content: baseContent,
         trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: iw(d), hour: alarm.hour, minute: alarm.min },
       });
-      scheduleNative(weekdaySlotId(alarm.id, d), nextJsWeekday(alarm.hour, alarm.min, appDayToJs(d)), title, bodyText, 'weekly', alarm.hour, alarm.min, appDayToCalendar(d));
+      scheduleNative(weekdaySlotId(alarm.id, d), nextJsWeekday(alarm.hour, alarm.min, appDayToJs(d)), title, bodyText, 'weekly', alarm.hour, alarm.min, appDayToCalendar(d), soundOn, vibOn);
     }
     return;
   }
@@ -83,7 +85,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: str
       content: baseContent,
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: ft },
     });
-    scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', alarm.hour, alarm.min, -1);
+    scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', alarm.hour, alarm.min, -1, soundOn, vibOn);
     nativeIdx++;
     if (alarm.rm === 'once') break;
   }
@@ -109,13 +111,14 @@ export async function scheduleGroupReps(group: Alarm[]) {
   const label = active.length === 1
     ? (active[0].label || getType(active[0].typeId).label)
     : active.map(a => a.label || getType(a.typeId).label).join(' · ');
-  const hasSound = active.some(a => a.vib !== 'none');
+  const hasSound = active.some(a => a.snd === 'default');
+  const hasVib   = active.some(a => a.vib === 'pulse');
 
   const repBase: Notifications.NotificationContentInput = {
     title: `⏰ ${label}`,
     body: `${pad(first.hour)}:${pad(first.min)} 알람`,
     sound: hasSound ? (__DEV__ ? true : 'alarm_long.wav') : undefined,
-    vibrationPattern: hasSound ? [0,200,150,200,150,200] : undefined,
+    vibrationPattern: hasVib ? [0,200,150,200,150,200] : undefined,
     categoryIdentifier: 'alarm',
     threadIdentifier: `grp_${gkey}`,
   };

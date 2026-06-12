@@ -15,12 +15,16 @@ class AlarmReceiver : BroadcastReceiver() {
         val body    = intent.getStringExtra(AlarmService.EXTRA_BODY)  ?: ""
         val alarmId = intent.getIntExtra("alarmId", -1)
         val isRep   = intent.getBooleanExtra("isRep", false)
+        val soundOn = intent.getBooleanExtra("soundOn", true)
+        val vibOn   = intent.getBooleanExtra("vibOn", true)
 
         // ForegroundService 시작 (소리 루프 + 진동)
         val svcIntent = Intent(context, AlarmService::class.java).apply {
             putExtra(AlarmService.EXTRA_TITLE, title)
             putExtra(AlarmService.EXTRA_BODY, body)
             putExtra("alarmId", alarmId)
+            putExtra("soundOn", soundOn)
+            putExtra("vibOn", vibOn)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             context.startForegroundService(svcIntent)
@@ -38,6 +42,8 @@ class AlarmReceiver : BroadcastReceiver() {
                 putExtra(AlarmService.EXTRA_BODY, body)
                 putExtra("alarmId", alarmId)
                 putExtra("isRep", true)
+                putExtra("soundOn", soundOn)
+                putExtra("vibOn", vibOn)
             }
             val repPi = PendingIntent.getBroadcast(
                 context, AlarmIds.repSlotId(alarmId, repIdx), repIntent,

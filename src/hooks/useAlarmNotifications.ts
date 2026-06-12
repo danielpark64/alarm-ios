@@ -113,6 +113,27 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
     return () => sub.remove();
   }, []);
 
+  // 앱 시작/포그라운드 복귀 시 AlarmService가 여전히 울리는 중이면 끄기 팝업 복구
+  // (전체화면 인텐트로 인한 화면 재구성 등으로 ringing state가 사라져도 소리/진동은 계속되는 문제 보완)
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !AlarmModule?.getCurrentRinging) return;
+    const restore = async () => {
+      const info = await AlarmModule.getCurrentRinging();
+      if (info) {
+        setRinging({
+          title: info.title ?? '⏰ 알람', body: info.body ?? '',
+          alarmId: info.alarmId >= 0 ? info.alarmId : undefined,
+          source: 'native',
+        });
+      }
+    };
+    restore();
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') restore();
+    });
+    return () => sub.remove();
+  }, []);
+
   const requestPermission = async () => {
     const ok = await requestNotificationPermission();
     setNotifGranted(ok);
