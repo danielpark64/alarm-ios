@@ -64,7 +64,22 @@ class AlarmService : Service() {
         startRinging(soundOn, vibOn)
         currentRinging = RingingInfo(title, body, alarmId)
         emitRingingEvent(title, body, alarmId)
+        bringRingingActivityToFront()
         return START_STICKY
+    }
+
+    // 잠금/배경/타앱 사용 중 어떤 상태든 끄기 팝업을 화면 맨 앞으로 즉시 띄움
+    // (AlarmManager 발화 직후 포그라운드 서비스 시작 시점은 백그라운드 액티비티 실행 제한의 예외에 해당)
+    private fun bringRingingActivityToFront() {
+        try {
+            val intent = Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra("alarmRinging", true)
+            }
+            startActivity(intent)
+        } catch (e: Exception) { e.printStackTrace() }
     }
 
     // 사용자가 끄기/스누즈 시 남은 +1분/+2분 rep 슬롯 즉시 취소

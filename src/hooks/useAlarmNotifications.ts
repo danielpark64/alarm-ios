@@ -12,6 +12,7 @@ export type RingingState = { title: string; body: string; alarmId?: number; grou
 // 알림 권한/리스너/포그라운드 재스케줄/네이티브 울림 이벤트를 한곳에서 관리
 export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number, patch: Partial<Alarm>) => Promise<void>) {
   const [notifGranted, setNotifGranted] = useState(false);
+  const [overlayGranted, setOverlayGranted] = useState(true);
   const [tick, setTick] = useState(0);
   const [ringing, setRinging] = useState<RingingState | null>(null);
   const appStateRef    = useRef(AppState.currentState);
@@ -26,6 +27,17 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       setNotifGranted(ok);
       await registerNotificationCategories();
     })();
+  }, []);
+
+  // "다른 앱 위에 표시" 권한 — 꺼져 있으면 OneUI 등에서 알람 끄기 팝업이 몇 초 후 강제로 닫힘
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !AlarmModule?.canDrawOverlays) return;
+    const check = async () => setOverlayGranted(await AlarmModule.canDrawOverlays());
+    check();
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') check();
+    });
+    return () => sub.remove();
   }, []);
 
   // 1분마다 "다음 알람" 텍스트 갱신
@@ -139,6 +151,10 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
     setNotifGranted(ok);
   };
 
+  const requestOverlayPermission = () => {
+    AlarmModule?.requestOverlayPermission?.();
+  };
+
   const stopRinging = async () => {
     if (AlarmModule) AlarmModule.stopAlarm(ringing?.alarmId ?? -1);
     // expo-notifications rep 슬롯 취소
@@ -177,5 +193,5 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
     setRinging(null);
   };
 
-  return { notifGranted, requestPermission, tick, ringing, stopRinging, snoozeRinging };
+  return { notifGranted, requestPermission, overlayGranted, requestOverlayPermission, tick, ringing, stopRinging, snoozeRinging };
 }

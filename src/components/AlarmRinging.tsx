@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Vibration, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { SNOOZE_ENABLED } from '../constants';
 
 interface Props {
   visible: boolean;
@@ -77,9 +78,11 @@ export function AlarmRinging({ visible, title, body, source = 'expo', onStop, on
         <Text style={s.title}>{title}</Text>
         <Text style={s.body}>{body}</Text>
         <View style={s.btns}>
-          <TouchableOpacity style={s.snooze} onPress={snooze}>
-            <Text style={s.snoozeT}>5분 후</Text>
-          </TouchableOpacity>
+          {SNOOZE_ENABLED && (
+            <TouchableOpacity style={s.snooze} onPress={snooze}>
+              <Text style={s.snoozeT}>5분 후</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={s.stop} onPress={stop}>
             <Text style={s.stopT}>끄기</Text>
           </TouchableOpacity>

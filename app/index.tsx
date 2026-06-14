@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, Alert,
   StyleSheet, StatusBar, Platform, Modal, KeyboardAvoidingView, PanResponder,
@@ -22,7 +22,7 @@ import { C } from '../src/constants/colors';
 export default function App() {
   const insets = useSafeAreaInsets();
   const { alarms, loaded, addAlarm, updateAlarm, deleteAlarms, toggleAlarm, toggleAll } = useAlarms();
-  const { notifGranted, requestPermission, tick, ringing, stopRinging, snoozeRinging } = useAlarmNotifications(alarms, updateAlarm);
+  const { notifGranted, requestPermission, overlayGranted, requestOverlayPermission, tick, ringing, stopRinging, snoozeRinging } = useAlarmNotifications(alarms, updateAlarm);
   const { selectMode, selectedIds, toggleSelectMode, toggleSelect, selectAll, exitSelectMode } = useSelectMode();
   const [tab, setTab] = useState<HomeTab>('alarms');
   const [editAlarm, setEditAlarm] = useState<Alarm|null>(null);
@@ -38,6 +38,20 @@ export default function App() {
     })
   ).current;
   const [highlightId, setHighlightId] = useState<number|null>(null);
+
+  const showOverlayPrompt = () => Alert.alert(
+    '표시 권한 설정 방법',
+    '알람이 울릴 때 화면에 바로 떠서 끄기 버튼을 누를 수 있게 하려면 권한이 필요해요.\n\n"설정으로 이동"을 누르면 "다른 앱 위에 표시"라는 제목의 화면이 열려요.\n\n1. 그 목록에서 "알람"을 찾아주세요\n2. "알람" 옆에 있는 스위치를 켜주세요\n3. 켠 다음에는 화면 왼쪽 위 ← 버튼을 눌러 앱으로 돌아와주세요',
+    [
+      { text: '취소', style: 'cancel' },
+      { text: '설정으로 이동', onPress: requestOverlayPermission },
+    ]
+  );
+
+  // 권한이 꺼져 있으면 앱을 켤 때마다 자동으로 한 번 안내 (배너만으로는 못 알아챌 수 있음)
+  useEffect(() => {
+    if (!overlayGranted) showOverlayPrompt();
+  }, [overlayGranted]);
 
   const handleDeleteSelected = () => {
     if (!selectedIds.size) return;
@@ -95,6 +109,11 @@ export default function App() {
           {!notifGranted && (
             <TouchableOpacity style={s.hb} onPress={requestPermission}>
               <Text style={s.hbt}>🔔 알림</Text>
+            </TouchableOpacity>
+          )}
+          {!overlayGranted && (
+            <TouchableOpacity style={s.hb} onPress={showOverlayPrompt}>
+              <Text style={s.hbt} numberOfLines={1} adjustsFontSizeToFit>📱 표시 권한</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity style={s.hb} onPress={()=>toggleAll(true)}>
