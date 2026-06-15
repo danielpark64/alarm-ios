@@ -83,16 +83,27 @@ class AlarmService : Service() {
     }
 
     // 사용자가 끄기/스누즈 시 남은 +1분/+2분 rep 슬롯 즉시 취소
+    // alarmId는 JS의 alarm.id(expo 알림 경로) 또는 mainNativeId/weekdaySlotId로 합성된
+    // 네이티브 requestCode(AlarmService 자체 ringing 경로) 둘 중 하나일 수 있어
+    // 가능한 모든 조합을 시도해 실제 예약된 rep PendingIntent를 찾아 취소함
     private fun cancelReps(alarmId: Int) {
         if (alarmId < 0) return
         val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        for (repIdx in 1..2) {
-            val pi = PendingIntent.getBroadcast(
-                this, AlarmIds.repSlotId(alarmId, repIdx),
-                Intent(this, AlarmReceiver::class.java),
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE
-            )
-            if (pi != null) { am.cancel(pi); pi.cancel() }
+        val candidates = mutableListOf(alarmId)
+        for (idx in 0..13) candidates.add(AlarmIds.mainNativeId(alarmId, idx))
+        for (day in 0..6) candidates.add(AlarmIds.weekdaySlotId(alarmId, day))
+        for (base in candidates) {
+            for (repIdx in 1..2) {
+                val code = AlarmIds.repSlotId(base, repIdx)
+                val pi = PendingIntent.getBroadcast(
+                    this, code,
+                    Intent(this, AlarmReceiver::class.java),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE
+                )
+                if (pi != null) {
+                    am.cancel(pi); pi.cancel()
+                }
+            }
         }
     }
 

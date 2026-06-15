@@ -64,9 +64,14 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       if (Platform.OS === 'android') {
         const { title, body } = n.request.content;
         const d = n.request.content.data as any;
-        setRinging({
-          title: title ?? '⏰ 알람', body: body ?? '',
-          alarmId: d?.alarmId, groupKey: d?.groupKey,
+        // 네이티브 AlarmService가 이미 같은 알람을 처리 중이면 expo 쪽 중복 알림으로
+        // ringing 상태를 덮어쓰지 않음 (alarmId/source가 깨져 끄기 팝업이 즉시 닫히는 문제 방지)
+        setRinging(prev => {
+          if (prev?.source === 'native') return prev;
+          return {
+            title: title ?? '⏰ 알람', body: body ?? '',
+            alarmId: d?.alarmId, groupKey: d?.groupKey,
+          };
         });
       }
       const isRepeat = n.request.content.data?.isRepeat as boolean | undefined;
