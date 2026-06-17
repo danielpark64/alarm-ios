@@ -50,6 +50,7 @@ export async function cancelExpoGroupReps(body: string) {
 // 전체 재스케줄 (같은 시간대 묶음 처리 포함)
 export async function rescheduleAll(alarms: Alarm[]) {
   await cancelAllNotifications();
+  for (const alarm of alarms) cancelNativeAlarms(alarm.id);
   const active = alarms.filter(a => a.active);
 
   // 시간대별 그룹화
