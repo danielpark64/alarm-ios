@@ -37,7 +37,7 @@ export const s = StyleSheet.create({
   sndVibPlus:      { fontSize: 9,  fontWeight: '900', color: '#aaa', textAlign: 'center', lineHeight: 11 },
   sndVibLabelActive: { color: '#fff' },
   // 라벨
-  input:           { borderWidth: 1.5, borderColor: '#aaa', borderRadius: 13, padding: 13, fontSize: 17, fontWeight: '700', color: '#000', backgroundColor: '#fff' },
+  input:           { minHeight: 50, borderWidth: 1.5, borderColor: '#aaa', borderRadius: 13, padding: 13, fontSize: 17, fontWeight: '700', color: '#000', backgroundColor: '#fff' },
   // 반복
   pill:            { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12, borderWidth: 1.5, borderColor: '#ccc', backgroundColor: '#f5f5f5' },
   pillActive:      { backgroundColor: '#444', borderColor: '#444' },

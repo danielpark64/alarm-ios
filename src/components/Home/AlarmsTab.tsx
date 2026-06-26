@@ -5,6 +5,7 @@ import { AlarmCard } from '../AlarmCard';
 import { Alarm } from '../../constants';
 import { C } from '../../constants/colors';
 import { homeStyles } from './styles';
+import { useScale, rf } from '../../utils/responsive';
 
 export function AlarmsTab({
   alarms, sorted, selectMode, selectedIds, repLimitedIds, highlightId,
@@ -22,6 +23,7 @@ export function AlarmsTab({
   onToggleAlarm: (id: number) => void;
   onEditAlarm: (alarm: Alarm) => void;
 }) {
+  const scale = useScale();
   return (
     <ScrollView style={homeStyles.scroll} contentContainerStyle={homeStyles.scrollC} showsVerticalScrollIndicator={false}>
       {selectMode && (
@@ -58,9 +60,9 @@ export function AlarmsTab({
         onPress={() => Linking.openURL('https://www.youtube.com/@susumusic_ai')}
       >
         <View style={s.promoIcon}><Text style={s.promoIconT}>🎵</Text></View>
-        <View style={{flex:1}}>
-          <Text style={s.promoTitle} numberOfLines={1}>수수뮤직과 함께 기분좋은 하루 되세요</Text>
-          <Text style={s.promoSub} numberOfLines={1}>채널 바로가기 · Enjoy Together</Text>
+        <View style={{flex:1, minWidth:0}}>
+          <Text style={[s.promoTitle,{fontSize:rf(14,scale)}]} numberOfLines={1} ellipsizeMode="tail">수수뮤직과 기분좋은 하루</Text>
+          <Text style={[s.promoSub,{fontSize:rf(11,scale)}]} numberOfLines={1} ellipsizeMode="tail">채널 바로가기</Text>
         </View>
         <Text style={s.promoArrow}>›</Text>
       </TouchableOpacity>
@@ -81,7 +83,7 @@ const s = StyleSheet.create({
   promoBanner: { flexDirection:'row', alignItems:'center', marginTop:10, padding:12, borderRadius:14, backgroundColor:'rgba(162,155,254,0.08)', borderWidth:1, borderColor:'rgba(162,155,254,0.25)' },
   promoIcon:   { width:38, height:38, borderRadius:12, alignItems:'center', justifyContent:'center', backgroundColor:'rgba(162,155,254,0.18)', marginRight:10 },
   promoIconT:  { fontSize:18 },
-  promoTitle:  { fontSize:14, fontWeight:'800', color:C.txt },
-  promoSub:    { fontSize:11, fontWeight:'600', color:C.txt3, marginTop:2 },
+  promoTitle:  { fontSize:14, fontWeight:'800', color:C.txt, flexShrink:1 },
+  promoSub:    { fontSize:11, fontWeight:'600', color:C.txt3, marginTop:2, flexShrink:1 },
   promoArrow:  { fontSize:20, fontWeight:'700', color:C.txt3, marginLeft:6 },
 });

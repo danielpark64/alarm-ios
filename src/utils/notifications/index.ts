@@ -82,9 +82,11 @@ export async function scheduleAlarm(alarm: Alarm) {
 // iOS: 스누즈 없음 / Android: 스누즈 있음
 export async function registerNotificationCategories() {
   if (Platform.OS === 'ios') {
+    // customDismissAction: 워치/배너에서 그냥 닫기(스와이프 등)만 해도 응답 리스너가 호출되도록 함.
+    // 꺼져 있으면(기본값) 단순 닫기는 이벤트가 안 와서 +1분/+2분 재알림 취소가 누락됨.
     await Notifications.setNotificationCategoryAsync('alarm', [
       { identifier: 'stop', buttonTitle: '알람 끄기', options: { isDestructive: false, isAuthenticationRequired: false } },
-    ]);
+    ], { customDismissAction: true });
   } else {
     await Notifications.setNotificationCategoryAsync('alarm', [
       { identifier: 'stop',   buttonTitle: '알람 끄기', options: { isDestructive: false, isAuthenticationRequired: false } },

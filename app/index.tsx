@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, Alert,
-  StyleSheet, StatusBar, Platform, Modal, KeyboardAvoidingView, PanResponder,
+  StyleSheet, StatusBar, Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -28,15 +28,6 @@ export default function App() {
   const [editAlarm, setEditAlarm] = useState<Alarm|null>(null);
   const [editTypeId, setEditTypeId] = useState<string>('commute');
   const editFormRef = useRef<AlarmFormHandle>(null);
-  const handleEditCloseRef = useRef<() => void>(() => {});
-  const editSwipePan = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => g.dy > 8 && Math.abs(g.dy) > Math.abs(g.dx),
-      onPanResponderRelease: (_, g) => {
-        if (g.dy > 60 || g.vy > 0.5) handleEditCloseRef.current();
-      },
-    })
-  ).current;
   const [highlightId, setHighlightId] = useState<number|null>(null);
 
   const showOverlayPrompt = () => Alert.alert(
@@ -79,7 +70,6 @@ export default function App() {
       ],
     );
   };
-  handleEditCloseRef.current = handleEditClose;
 
   const sorted        = useMemo(() => [...alarms].sort((a,b) => a.hour*60+a.min-(b.hour*60+b.min)), [alarms]);
   const activeCount   = useMemo(() => alarms.filter(a=>a.active).length, [alarms]);
@@ -130,42 +120,61 @@ export default function App() {
         </View>
       </View>
 
-      {/* 탭 콘텐츠 */}
-      {tab==='alarms' && (
-        <AlarmsTab
-          alarms={alarms}
-          sorted={sorted}
-          selectMode={selectMode}
-          selectedIds={selectedIds}
-          repLimitedIds={repLimitedIds}
-          highlightId={highlightId}
-          onToggleSelect={toggleSelect}
-          onSelectAll={() => selectAll(alarms.map(a=>a.id))}
-          onDeleteSelected={handleDeleteSelected}
-          onToggleAlarm={toggleAlarm}
-          onEditAlarm={al => { setEditAlarm(al); setEditTypeId(al.typeId ?? 'commute'); }}
-        />
-      )}
-
-      {tab==='calendar' && <CalendarView alarms={alarms} onEditAlarm={al => {
-          setTab('alarms');
-          setHighlightId(al.id);
-          setTimeout(() => setHighlightId(null), 5000);
-        }}/>}
-
-      {tab==='add' && (
+      {/* 수정 화면 — 추가와 동일하게 전체화면으로 통일 (바텀시트 모달 제거) */}
+      {editAlarm ? (
         <ScrollView style={homeStyles.scroll} contentContainerStyle={homeStyles.scrollC} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <AlarmForm
-            initial={{typeId:'commute',hour:8,min:0,rm:'weekdays',days:[],cd:2,rd:1,vib:'pulse'}}
+            ref={editFormRef}
+            initial={editAlarm}
             onSubmit={async data=>{
-              await addAlarm(data);
+              await updateAlarm(editAlarm.id, data);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              setTab('alarms');
+              setEditAlarm(null);
             }}
-            onCancel={()=>setTab('alarms')}
-            submitLabel="⏰ 알람 추가"
+            onCancel={handleEditClose}
+            onTypeChange={setEditTypeId}
+            submitLabel="✔ 저장"
           />
         </ScrollView>
+      ) : (
+        <>
+          {tab==='alarms' && (
+            <AlarmsTab
+              alarms={alarms}
+              sorted={sorted}
+              selectMode={selectMode}
+              selectedIds={selectedIds}
+              repLimitedIds={repLimitedIds}
+              highlightId={highlightId}
+              onToggleSelect={toggleSelect}
+              onSelectAll={() => selectAll(alarms.map(a=>a.id))}
+              onDeleteSelected={handleDeleteSelected}
+              onToggleAlarm={toggleAlarm}
+              onEditAlarm={al => { setEditAlarm(al); setEditTypeId(al.typeId ?? 'commute'); }}
+            />
+          )}
+
+          {tab==='calendar' && <CalendarView alarms={alarms} onEditAlarm={al => {
+              setTab('alarms');
+              setHighlightId(al.id);
+              setTimeout(() => setHighlightId(null), 5000);
+            }}/>}
+
+          {tab==='add' && (
+            <ScrollView style={homeStyles.scroll} contentContainerStyle={homeStyles.scrollC} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <AlarmForm
+                initial={{typeId:'commute',hour:8,min:0,rm:'weekdays',days:[],cd:2,rd:1,vib:'pulse'}}
+                onSubmit={async data=>{
+                  await addAlarm(data);
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  setTab('alarms');
+                }}
+                onCancel={()=>setTab('alarms')}
+                submitLabel="⏰ 알람 추가"
+              />
+            </ScrollView>
+          )}
+        </>
       )}
 
       {/* Android 알람 울림 모달 (포그라운드) */}
@@ -179,32 +188,6 @@ export default function App() {
           onSnooze={snoozeRinging}
         />
       )}
-
-      {/* 편집 모달 */}
-      <Modal visible={!!editAlarm} transparent animationType="slide" onRequestClose={handleEditClose}>
-        <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS==='ios'?'padding':'height'}>
-          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={handleEditClose} activeOpacity={1}/>
-          <View style={[s.modal,{paddingBottom:Math.max(insets.bottom,20)}]}>
-            <View style={s.handleWrap} {...editSwipePan.panHandlers}>
-              <View style={s.handle}/>
-            </View>
-            {editAlarm && (
-              <AlarmForm
-                ref={editFormRef}
-                initial={editAlarm}
-                onSubmit={async data=>{
-                  await updateAlarm(editAlarm.id, data);
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                  setEditAlarm(null);
-                }}
-                onCancel={handleEditClose}
-                onTypeChange={setEditTypeId}
-                submitLabel="✔ 저장"
-              />
-            )}
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
 
       <BottomNav tab={tab} setTab={setTab} bottomInset={insets.bottom} />
     </SafeAreaView>
@@ -224,8 +207,4 @@ const s = StyleSheet.create({
   hbOff:     { backgroundColor:C.bg2, borderColor:C.border2 },
   hbDel:     { backgroundColor:'rgba(224,112,112,0.12)', borderColor:'#503030' },
   hbt:       { fontSize:12, fontWeight:'700', color:C.txt },
-  overlay:   { ...StyleSheet.absoluteFillObject, backgroundColor:'rgba(0,0,0,0.72)', justifyContent:'flex-end', zIndex:100 },
-  modal:     { backgroundColor:C.bg2, borderTopLeftRadius:24, borderTopRightRadius:24, padding:20, maxHeight:'90%', borderTopWidth:1, borderColor:C.border },
-  handleWrap: { alignSelf:'stretch', alignItems:'center', paddingVertical:12 },
-  handle:    { width:36, height:4, borderRadius:2, backgroundColor:C.border2 },
 });
