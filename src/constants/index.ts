@@ -1,7 +1,7 @@
 export const TYPES = [
   { id: 'commute',  label: '출근', icon: '🚇', color: '#2196F3' },
   { id: 'offwork',  label: '퇴근', icon: '🏠', color: '#E53935' },
-  { id: 'meal',     label: '식사', icon: '🍽️', color: '#388E3C' },
+  { id: 'meal',     label: '식사', icon: '🍽️', color: '#4ADE80' },
   { id: 'exercise', label: '운동', icon: '🏃', color: '#F57C00' },
   { id: 'custom',   label: '기타', icon: '✏️', color: '#9C27B0' },
 ] as const;

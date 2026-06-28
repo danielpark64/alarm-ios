@@ -62,6 +62,29 @@ export function getNextFireDate(alarm: Alarm): Date | null {
         fires = diff >= 0 && diff % cycle < (alarm.cd||2);
         break;
       }
+      case 'monthly': {
+        if (alarm.lastDay) {
+          const lastDayOfMonth = new Date(cand.getFullYear(), cand.getMonth()+1, 0).getDate();
+          fires = cand.getDate() === lastDayOfMonth;
+        } else {
+          const sdDay = alarm.sd ? parseInt(alarm.sd.split('-')[2]) : 1;
+          fires = cand.getDate() === sdDay;
+        }
+        break;
+      }
+      case 'yearly': {
+        if (alarm.sd) {
+          const [, sdM, sdD] = alarm.sd.split('-').map(Number);
+          if (sdM === 2 && sdD === 29) {
+            const y = cand.getFullYear();
+            const isLeap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+            fires = cand.getMonth() === 1 && cand.getDate() === (isLeap ? 29 : 28);
+          } else {
+            fires = cand.getMonth() === sdM - 1 && cand.getDate() === sdD;
+          }
+        }
+        break;
+      }
     }
     if (fires) return cand;
   }
@@ -133,7 +156,7 @@ export function alarmsForDate(alarms: Alarm[], dateStr: string): Alarm[] {
       if (sdM === 2 && sdD === 29) {
         const y = date.getFullYear();
         const isLeap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
-        return date.getMonth() === 1 && date.getDate() === 29 && isLeap;
+        return date.getMonth() === 1 && date.getDate() === (isLeap ? 29 : 28);
       }
       return date.getMonth() === sdM - 1 && date.getDate() === sdD;
     }

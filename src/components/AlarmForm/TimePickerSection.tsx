@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { VibIcon } from '../VibIcon';
 import { ScrollPicker } from '../common/ScrollPicker';
-import { s } from './styles';
+import { useColors } from '../../hooks/useTheme';
+import { makeStyles } from './styles';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINS  = Array.from({ length: 12 }, (_, i) => i * 5);
@@ -17,10 +18,12 @@ interface Props {
 }
 
 export function TimePickerSection({ hour, setHour, min, setMin, sndVibMode, setSndVibMode }: Props) {
+  const C = useColors();
+  const s = makeStyles(C);
   const SND_VIB_OPTS: { mode: 'both'|'snd'|'vib'; label: string; renderIcon: () => React.ReactNode }[] = [
-    { mode: 'both', label: '소리+진동', renderIcon: () => <><Text style={s.sndVibIconFixed}>🔔</Text><VibIcon size={16} color={sndVibMode === 'both' ? '#fff' : '#7B1FA2'}/></> },
+    { mode: 'both', label: '소리+진동', renderIcon: () => <><Text style={s.sndVibIconFixed}>🔔</Text><VibIcon size={16} color={sndVibMode === 'both' ? C.txt : C.txt3}/></> },
     { mode: 'snd',  label: '소리만',   renderIcon: () => <Text style={s.sndVibIconFixed}>🔔</Text> },
-    { mode: 'vib',  label: '진동만',   renderIcon: () => <VibIcon size={16} color={sndVibMode === 'vib' ? '#fff' : '#7B1FA2'}/> },
+    { mode: 'vib',  label: '진동만',   renderIcon: () => <VibIcon size={16} color={sndVibMode === 'vib' ? C.txt : C.txt3}/> },
   ];
 
   return (

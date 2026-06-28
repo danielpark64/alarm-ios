@@ -2,12 +2,13 @@ import React, { useState, useEffect, memo } from 'react';
 import { Text, Platform } from 'react-native';
 import { pad } from '../../utils';
 import { useScale, rf } from '../../utils/responsive';
-import { C } from '../../constants/colors';
+import { useColors } from '../../hooks/useTheme';
 
 // 시계 헤더 — 1초마다 리렌더되는 범위를 이 컴포넌트 안으로 격리
 export const ClockHeader = memo(function ClockHeader() {
   const [clock, setClock] = useState(new Date());
   const scale = useScale();
+  const C = useColors();
   useEffect(() => {
     const t = setInterval(() => setClock(new Date()), 1000);
     return () => clearInterval(t);

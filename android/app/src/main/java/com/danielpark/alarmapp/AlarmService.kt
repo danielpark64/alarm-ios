@@ -3,6 +3,7 @@ package com.danielpark.alarmapp
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.hardware.display.DisplayManager
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.os.Build
@@ -12,6 +13,7 @@ import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.view.Display
 import androidx.core.app.NotificationCompat
 import com.facebook.react.ReactApplication
 import com.facebook.react.bridge.Arguments
@@ -35,6 +37,7 @@ class AlarmService : Service() {
             ACTION_STOP -> {
                 cancelReps(alarmId)
                 stopRinging()
+                cancelCoverRelaunch()
                 currentRinging = null
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
@@ -45,11 +48,13 @@ class AlarmService : Service() {
                 val body  = intent.getStringExtra(EXTRA_BODY)  ?: ""
                 val soundOn = intent.getBooleanExtra("soundOn", true)
                 val vibOn   = intent.getBooleanExtra("vibOn", true)
+                val volume  = intent.getFloatExtra("volume", 1f)
                 cancelReps(alarmId)
                 stopRinging()
+                cancelCoverRelaunch()
                 currentRinging = null
                 stopForeground(STOP_FOREGROUND_REMOVE)
-                scheduleSnooze(title, body, soundOn, vibOn)
+                scheduleSnooze(title, body, soundOn, vibOn, volume)
                 stopSelf()
                 return START_NOT_STICKY
             }
@@ -59,27 +64,128 @@ class AlarmService : Service() {
         val body    = intent?.getStringExtra(EXTRA_BODY)  ?: ""
         val soundOn = intent?.getBooleanExtra("soundOn", true) ?: true
         val vibOn   = intent?.getBooleanExtra("vibOn", true) ?: true
+        val volume  = intent?.getFloatExtra("volume", 1f) ?: 1f
 
-        startForeground(NOTIFICATION_ID, buildNotification(title, body, alarmId, soundOn, vibOn))
-        startRinging(soundOn, vibOn)
+        startForeground(NOTIFICATION_ID, buildNotification(title, body, alarmId, soundOn, vibOn, volume))
+        startRinging(soundOn, vibOn, volume)
         currentRinging = RingingInfo(title, body, alarmId)
         emitRingingEvent(title, body, alarmId)
-        bringRingingActivityToFront()
+        bringRingingActivityToFront(title, alarmId)
         return START_STICKY
     }
 
     // 잠금/배경/타앱 사용 중 어떤 상태든 끄기 팝업을 화면 맨 앞으로 즉시 띄움
     // (AlarmManager 발화 직후 포그라운드 서비스 시작 시점은 백그라운드 액티비티 실행 제한의 예외에 해당)
-    private fun bringRingingActivityToFront() {
-        try {
-            val intent = Intent(this, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                    Intent.FLAG_ACTIVITY_SINGLE_TOP
-                putExtra("alarmRinging", true)
+    //
+    // 폴더블(갤럭시 Z 플립 등)을 접은 상태에서 알람이 울리면 메인 디스플레이(기본, 0번)는
+    // 접혀서 안 보이고 별도의 커버 디스플레이가 대신 켜진다. 이 전환에 걸리는 시간이
+    // 매번 달라(약 100~400ms) 고정 딜레이로는 못 맞추는 경우가 있어, DisplayListener로
+    // 커버 디스플레이가 실제로 켜지는 시점을 감지해서 그 디스플레이로 띄운다.
+    // 일정 시간 내에 커버 디스플레이가 켜지지 않으면(=폴더가 닫혀있지 않은 일반적인 경우)
+    // 기본 디스플레이로 띄운다.
+    private var ringingDisplayListener: DisplayManager.DisplayListener? = null
+
+    private fun bringRingingActivityToFront(title: String, alarmId: Int) {
+        val dm = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+        val handler = Handler(Looper.getMainLooper())
+        var launched = false
+
+        // 폴더가 닫혀 커버 디스플레이로 알람을 띄우는 경우, RN 기반 MainActivity는
+        // 작은 커버 디스플레이에서 윈도우 재측정에 실패해 화면이 비어 보이는 문제가 있어
+        // 대신 순수 네이티브 화면(CoverAlarmActivity, 끄기 버튼만 있음)을 띄운다.
+        fun launch(displayId: Int?) {
+            if (launched) return
+            launched = true
+            ringingDisplayListener?.let { dm.unregisterDisplayListener(it) }
+            ringingDisplayListener = null
+            try {
+                val isCoverDisplay = displayId != null && displayId != Display.DEFAULT_DISPLAY
+                val intent = if (isCoverDisplay) {
+                    Intent(this, CoverAlarmActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        putExtra("alarmId", alarmId)
+                        putExtra("title", title)
+                    }
+                } else {
+                    Intent(this, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        putExtra("alarmRinging", true)
+                    }
+                }
+                val options = ActivityOptions.makeBasic()
+                displayId?.let { options.setLaunchDisplayId(it) }
+                startActivity(intent, options.toBundle())
+                // 커버 디스플레이는 몇 초 지나면 삼성 자체 AOD 화면으로 강제 전환되어
+                // 끄기 버튼이 화면 밖으로 밀려나므로, 알람이 꺼질 때까지 주기적으로
+                // 다시 앞으로 띄워서 사용자가 끄기를 누를 기회를 계속 준다.
+                if (isCoverDisplay) scheduleCoverRelaunch(alarmId, title, displayId!!)
+            } catch (e: Exception) { e.printStackTrace() }
+        }
+
+        val alreadyOn = findRingingTargetDisplayId(dm)
+        if (alreadyOn != null) { launch(alreadyOn); return }
+
+        // 커버 디스플레이는 OFF -> DOZE -> ON 순서로 전환되며, DOZE 단계에서 이미
+        // 화면이 사실상 켜지는 절차가 시작된 것이므로 ON까지 기다리지 않고 DOZE에서도 띄운다
+        // (ON만 기다리면 타임아웃이 ON 전환보다 먼저 발동해 기본 디스플레이로 떨어지는 경우가 있었음).
+        val listener = object : DisplayManager.DisplayListener {
+            override fun onDisplayAdded(displayId: Int) {}
+            override fun onDisplayRemoved(displayId: Int) {}
+            override fun onDisplayChanged(displayId: Int) {
+                if (displayId == Display.DEFAULT_DISPLAY) return
+                val d = dm.getDisplay(displayId) ?: return
+                if (d.state != Display.STATE_OFF) launch(displayId)
             }
-            startActivity(intent)
-        } catch (e: Exception) { e.printStackTrace() }
+        }
+        ringingDisplayListener = listener
+        dm.registerDisplayListener(listener, handler)
+        handler.postDelayed({ launch(null) }, 1200L)
+    }
+
+    // 폴더블(갤럭시 Z 플립 등)을 접으면 기본 디스플레이(메인 화면)는 꺼지고
+    // 별도의 커버 디스플레이가 켜진다. 기본 디스플레이로만 액티비티를 띄우면
+    // 접힌 상태에서는 끄기 화면이 보이지 않으므로, 현재 켜져 있는 디스플레이 중
+    // 기본 디스플레이가 아닌 것(커버 화면)이 있으면 그쪽을 우선 타겟한다.
+    private fun findRingingTargetDisplayId(dm: DisplayManager): Int? {
+        return try {
+            val onDisplays = dm.displays.filter { it.state != Display.STATE_OFF }
+            val cover = onDisplays.firstOrNull { it.displayId != Display.DEFAULT_DISPLAY }
+            cover?.displayId
+        } catch (e: Exception) { null }
+    }
+
+    private val coverRelaunchHandler = Handler(Looper.getMainLooper())
+    private var coverRelaunchRunnable: Runnable? = null
+
+    // 커버 디스플레이는 사용자 인터랙션 없이 몇 초가 지나면 삼성 AOD 화면으로 자동 전환되어
+    // 끄기 버튼이 화면 밖으로 밀려난다. 알람이 멈출 때까지 일정 간격으로 CoverAlarmActivity를
+    // 다시 앞으로 띄워서 AOD 전환 타이머를 계속 리셋시키고, 사용자에게 끄기를 누를 기회를 준다.
+    private fun scheduleCoverRelaunch(alarmId: Int, title: String, displayId: Int) {
+        cancelCoverRelaunch()
+        val runnable = object : Runnable {
+            override fun run() {
+                if (currentRinging == null) return
+                try {
+                    val intent = Intent(this@AlarmService, CoverAlarmActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        putExtra("alarmId", alarmId)
+                        putExtra("title", title)
+                    }
+                    val options = ActivityOptions.makeBasic().apply { setLaunchDisplayId(displayId) }
+                    startActivity(intent, options.toBundle())
+                } catch (e: Exception) { e.printStackTrace() }
+                coverRelaunchHandler.postDelayed(this, COVER_RELAUNCH_INTERVAL_MS)
+            }
+        }
+        coverRelaunchRunnable = runnable
+        coverRelaunchHandler.postDelayed(runnable, COVER_RELAUNCH_INTERVAL_MS)
+    }
+
+    private fun cancelCoverRelaunch() {
+        coverRelaunchRunnable?.let { coverRelaunchHandler.removeCallbacks(it) }
+        coverRelaunchRunnable = null
     }
 
     // 사용자가 끄기/스누즈 시 남은 +1분/+2분 rep 슬롯 즉시 취소
@@ -121,7 +227,8 @@ class AlarmService : Service() {
         } catch (e: Exception) { e.printStackTrace() }
     }
 
-    private fun startRinging(soundOn: Boolean, vibOn: Boolean) {
+    private fun startRinging(soundOn: Boolean, vibOn: Boolean, volume: Float = 1f) {
+        val targetVolume = volume.coerceIn(0f, 1f)
         if (soundOn && mediaPlayer?.isPlaying != true) {
             try {
                 mediaPlayer = MediaPlayer().apply {
@@ -136,10 +243,11 @@ class AlarmService : Service() {
                     afd.close()
                     isLooping = true
                     prepare()
-                    setVolume(FADE_START_VOLUME, FADE_START_VOLUME)
+                    val startVolume = FADE_START_VOLUME.coerceAtMost(targetVolume)
+                    setVolume(startVolume, startVolume)
                     start()
                 }
-                startVolumeFade()
+                startVolumeFade(targetVolume)
             } catch (e: Exception) { e.printStackTrace() }
         }
 
@@ -153,8 +261,10 @@ class AlarmService : Service() {
                     getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
                 }
                 val pattern = longArrayOf(0, 500, 300, 500, 300, 500)
+                // USAGE_ALARM을 지정해야 무음/진동 끔 등 링거 모드 설정과 무관하게 항상 진동이 동작함
+                val alarmAttrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build()
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    vibrator?.vibrate(VibrationEffect.createWaveform(pattern, 0))
+                    vibrator?.vibrate(VibrationEffect.createWaveform(pattern, 0), alarmAttrs)
                 } else {
                     @Suppress("DEPRECATION")
                     vibrator?.vibrate(pattern, 0)
@@ -163,15 +273,16 @@ class AlarmService : Service() {
         }
     }
 
-    // 알람 소리를 작게 시작해서 점점 최대 볼륨까지 올림
-    private fun startVolumeFade() {
+    // 알람 소리를 작게 시작해서 점점 사용자가 설정한 최대 볼륨까지 올림
+    private fun startVolumeFade(targetVolume: Float) {
         val handler = Handler(Looper.getMainLooper())
         val totalSteps = (FADE_DURATION_MS / FADE_STEP_MS).toInt()
+        val startVolume = FADE_START_VOLUME.coerceAtMost(targetVolume)
         var step = 0
         val runnable = object : Runnable {
             override fun run() {
                 step++
-                val volume = (FADE_START_VOLUME + (1f - FADE_START_VOLUME) * step / totalSteps).coerceAtMost(1f)
+                val volume = (startVolume + (targetVolume - startVolume) * step / totalSteps).coerceAtMost(targetVolume)
                 mediaPlayer?.setVolume(volume, volume)
                 if (step < totalSteps) handler.postDelayed(this, FADE_STEP_MS)
             }
@@ -192,13 +303,14 @@ class AlarmService : Service() {
         vibrator = null
     }
 
-    private fun scheduleSnooze(title: String, body: String, soundOn: Boolean, vibOn: Boolean) {
+    private fun scheduleSnooze(title: String, body: String, soundOn: Boolean, vibOn: Boolean, volume: Float) {
         val intent = Intent(this, AlarmReceiver::class.java).apply {
             putExtra(EXTRA_TITLE, title)
             putExtra(EXTRA_BODY, body)
             putExtra("recurrence", "once")
             putExtra("soundOn", soundOn)
             putExtra("vibOn", vibOn)
+            putExtra("volume", volume)
         }
         val pi = PendingIntent.getBroadcast(
             this, AlarmIds.SNOOZE_REQUEST_CODE, intent,
@@ -206,16 +318,12 @@ class AlarmService : Service() {
         )
         val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val triggerAt = System.currentTimeMillis() + 5 * 60 * 1000L
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (am.canScheduleExactAlarms())
-                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
-        } else {
-            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
-        }
+        AlarmScheduling.schedule(this, am, triggerAt, pi)
     }
 
     override fun onDestroy() {
         stopRinging()
+        cancelCoverRelaunch()
         currentRinging = null
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
@@ -232,7 +340,7 @@ class AlarmService : Service() {
         }
     }
 
-    private fun buildNotification(title: String, body: String, alarmId: Int, soundOn: Boolean, vibOn: Boolean): Notification {
+    private fun buildNotification(title: String, body: String, alarmId: Int, soundOn: Boolean, vibOn: Boolean, volume: Float): Notification {
         val stopPi = PendingIntent.getService(
             this, 10,
             Intent(this, AlarmService::class.java).apply {
@@ -249,6 +357,7 @@ class AlarmService : Service() {
                 putExtra("alarmId", alarmId)
                 putExtra("soundOn", soundOn)
                 putExtra("vibOn", vibOn)
+                putExtra("volume", volume)
             },
             PendingIntent.FLAG_IMMUTABLE
         )
@@ -266,13 +375,17 @@ class AlarmService : Service() {
             .setContentText(body)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentIntent(openPi)
-            .addAction(0, "끄기",   stopPi)
-            .addAction(0, "5분 후", snoozePi)
+            // 갤럭시 Z 플립 커버 화면의 축소 알림 뷰는 액션이 2개면 커스텀 액션 대신
+            // 기본 "앱 열기" 버튼만 보여주는 것으로 보여, 액션을 "끄기" 1개로 줄여 테스트
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "끄기", stopPi)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setFullScreenIntent(openPi, true)
+            // setFullScreenIntent는 시스템이 디스플레이 지정 없이 즉시 MainActivity를 띄워버려서
+            // bringRingingActivityToFront()의 커버 디스플레이 타겟팅 시도보다 먼저 기본 디스플레이에
+            // 태스크를 만들어버리는 경쟁 상태를 유발함(폴더 닫힘 시 끄기 화면이 안 보이는 원인).
+            // bringRingingActivityToFront()가 SYSTEM_ALERT_WINDOW 권한으로 이미 동일한 역할을 하므로 제거.
             .build()
     }
 
@@ -292,5 +405,8 @@ class AlarmService : Service() {
         private const val FADE_START_VOLUME = 0.15f
         private const val FADE_DURATION_MS  = 15_000L
         private const val FADE_STEP_MS      = 1_000L
+
+        // 커버 디스플레이 AOD 강제 전환(약 4초)보다 짧게 잡아 끄기 화면을 계속 앞으로 띄움
+        private const val COVER_RELAUNCH_INTERVAL_MS = 2_500L
     }
 }

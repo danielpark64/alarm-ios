@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, Alert,
+  View, Text, TouchableOpacity, Alert,
   StyleSheet, StatusBar, Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,19 +11,25 @@ import { useSelectMode } from '../src/hooks/useSelectMode';
 import { ClockHeader } from '../src/components/Home/ClockHeader';
 import { CalendarView } from '../src/components/Home/CalendarView';
 import { AlarmsTab } from '../src/components/Home/AlarmsTab';
+import { SettingsView } from '../src/components/Home/SettingsView';
 import { BottomNav, HomeTab } from '../src/components/Home/BottomNav';
-import { homeStyles } from '../src/components/Home/styles';
 import { AlarmForm, AlarmFormHandle } from '../src/components/AlarmForm';
 import { AlarmRinging } from '../src/components/AlarmRinging';
 import { nextAlarmText, getRepLimitedIds } from '../src/utils';
 import { Alarm } from '../src/constants';
-import { C } from '../src/constants/colors';
+import { Palette } from '../src/constants/colors';
+import { useColors, useThemeSetting } from '../src/hooks/useTheme';
+import { useAlarmDefaults } from '../src/hooks/useAlarmDefaults';
 
 export default function App() {
   const insets = useSafeAreaInsets();
-  const { alarms, loaded, addAlarm, updateAlarm, deleteAlarms, toggleAlarm, toggleAll } = useAlarms();
+  const C = useColors();
+  const { theme } = useThemeSetting();
+  const { defaults: alarmDefaults } = useAlarmDefaults();
+  const s = makeStyles(C);
+  const { alarms, loaded, addAlarm, updateAlarm, deleteAlarms, toggleAlarm } = useAlarms();
   const { notifGranted, requestPermission, overlayGranted, requestOverlayPermission, tick, ringing, stopRinging, snoozeRinging } = useAlarmNotifications(alarms, updateAlarm);
-  const { selectMode, selectedIds, toggleSelectMode, toggleSelect, selectAll, exitSelectMode } = useSelectMode();
+  const { selectMode, selectedIds, enterSelectMode, toggleSelect, selectAll, exitSelectMode } = useSelectMode();
   const [tab, setTab] = useState<HomeTab>('alarms');
   const [editAlarm, setEditAlarm] = useState<Alarm|null>(null);
   const [editTypeId, setEditTypeId] = useState<string>('commute');
@@ -55,6 +61,16 @@ export default function App() {
     ]);
   };
 
+  const handleDeleteOne = (id: number) => {
+    Alert.alert('알람 삭제', '이 알람을 삭제할까요?', [
+      { text:'취소', style:'cancel' },
+      { text:'삭제', style:'destructive', onPress: async () => {
+        await deleteAlarms(new Set([id]));
+        setEditAlarm(null);
+      }},
+    ]);
+  };
+
   const handleEditClose = () => {
     if (!editFormRef.current?.isDirty()) {
       setEditAlarm(null);
@@ -72,7 +88,6 @@ export default function App() {
   };
 
   const sorted        = useMemo(() => [...alarms].sort((a,b) => a.hour*60+a.min-(b.hour*60+b.min)), [alarms]);
-  const activeCount   = useMemo(() => alarms.filter(a=>a.active).length, [alarms]);
   const repLimitedIds = useMemo(() => getRepLimitedIds(alarms), [alarms]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const nextText = useMemo(() => nextAlarmText(alarms), [alarms, tick]);
@@ -82,60 +97,50 @@ export default function App() {
 
   return (
     <SafeAreaView style={s.root} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor={C.bg}/>
+      <StatusBar barStyle={theme === 'light' ? 'dark-content' : 'light-content'} backgroundColor={C.bg}/>
 
       {/* 헤더 */}
       <View style={s.header}>
         <View style={{flex:1}}>
           <ClockHeader />
-          <Text style={s.stat} numberOfLines={1}>
-            활성 <Text style={s.statN}>{activeCount}</Text>개
-            {nextText
-              ? <Text style={s.nextT}>{`  ·  ${nextText}`}</Text>
-              : `  ·  전체 ${alarms.length}개`}
+          <Text style={s.nextT} numberOfLines={1}>
+            {nextText || '예정된 알람 없음'}
           </Text>
         </View>
-        <View style={s.hbtns}>
+        <TouchableOpacity style={s.addBtn} onPress={() => setTab('add')}>
+          <Text style={s.addBtnT}>＋</Text>
+        </TouchableOpacity>
+      </View>
+
+      {(!notifGranted || !overlayGranted) && (
+        <View style={s.permRow}>
           {!notifGranted && (
-            <TouchableOpacity style={s.hb} onPress={requestPermission}>
-              <Text style={s.hbt}>🔔 알림</Text>
+            <TouchableOpacity style={s.permChip} onPress={requestPermission}>
+              <Text style={s.permChipT}>🔔 알림 권한 허용</Text>
             </TouchableOpacity>
           )}
           {!overlayGranted && (
-            <TouchableOpacity style={s.hb} onPress={showOverlayPrompt}>
-              <Text style={s.hbt} numberOfLines={1} adjustsFontSizeToFit>📱 표시 권한</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity style={s.hb} onPress={()=>toggleAll(true)}>
-            <Text style={s.hbt} numberOfLines={1} adjustsFontSizeToFit>전체 켜기</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[s.hb,s.hbOff]} onPress={()=>toggleAll(false)}>
-            <Text style={[s.hbt,{color:C.txt2}]} numberOfLines={1} adjustsFontSizeToFit>전체 끄기</Text>
-          </TouchableOpacity>
-          {tab==='alarms' && (
-            <TouchableOpacity style={[s.hb,s.hbDel]} onPress={toggleSelectMode}>
-              <Text style={[s.hbt,{color:'#e07070'}]} numberOfLines={1} adjustsFontSizeToFit>{selectMode?'취소':'선택'}</Text>
+            <TouchableOpacity style={s.permChip} onPress={showOverlayPrompt}>
+              <Text style={s.permChipT}>📱 표시 권한 허용</Text>
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      )}
 
       {/* 수정 화면 — 추가와 동일하게 전체화면으로 통일 (바텀시트 모달 제거) */}
       {editAlarm ? (
-        <ScrollView style={homeStyles.scroll} contentContainerStyle={homeStyles.scrollC} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          <AlarmForm
-            ref={editFormRef}
-            initial={editAlarm}
-            onSubmit={async data=>{
-              await updateAlarm(editAlarm.id, data);
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              setEditAlarm(null);
-            }}
-            onCancel={handleEditClose}
-            onTypeChange={setEditTypeId}
-            submitLabel="✔ 저장"
-          />
-        </ScrollView>
+        <AlarmForm
+          ref={editFormRef}
+          initial={editAlarm}
+          onSubmit={async data=>{
+            await updateAlarm(editAlarm.id, data);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            setEditAlarm(null);
+          }}
+          onCancel={handleEditClose}
+          onDelete={() => handleDeleteOne(editAlarm.id)}
+          onTypeChange={setEditTypeId}
+        />
       ) : (
         <>
           {tab==='alarms' && (
@@ -149,6 +154,8 @@ export default function App() {
               onToggleSelect={toggleSelect}
               onSelectAll={() => selectAll(alarms.map(a=>a.id))}
               onDeleteSelected={handleDeleteSelected}
+              onExitSelectMode={exitSelectMode}
+              onEnterSelectMode={enterSelectMode}
               onToggleAlarm={toggleAlarm}
               onEditAlarm={al => { setEditAlarm(al); setEditTypeId(al.typeId ?? 'commute'); }}
             />
@@ -160,19 +167,18 @@ export default function App() {
               setTimeout(() => setHighlightId(null), 5000);
             }}/>}
 
+          {tab==='settings' && <SettingsView />}
+
           {tab==='add' && (
-            <ScrollView style={homeStyles.scroll} contentContainerStyle={homeStyles.scrollC} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              <AlarmForm
-                initial={{typeId:'commute',hour:8,min:0,rm:'weekdays',days:[],cd:2,rd:1,vib:'pulse'}}
-                onSubmit={async data=>{
-                  await addAlarm(data);
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                  setTab('alarms');
-                }}
-                onCancel={()=>setTab('alarms')}
-                submitLabel="⏰ 알람 추가"
-              />
-            </ScrollView>
+            <AlarmForm
+              initial={{typeId:'commute',hour:8,min:0,rm:'weekdays',days:[],cd:2,rd:1,snd:alarmDefaults.snd,vib:alarmDefaults.vib}}
+              onSubmit={async data=>{
+                await addAlarm(data);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                setTab('alarms');
+              }}
+              onCancel={()=>setTab('alarms')}
+            />
           )}
         </>
       )}
@@ -194,17 +200,17 @@ export default function App() {
   );
 }
 
-const s = StyleSheet.create({
-  root:      { flex:1, backgroundColor:C.bg },
-  loading:   { flex:1, alignItems:'center', justifyContent:'center', backgroundColor:C.bg },
-  loadingT:  { fontSize:60 },
-  header:    { flexDirection:'row', alignItems:'flex-start', gap:10, paddingHorizontal:18, paddingTop:12, paddingBottom:14, backgroundColor:C.bg, borderBottomWidth:1, borderBottomColor:C.border },
-  stat:      { fontSize:14, fontWeight:'800', color:C.txt3, marginTop:6 },
-  statN:     { fontSize:15, fontWeight:'900', color:C.accent },
-  nextT:     { fontSize:14, fontWeight:'800', color:C.txt2 },
-  hbtns:     { flexDirection:'column', gap:5, alignItems:'flex-end', paddingTop:4 },
-  hb:        { width:84, height:32, alignItems:'center', justifyContent:'center', paddingHorizontal:8, paddingVertical:6, borderRadius:20, backgroundColor:C.bg3, borderWidth:1, borderColor:C.border2 },
-  hbOff:     { backgroundColor:C.bg2, borderColor:C.border2 },
-  hbDel:     { backgroundColor:'rgba(224,112,112,0.12)', borderColor:'#503030' },
-  hbt:       { fontSize:12, fontWeight:'700', color:C.txt },
-});
+function makeStyles(C: Palette) {
+  return StyleSheet.create({
+    root:      { flex:1, backgroundColor:C.bg },
+    loading:   { flex:1, alignItems:'center', justifyContent:'center', backgroundColor:C.bg },
+    loadingT:  { fontSize:60 },
+    header:    { flexDirection:'row', alignItems:'center', gap:14, paddingHorizontal:18, paddingTop:12, paddingBottom:14, backgroundColor:C.bg, borderBottomWidth:1, borderBottomColor:C.border },
+    nextT:     { fontSize:15, fontWeight:'800', color:C.txt2, marginTop:8, textAlign:'left' },
+    addBtn:    { width:64, height:64, borderRadius:20, backgroundColor:C.accent2, alignItems:'center', justifyContent:'center', shadowColor:C.accent, shadowOffset:{width:0,height:4}, shadowOpacity:0.4, shadowRadius:10, elevation:6 },
+    addBtnT:   { fontSize:32, color:'#fff', fontWeight:'900' },
+    permRow:   { flexDirection:'row', gap:8, paddingHorizontal:18, paddingVertical:10, backgroundColor:C.bg, borderBottomWidth:1, borderBottomColor:C.border },
+    permChip:  { flexDirection:'row', alignItems:'center', paddingHorizontal:12, paddingVertical:7, borderRadius:20, backgroundColor:C.bg3, borderWidth:1, borderColor:C.border2 },
+    permChipT: { fontSize:12, fontWeight:'700', color:C.txt2 },
+  });
+}

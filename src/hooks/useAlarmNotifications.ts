@@ -4,6 +4,7 @@ import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
 import { Alarm } from '../constants';
 import { requestNotificationPermission, registerNotificationCategories, rescheduleAll, cancelExpoGroupReps } from '../utils/notifications';
+import { getAlarmDefaults } from './useAlarmDefaults';
 
 const { AlarmModule } = NativeModules;
 
@@ -142,6 +143,9 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
           alarmId: info.alarmId >= 0 ? info.alarmId : undefined,
           source: 'native',
         });
+      } else {
+        // 폴더블 커버 화면 등 앱 UI 바깥에서 이미 알람이 꺼진 경우, JS 쪽 끄기 팝업도 같이 닫음
+        setRinging(prev => (prev?.source === 'native' ? null : prev));
       }
     };
     restore();
@@ -177,7 +181,7 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
 
   const snoozeRinging = async () => {
     if (ringing?.source === 'native') {
-      if (AlarmModule) AlarmModule.snoozeAlarm(ringing.alarmId ?? -1, ringing.title, ringing.body);
+      if (AlarmModule) AlarmModule.snoozeAlarm(ringing.alarmId ?? -1, ringing.title, ringing.body, getAlarmDefaults().volume);
       await cancelExpoGroupReps(ringing.body);
       setRinging(null);
       return;

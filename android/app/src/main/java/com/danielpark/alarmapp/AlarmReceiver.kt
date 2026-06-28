@@ -17,6 +17,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val isRep   = intent.getBooleanExtra("isRep", false)
         val soundOn = intent.getBooleanExtra("soundOn", true)
         val vibOn   = intent.getBooleanExtra("vibOn", true)
+        val volume  = intent.getFloatExtra("volume", 1f)
 
         // ForegroundService 시작 (소리 루프 + 진동)
         val svcIntent = Intent(context, AlarmService::class.java).apply {
@@ -25,6 +26,7 @@ class AlarmReceiver : BroadcastReceiver() {
             putExtra("alarmId", alarmId)
             putExtra("soundOn", soundOn)
             putExtra("vibOn", vibOn)
+            putExtra("volume", volume)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             context.startForegroundService(svcIntent)
@@ -44,13 +46,14 @@ class AlarmReceiver : BroadcastReceiver() {
                 putExtra("isRep", true)
                 putExtra("soundOn", soundOn)
                 putExtra("vibOn", vibOn)
+                putExtra("volume", volume)
             }
             val repPi = PendingIntent.getBroadcast(
                 context, AlarmIds.repSlotId(alarmId, repIdx), repIntent,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
             val triggerAt = System.currentTimeMillis() + repIdx * 60_000L
-            scheduleExact(am, triggerAt, repPi)
+            scheduleExact(context, am, triggerAt, repPi)
         }
 
         // 다음 발화 재스케줄 (weekly만 — 나머지는 JS가 관리)
@@ -67,18 +70,11 @@ class AlarmReceiver : BroadcastReceiver() {
             context, alarmId, intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-        scheduleExact(am, nextTrigger, pi)
+        scheduleExact(context, am, nextTrigger, pi)
     }
 
-    private fun scheduleExact(am: AlarmManager, triggerAt: Long, pi: PendingIntent) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (am.canScheduleExactAlarms())
-                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
-            else
-                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
-        } else {
-            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
-        }
+    private fun scheduleExact(context: Context, am: AlarmManager, triggerAt: Long, pi: PendingIntent) {
+        AlarmScheduling.schedule(context, am, triggerAt, pi)
     }
 
     private fun nextWeeklyTrigger(hour: Int, min: Int, calWeekday: Int): Long {

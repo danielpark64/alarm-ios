@@ -1,14 +1,16 @@
 import React, { forwardRef, useImperativeHandle } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { Alarm } from '../../constants';
+import { useColors } from '../../hooks/useTheme';
 import { useAlarmFormState } from '../../hooks/useAlarmFormState';
 import { TypeSelector } from './TypeSelector';
 import { DateSection } from './DateSection';
+import { DateModal } from './DateModal';
 import { TimePickerSection } from './TimePickerSection';
 import { RepeatModeSelector } from './RepeatModeSelector';
 import { DayOfWeekSelector } from './DayOfWeekSelector';
 import { CycleRestControls } from './CycleRestControls';
-import { s } from './styles';
+import { makeStyles } from './styles';
 
 export interface AlarmFormHandle {
   submit: () => void;
@@ -19,16 +21,20 @@ interface Props {
   initial: Partial<Alarm>;
   onSubmit: (data: Omit<Alarm, 'id' | 'active'>) => void;
   onCancel: () => void;
-  submitLabel?: string;
+  onDelete?: () => void;
   onTypeChange?: (typeId: string) => void;
 }
 
 export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
   function AlarmForm(
-    { initial, onSubmit, onCancel, submitLabel = '⏰ 알람 추가', onTypeChange },
+    { initial, onSubmit, onCancel, onDelete, onTypeChange },
     ref,
   ) {
     const form = useAlarmFormState(initial, onSubmit, onTypeChange);
+    const C = useColors();
+    const s = makeStyles(C);
+    const isCycleRest = form.rm === 'cycle' || form.rm === 'rest';
+    const isEdit = initial.id != null;
 
     useImperativeHandle(ref, () => ({
       submit: form.submit,
@@ -36,73 +42,105 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
     }), [form.submit, form.isDirty]);
 
     return (
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        nestedScrollEnabled
-      >
-        <TypeSelector typeId={form.typeId} onChange={form.handleTypeChange} />
-
-        <DateSection
-          rm={form.rm}
-          sd={form.sd}
-          setSd={form.setSd}
-          lastDay={form.lastDay}
-          setLastDay={form.setLastDay}
-          showCal={form.showCal}
-          setShowCal={form.setShowCal}
-          dateLabel={form.dateLabel}
-          dateLocked={form.dateLocked}
-          isLeapDay={form.isLeapDay}
-        />
-
-        <TimePickerSection
-          hour={form.hour}
-          setHour={form.setHour}
-          min={form.min}
-          setMin={form.setMin}
-          sndVibMode={form.sndVibMode}
-          setSndVibMode={form.setSndVibMode}
-        />
-
-        {/* 라벨 */}
-        <Text style={s.sLabel}>라벨</Text>
-        <TextInput
-          style={s.input}
-          value={form.label}
-          onChangeText={form.setLabel}
-          placeholder="이름을 입력하세요"
-          placeholderTextColor="#888"
-          returnKeyType="done"
-        />
-
-        <RepeatModeSelector rm={form.rm} setRm={form.setRm} />
-
-        {form.rm === 'wdcustom' && (
-          <DayOfWeekSelector days={form.days} setDays={form.setDays} toggleDay={form.toggleDay} />
-        )}
-
-        {(form.rm === 'cycle' || form.rm === 'rest') && (
-          <CycleRestControls rm={form.rm} cd={form.cd} setCd={form.setCd} rd={form.rd} setRd={form.setRd} />
-        )}
-
-        {(form.rm === 'monthly' || form.rm === 'yearly') && (
-          <View style={s.repeatInfoBox}>
-            <Text style={s.repeatInfoText}>{form.repeatSummary}</Text>
-          </View>
-        )}
-
-        {/* 저장/취소 */}
-        <View style={s.btnRow}>
-          <TouchableOpacity style={s.cancelBtn} onPress={onCancel}>
-            <Text style={s.cancelBtnText}>취소</Text>
+      <View style={s.formRoot}>
+        {/* 상단 고정 바 — 폼이 길어도 스크롤 없이 바로 취소/저장 */}
+        <View style={s.topBar}>
+          <TouchableOpacity style={s.topBarCancelBtn} onPress={onCancel}>
+            <Text style={s.topBarCancelText}>취소</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s.submitBtn} onPress={form.handleSubmit}>
-            <Text style={s.submitBtnText}>{submitLabel}</Text>
+          <Text style={s.topBarTitle} numberOfLines={1}>{isEdit ? '알람 수정' : '알람 추가'}</Text>
+          <TouchableOpacity style={s.topBarSaveBtn} onPress={form.handleSubmit}>
+            <Text style={s.topBarSaveText}>{isEdit ? '저장' : '추가'}</Text>
           </TouchableOpacity>
         </View>
-        <View style={{ height: 40 }} />
-      </ScrollView>
+
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled
+          contentContainerStyle={s.scrollContent}
+        >
+          <TypeSelector typeId={form.typeId} onChange={form.handleTypeChange} />
+
+          <TimePickerSection
+            hour={form.hour}
+            setHour={form.setHour}
+            min={form.min}
+            setMin={form.setMin}
+            sndVibMode={form.sndVibMode}
+            setSndVibMode={form.setSndVibMode}
+          />
+
+          {/* 라벨 */}
+          <Text style={s.sLabel}>라벨</Text>
+          <TextInput
+            style={s.input}
+            value={form.label}
+            onChangeText={form.setLabel}
+            placeholder="이름을 입력하세요"
+            placeholderTextColor={C.txt3}
+            returnKeyType="done"
+          />
+
+          <RepeatModeSelector rm={form.rm} setRm={form.setRm} />
+
+          {!isCycleRest && (
+            <DateSection
+              rm={form.rm}
+              lastDay={form.lastDay}
+              setLastDay={form.setLastDay}
+              setShowCal={form.setShowCal}
+              dateLabel={form.dateLabel}
+              dateLocked={form.dateLocked}
+              isLeapDay={form.isLeapDay}
+            />
+          )}
+
+          {form.rm === 'wdcustom' && (
+            <DayOfWeekSelector days={form.days} setDays={form.setDays} toggleDay={form.toggleDay} />
+          )}
+
+          {isCycleRest && (
+            <CycleRestControls
+              rm={form.rm}
+              cd={form.cd}
+              setCd={form.setCd}
+              rd={form.rd}
+              setRd={form.setRd}
+              sd={form.sd}
+              setShowCal={form.setShowCal}
+            />
+          )}
+
+          {(form.rm === 'monthly' || form.rm === 'yearly') && (
+            <View style={s.repeatInfoBox}>
+              <Text style={s.repeatInfoText}>{form.repeatSummary}</Text>
+            </View>
+          )}
+
+          <View style={s.bottomActions}>
+            <TouchableOpacity style={s.bottomCancelBtn} onPress={onCancel}>
+              <Text style={s.bottomCancelText}>취소</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.bottomSaveBtn} onPress={form.handleSubmit}>
+              <Text style={s.bottomSaveText}>{isEdit ? '저장' : '추가'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {onDelete && (
+            <TouchableOpacity style={s.deleteBtn} onPress={onDelete}>
+              <Text style={s.deleteBtnText}>🗑 이 알람 삭제</Text>
+            </TouchableOpacity>
+          )}
+
+          <DateModal
+            sd={form.sd}
+            setSd={form.setSd}
+            visible={form.showCal}
+            onClose={() => form.setShowCal(false)}
+          />
+        </ScrollView>
+      </View>
     );
   },
 );

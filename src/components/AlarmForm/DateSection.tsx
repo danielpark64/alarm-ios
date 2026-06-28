@@ -1,15 +1,12 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal } from 'react-native';
-import { CalendarPicker } from '../common/CalendarPicker';
-import { s } from './styles';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { useColors } from '../../hooks/useTheme';
+import { makeStyles } from './styles';
 
 interface Props {
   rm: string;
-  sd: string;
-  setSd: (v: string) => void;
   lastDay: boolean;
   setLastDay: (fn: (v: boolean) => boolean) => void;
-  showCal: boolean;
   setShowCal: (v: boolean) => void;
   dateLabel: string;
   dateLocked: boolean;
@@ -17,8 +14,9 @@ interface Props {
 }
 
 export function DateSection({
-  rm, sd, setSd, lastDay, setLastDay, showCal, setShowCal, dateLabel, dateLocked, isLeapDay,
+  rm, lastDay, setLastDay, setShowCal, dateLabel, dateLocked, isLeapDay,
 }: Props) {
+  const s = makeStyles(useColors());
   return (
     <>
       <Text style={s.sLabel}>시작 일자</Text>
@@ -44,23 +42,11 @@ export function DateSection({
         )}
       </View>
       {rm === 'yearly' && isLeapDay && (
-        <Text style={s.leapNotice}>⚠️ 윤년(4년마다)에만 울림</Text>
+        <View style={s.leapNoticeBox}>
+          <Text>⚠️</Text>
+          <Text style={s.leapNoticeText}>윤년이 아닐 때는 2월 28일에 울려요</Text>
+        </View>
       )}
-      <Modal visible={showCal} transparent animationType="fade">
-        <TouchableOpacity
-          style={s.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowCal(false)}
-        >
-          <TouchableOpacity activeOpacity={1} style={s.modalContent}>
-            <CalendarPicker
-              value={sd}
-              onChange={setSd}
-              onClose={() => setShowCal(false)}
-            />
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
     </>
   );
 }

@@ -3,6 +3,8 @@ import React, {
 } from 'react';
 import { View, Text, FlatList, StyleSheet, Platform } from 'react-native';
 import { pad } from '../../utils';
+import { Palette } from '../../constants/colors';
+import { useColors } from '../../hooks/useTheme';
 
 export const PICK_H = 44;
 // 항목 수가 적은 picker(분 등)도 양방향 스크롤 버퍼가 충분하도록
@@ -12,6 +14,8 @@ const TARGET_MID_OFFSET = 48;
 export function ScrollPicker({
   value, items, onChange,
 }: { value: number; items: number[]; onChange: (v: number) => void }) {
+  const C = useColors();
+  const pick = useMemo(() => makeStyles(C), [C]);
   const flatRef        = useRef<FlatList>(null);
   const isScrolling    = useRef(false);
   const skipNextEffect = useRef(false);
@@ -86,7 +90,7 @@ export function ScrollPicker({
         {pad(item)}
       </Text>
     </View>
-  ), [value]);
+  ), [value, pick]);
 
   return (
     <View style={pick.wrap} onLayout={() => setLaid(true)}>
@@ -119,11 +123,13 @@ export function ScrollPicker({
   );
 }
 
-const pick = StyleSheet.create({
-  wrap:      { position: 'relative', width: 64, height: PICK_H * 3, overflow: 'hidden' },
-  highlight: { position: 'absolute', top: PICK_H, left: 4, right: 4, height: PICK_H, backgroundColor: '#e8e8e8', borderRadius: 12 },
-  item:      { width: 64, height: PICK_H, justifyContent: 'center', alignItems: 'center' },
-  num:       { fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontWeight: '900', includeFontPadding: false, textAlignVertical: 'center', width: '100%', height: PICK_H, textAlign: 'center' },
-  numSel:    { fontSize: 36, lineHeight: PICK_H, color: '#000', opacity: 1 },
-  numDim:    { fontSize: 20, lineHeight: PICK_H, color: '#000', opacity: 0.22 },
-});
+function makeStyles(C: Palette) {
+  return StyleSheet.create({
+    wrap:      { position: 'relative', width: 60, height: PICK_H * 3, overflow: 'hidden' },
+    highlight: { position: 'absolute', top: PICK_H, left: 4, right: 4, height: PICK_H, backgroundColor: C.bg3, borderRadius: 12 },
+    item:      { width: 60, height: PICK_H, justifyContent: 'center', alignItems: 'center' },
+    num:       { fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontWeight: '900', includeFontPadding: false, textAlignVertical: 'center', width: '100%', height: PICK_H, textAlign: 'center' },
+    numSel:    { fontSize: 32, lineHeight: PICK_H, color: C.txt, opacity: 1 },
+    numDim:    { fontSize: 17, lineHeight: PICK_H, color: C.txt3, opacity: 0.45 },
+  });
+}

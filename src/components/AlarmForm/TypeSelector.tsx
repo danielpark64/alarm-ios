@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { TYPES, Alarm } from '../../constants';
-import { s } from './styles';
+import { useColors } from '../../hooks/useTheme';
+import { makeStyles } from './styles';
 
 interface Props {
   typeId: Alarm['typeId'];
@@ -9,23 +10,29 @@ interface Props {
 }
 
 export function TypeSelector({ typeId, onChange }: Props) {
+  const C = useColors();
+  const s = makeStyles(C);
   return (
     <View style={[s.typeGrid, { marginTop: 4 }]}>
-      {TYPES.map(t => (
-        <TouchableOpacity
-          key={t.id}
-          style={[
-            s.typeBtn,
-            { borderColor: t.color },
-            typeId === t.id && { backgroundColor: t.color, borderColor: t.color },
-          ]}
-          onPress={() => onChange(t.id)}
-        >
-          <Text style={[s.typeBtnLabel, { color: t.color }, typeId === t.id && { color: '#fff' }]}>
-            {t.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
+      {TYPES.map(t => {
+        const active = typeId === t.id;
+        return (
+          <TouchableOpacity
+            key={t.id}
+            style={[
+              s.typeBtn,
+              { borderColor: active ? t.color : t.color + '40' },
+              active && { backgroundColor: t.color },
+            ]}
+            onPress={() => onChange(t.id)}
+          >
+            <Text style={[s.typeBtnIcon, !active && { opacity: 0.6 }]}>{t.icon}</Text>
+            <Text style={[s.typeBtnLabel, { color: active ? '#fff' : C.txt3 }]}>
+              {t.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }

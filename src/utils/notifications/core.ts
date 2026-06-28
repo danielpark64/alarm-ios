@@ -3,6 +3,7 @@ import { Alarm } from '../../constants';
 import { getType, pad, getNextFireDate } from '../index';
 import { scheduleNative } from './android';
 import { weekdaySlotId, mainNativeId } from './alarmIds';
+import { getAlarmDefaults } from '../../hooks/useAlarmDefaults';
 
 function getVibrationPattern(vib: string): number[] | undefined {
   if (vib === 'none') return undefined;
@@ -33,6 +34,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: str
   const bodyText = `${pad(alarm.hour)}:${pad(alarm.min)} 알람`;
   const soundOn  = alarm.snd === 'default';
   const vibOn    = alarm.vib === 'pulse';
+  const volume   = getAlarmDefaults().volume;
 
   const baseContent: Notifications.NotificationContentInput = {
     title, body: bodyText,
@@ -52,7 +54,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: str
         content: baseContent,
         trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: iw(d), hour: alarm.hour, minute: alarm.min },
       });
-      scheduleNative(weekdaySlotId(alarm.id, d), nextJsWeekday(alarm.hour, alarm.min, appDayToJs(d)), title, bodyText, 'weekly', alarm.hour, alarm.min, appDayToCalendar(d), soundOn, vibOn);
+      scheduleNative(weekdaySlotId(alarm.id, d), nextJsWeekday(alarm.hour, alarm.min, appDayToJs(d)), title, bodyText, 'weekly', alarm.hour, alarm.min, appDayToCalendar(d), soundOn, vibOn, volume);
     }
     return;
   }
@@ -78,6 +80,23 @@ export async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: str
       const d = Math.round((date.getTime() - s.getTime()) / 86400000);
       const p = (alarm.cd || 2) + (alarm.rd || 1);
       fires = d >= 0 && (d % p) < (alarm.cd || 2);
+    } else if (alarm.rm === 'monthly') {
+      if (alarm.lastDay) {
+        const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth()+1, 0).getDate();
+        fires = date.getDate() === lastDayOfMonth;
+      } else {
+        const sdDay = alarm.sd ? parseInt(alarm.sd.split('-')[2]) : 1;
+        fires = date.getDate() === sdDay;
+      }
+    } else if (alarm.rm === 'yearly' && alarm.sd) {
+      const [, sdM, sdD] = alarm.sd.split('-').map(Number);
+      if (sdM === 2 && sdD === 29) {
+        const y = date.getFullYear();
+        const isLeap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+        fires = date.getMonth() === 1 && date.getDate() === (isLeap ? 29 : 28);
+      } else {
+        fires = date.getMonth() === sdM - 1 && date.getDate() === sdD;
+      }
     }
     if (!fires) continue;
     await Notifications.scheduleNotificationAsync({
@@ -85,7 +104,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: str
       content: baseContent,
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: ft },
     });
-    scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', alarm.hour, alarm.min, -1, soundOn, vibOn);
+    scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', alarm.hour, alarm.min, -1, soundOn, vibOn, volume);
     nativeIdx++;
     if (alarm.rm === 'once') break;
   }

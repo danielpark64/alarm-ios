@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { DAYS } from '../../constants';
-import { s } from './styles';
+import { useColors } from '../../hooks/useTheme';
+import { makeStyles } from './styles';
 
 interface Props {
   days: number[];
@@ -10,6 +11,8 @@ interface Props {
 }
 
 export function DayOfWeekSelector({ days, setDays, toggleDay }: Props) {
+  const C = useColors();
+  const s = makeStyles(C);
   return (
     <View style={{ marginTop: 18, gap: 8 }}>
       <View style={s.optDivider}>
@@ -42,7 +45,7 @@ export function DayOfWeekSelector({ days, setDays, toggleDay }: Props) {
             style={[s.dayBtn, days.includes(i) && s.dayBtnActive]}
             onPress={() => toggleDay(i)}
           >
-            <Text style={[s.dayText, { color: days.includes(i) ? '#fff' : '#555' }]}>{d}</Text>
+            <Text style={[s.dayText, { color: days.includes(i) ? '#fff' : C.txt3 }]}>{d}</Text>
           </TouchableOpacity>
         ))}
       </View>

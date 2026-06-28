@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { DAYS } from '../../constants';
 import { pad, todayStr } from '../../utils';
+import { Palette } from '../../constants/colors';
+import { useColors } from '../../hooks/useTheme';
 
 // ─── 날짜 포맷 ────────────────────────────────────────────────────────────────
 export function fmtDisplayDate(s: string): string {
@@ -16,6 +18,8 @@ export function fmtDisplayDate(s: string): string {
 export function CalendarPicker({
   value, onChange, onClose,
 }: { value: string; onChange: (s: string) => void; onClose: () => void }) {
+  const C = useColors();
+  const cal = makeStyles(C);
   const init = value ? new Date(value) : new Date();
   const [year,  setYear]  = useState(init.getFullYear());
   const [month, setMonth] = useState(init.getMonth());
@@ -49,7 +53,7 @@ export function CalendarPicker({
       <View style={cal.grid}>
         {DAYS.map((d, i) => (
           <View key={i} style={cal.headCell}>
-            <Text style={[cal.headText, i >= 5 && { color: '#e05555' }]}>{d}</Text>
+            <Text style={[cal.headText, i >= 5 && { color: '#e07070' }]}>{d}</Text>
           </View>
         ))}
         {cells.map((d, i) => {
@@ -68,10 +72,10 @@ export function CalendarPicker({
             >
               <Text style={[
                 cal.cellText,
-                dow >= 5 && { color: '#e05555' },
-                isPast && { color: '#ccc' },
-                isSel && { color: '#fff', fontWeight: '900' },
-                isToday && !isSel && { fontWeight: '900' },
+                dow >= 5 && { color: '#e07070' },
+                isPast && { color: C.border2 },
+                isSel && { color: C.txt, fontWeight: '900' },
+                isToday && !isSel && { fontWeight: '900', color: C.accent },
               ]}>{d}</Text>
             </TouchableOpacity>
           );
@@ -84,19 +88,21 @@ export function CalendarPicker({
   );
 }
 
-const cal = StyleSheet.create({
-  wrap:         { gap: 8 },
-  nav:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  navBtn:       { padding: 8 },
-  navArrow:     { fontSize: 24, color: '#444', fontWeight: '900' },
-  navTitle:     { fontSize: 16, fontWeight: '900', color: '#000' },
-  grid:         { flexDirection: 'row', flexWrap: 'wrap' },
-  headCell:     { width: '14.28%', alignItems: 'center', paddingVertical: 4 },
-  headText:     { fontSize: 12, fontWeight: '700', color: '#888' },
-  cell:         { width: '14.28%', alignItems: 'center', paddingVertical: 6 },
-  cellText:     { fontSize: 14, color: '#000' },
-  cellSel:      { backgroundColor: '#444', borderRadius: 99 },
-  cellToday:    { borderWidth: 1.5, borderColor: '#444', borderRadius: 99 },
-  todayBtn:     { marginTop: 12, padding: 12, backgroundColor: '#f0f0f0', borderRadius: 12, alignItems: 'center' },
-  todayBtnText: { fontSize: 14, fontWeight: '800', color: '#444' },
-});
+function makeStyles(C: Palette) {
+  return StyleSheet.create({
+    wrap:         { gap: 8 },
+    nav:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+    navBtn:       { padding: 8 },
+    navArrow:     { fontSize: 22, color: C.accent, fontWeight: '900' },
+    navTitle:     { fontSize: 15, fontWeight: '700', color: C.txt },
+    grid:         { flexDirection: 'row', flexWrap: 'wrap' },
+    headCell:     { width: '14.28%', alignItems: 'center', paddingVertical: 4 },
+    headText:     { fontSize: 11, fontWeight: '600', color: C.txt3 },
+    cell:         { width: '14.28%', alignItems: 'center', paddingVertical: 6 },
+    cellText:     { fontSize: 13, color: C.txt2, fontWeight: '500' },
+    cellSel:      { backgroundColor: C.accent2, borderRadius: 99 },
+    cellToday:    { borderWidth: 1.5, borderColor: C.accent2, borderRadius: 99 },
+    todayBtn:     { marginTop: 12, padding: 12, backgroundColor: C.accent2, borderRadius: 14, alignItems: 'center' },
+    todayBtnText: { fontSize: 14, fontWeight: '700', color: C.txt },
+  });
+}

@@ -1,11 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Alarm, DAYS } from '../../constants';
-import { C } from '../../constants/colors';
+import { Palette } from '../../constants/colors';
+import { useColors } from '../../hooks/useTheme';
 import { pad, todayStr, getType, alarmsForDate } from '../../utils';
 
 // 달력 화면
 export function CalendarView({ alarms, onEditAlarm }: { alarms: Alarm[]; onEditAlarm: (a: Alarm) => void }) {
+  const C = useColors();
+  const cv = makeStyles(C);
   const today = todayStr();
   const todayDate = new Date(today);
   const [year,  setYear]  = useState(todayDate.getFullYear());
@@ -89,18 +92,20 @@ export function CalendarView({ alarms, onEditAlarm }: { alarms: Alarm[]; onEditA
   );
 }
 
-const cv = StyleSheet.create({
-  nav:         { flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:14 },
-  navBtn:      { padding:10 },
-  navArrow:    { fontSize:28, color:C.txt, fontWeight:'900' },
-  navTitle:    { fontSize:18, fontWeight:'900', color:C.txt },
-  grid:        { flexDirection:'row', flexWrap:'wrap' },
-  headCell:    { width:'14.28%', alignItems:'center', paddingVertical:6 },
-  headText:    { fontSize:11, fontWeight:'700', color:C.txt3 },
-  cell:        { width:'14.28%', minHeight:72, padding:3, borderRadius:8, marginBottom:3 },
-  cellToday:   { backgroundColor:'rgba(162,155,254,0.12)', borderWidth:1, borderColor:C.accent },
-  dayNum:      { fontSize:13, fontWeight:'700', color:C.txt, marginBottom:2, textAlign:'center' },
-  dayNumToday: { color:C.accent, fontWeight:'900' },
-  alarmChip:   { fontSize:9, fontWeight:'700', color:C.accent2, backgroundColor:'rgba(108,92,231,0.18)', borderRadius:4, paddingHorizontal:3, paddingVertical:1, marginBottom:1 },
-  moreChip:    { fontSize:9, color:C.txt3, fontWeight:'700', textAlign:'center' },
-});
+function makeStyles(C: Palette) {
+  return StyleSheet.create({
+    nav:         { flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:14 },
+    navBtn:      { padding:10 },
+    navArrow:    { fontSize:28, color:C.txt, fontWeight:'900' },
+    navTitle:    { fontSize:18, fontWeight:'900', color:C.txt },
+    grid:        { flexDirection:'row', flexWrap:'wrap' },
+    headCell:    { width:'14.28%', alignItems:'center', paddingVertical:6 },
+    headText:    { fontSize:11, fontWeight:'700', color:C.txt3 },
+    cell:        { width:'14.28%', minHeight:72, padding:3, borderRadius:8, marginBottom:3 },
+    cellToday:   { backgroundColor:'rgba(162,155,254,0.12)', borderWidth:1, borderColor:C.accent },
+    dayNum:      { fontSize:13, fontWeight:'700', color:C.txt, marginBottom:2, textAlign:'center' },
+    dayNumToday: { color:C.accent, fontWeight:'900' },
+    alarmChip:   { fontSize:9, fontWeight:'700', color:C.accent2, backgroundColor:'rgba(108,92,231,0.18)', borderRadius:4, paddingHorizontal:3, paddingVertical:1, marginBottom:1 },
+    moreChip:    { fontSize:9, color:C.txt3, fontWeight:'700', textAlign:'center' },
+  });
+}
