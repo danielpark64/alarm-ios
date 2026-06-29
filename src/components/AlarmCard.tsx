@@ -1,6 +1,7 @@
 import React, { memo, useEffect, useRef } from 'react';
 import { Animated, Platform } from 'react-native';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from './common/AppText';
 import { Alarm } from '../constants';
 import { Palette } from '../constants/colors';
 import { useColors } from '../hooks/useTheme';

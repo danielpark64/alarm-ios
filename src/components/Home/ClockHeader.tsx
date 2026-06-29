@@ -1,5 +1,6 @@
 import React, { useState, useEffect, memo } from 'react';
-import { Text, Platform } from 'react-native';
+import { Platform } from 'react-native';
+import { Text } from '../common/AppText';
 import { pad } from '../../utils';
 import { useScale, rf } from '../../utils/responsive';
 import { useColors } from '../../hooks/useTheme';

@@ -6,9 +6,9 @@ export const DARK = {
 };
 
 export const LIGHT = {
-  bg:'#f3f3f9', bg2:'#ffffff', bg3:'#ececf6',
-  border:'#e2e2ee', border2:'#cfcfe2',
-  txt:'#16162a', txt2:'#33334d', txt3:'#73738f',
+  bg:'#e7e7f0', bg2:'#f2f2f8', bg3:'#dfdfeb',
+  border:'#d2d2e2', border2:'#bcbcd4',
+  txt:'#16162a', txt2:'#33334d', txt3:'#6a6a86',
   accent:'#7c6ff0', accent2:'#6c5ce7',
 };
 

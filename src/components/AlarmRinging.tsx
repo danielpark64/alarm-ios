@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Vibration, Platform } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Modal, Vibration, Platform } from 'react-native';
+import { Text } from './common/AppText';
 import * as Notifications from 'expo-notifications';
 import { SNOOZE_ENABLED } from '../constants';
 

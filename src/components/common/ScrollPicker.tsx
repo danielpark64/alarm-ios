@@ -1,7 +1,8 @@
 import React, {
   useState, useRef, useEffect, useMemo, useCallback,
 } from 'react';
-import { View, Text, FlatList, StyleSheet, Platform } from 'react-native';
+import { View, FlatList, StyleSheet, Platform } from 'react-native';
+import { Text } from './AppText';
 import { pad } from '../../utils';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';

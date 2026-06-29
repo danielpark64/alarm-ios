@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, Alert,
+  View, TextInput, TouchableOpacity, Alert,
   StyleSheet, StatusBar, Platform,
 } from 'react-native';
+import { Text } from '../src/components/common/AppText';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
@@ -21,13 +22,11 @@ import { nextAlarmText, getRepLimitedIds } from '../src/utils';
 import { Alarm } from '../src/constants';
 import { Palette } from '../src/constants/colors';
 import { useColors, useThemeSetting } from '../src/hooks/useTheme';
-import { useAlarmDefaults } from '../src/hooks/useAlarmDefaults';
 
 export default function App() {
   const insets = useSafeAreaInsets();
   const C = useColors();
   const { theme } = useThemeSetting();
-  const { defaults: alarmDefaults } = useAlarmDefaults();
   const s = makeStyles(C);
   const { alarms, loaded, addAlarm, updateAlarm, deleteAlarms, toggleAlarm } = useAlarms();
   const { notifGranted, requestPermission, overlayGranted, requestOverlayPermission, tick, ringing, stopRinging, snoozeRinging } = useAlarmNotifications(alarms, updateAlarm);
@@ -256,7 +255,7 @@ export default function App() {
           {tab==='add' && (
             <AlarmForm
               ref={addFormRef}
-              initial={{typeId:'commute',hour:8,min:0,rm:'weekdays',days:[],cd:3,rd:1,snd:alarmDefaults.snd,vib:alarmDefaults.vib}}
+              initial={{typeId:'commute',hour:8,min:0,rm:'weekdays',days:[],cd:3,rd:1,snd:'default',vib:'pulse'}}
               onSubmit={async data=>{
                 const created = await addAlarm(data);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

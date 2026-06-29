@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from '../common/AppText';
 import { Alarm, DAYS } from '../../constants';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';

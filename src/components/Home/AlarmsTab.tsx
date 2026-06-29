@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from '../common/AppText';
 import * as Haptics from 'expo-haptics';
 import { AlarmCard } from '../AlarmCard';
 import { PromoBanner } from './PromoBanner';

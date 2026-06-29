@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Linking, StyleSheet, Alert, ScrollView, NativeSyntheticEvent, NativeScrollEvent, LayoutChangeEvent } from 'react-native';
+import { View, TouchableOpacity, Linking, StyleSheet, Alert, ScrollView, NativeSyntheticEvent, NativeScrollEvent, LayoutChangeEvent } from 'react-native';
+import { Text } from '../common/AppText';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
 import { useScale, rf } from '../../utils/responsive';

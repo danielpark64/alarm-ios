@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform, StyleSheet } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Platform, StyleSheet } from 'react-native';
+import { Text } from '../common/AppText';
 import Slider from '@react-native-community/slider';
 import Constants from 'expo-constants';
 import { Palette } from '../../constants/colors';
@@ -59,10 +60,10 @@ export function SettingsView({ onStartTutorial }: Props) {
         </View>
       </View>
 
-      <Text style={s.sectionLabel}>알람 기본값</Text>
-      <View style={s.card}>
-        {Platform.OS === 'android' && (
-          <>
+      {Platform.OS === 'android' && (
+        <>
+          <Text style={s.sectionLabel}>알람 기본값</Text>
+          <View style={s.card}>
             <View style={{ paddingVertical: 13, paddingHorizontal: 14 }}>
               <View style={s.volumeHeadRow}>
                 <Text style={s.rowLabel}>알람 볼륨</Text>
@@ -84,29 +85,9 @@ export function SettingsView({ onStartTutorial }: Props) {
                 <Text style={s.volumeIcon}>🔊</Text>
               </View>
             </View>
-            <View style={s.divider} />
-          </>
-        )}
-        <View style={s.row}>
-          <Text style={s.rowLabel}>기본 소리</Text>
-          <TouchableOpacity
-            style={[s.toggle, defaults.snd === 'default' && s.toggleOn]}
-            onPress={() => setDefaults({ snd: defaults.snd === 'default' ? 'none' : 'default' })}
-          >
-            <View style={[s.thumb, defaults.snd === 'default' && s.thumbOn]} />
-          </TouchableOpacity>
-        </View>
-        <View style={s.divider} />
-        <View style={s.row}>
-          <Text style={s.rowLabel}>기본 진동</Text>
-          <TouchableOpacity
-            style={[s.toggle, defaults.vib === 'pulse' && s.toggleOn]}
-            onPress={() => setDefaults({ vib: defaults.vib === 'pulse' ? 'none' : 'pulse' })}
-          >
-            <View style={[s.thumb, defaults.vib === 'pulse' && s.thumbOn]} />
-          </TouchableOpacity>
-        </View>
-      </View>
+          </View>
+        </>
+      )}
 
       <TouchableOpacity
         style={s.tutorialBanner}
@@ -151,10 +132,6 @@ function makeStyles(C: Palette) {
     volumeHeadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
     volumeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     volumeIcon: { fontSize: 13 },
-    toggle: { width: 46, height: 28, borderRadius: 14, justifyContent: 'center', paddingHorizontal: 2, backgroundColor: C.bg3, borderWidth: 1.5, borderColor: C.border2 },
-    toggleOn: { backgroundColor: C.accent2, borderColor: C.accent2 },
-    thumb: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', alignSelf: 'flex-start' },
-    thumbOn: { alignSelf: 'flex-end' },
     tutorialBanner: { flexDirection: 'row', alignItems: 'center', marginTop: 14, padding: 12, borderRadius: 14, backgroundColor: 'rgba(162,155,254,0.10)', borderWidth: 1, borderColor: 'rgba(162,155,254,0.3)' },
     tutorialIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(162,155,254,0.18)', marginRight: 12 },
     tutorialIconT: { fontSize: 17 },

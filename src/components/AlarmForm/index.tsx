@@ -1,5 +1,6 @@
 import React, { forwardRef, useImperativeHandle, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { View, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { Text } from '../common/AppText';
 import { Alarm } from '../../constants';
 import { useColors } from '../../hooks/useTheme';
 import { useAlarmFormState } from '../../hooks/useAlarmFormState';

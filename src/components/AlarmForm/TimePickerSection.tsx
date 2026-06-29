@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import { Text } from '../common/AppText';
 import { VibIcon } from '../VibIcon';
 import { ScrollPicker } from '../common/ScrollPicker';
 import { useColors } from '../../hooks/useTheme';

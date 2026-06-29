@@ -1,16 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SoundMode, VibMode } from '../constants';
 
 const KEY = 'alarm_defaults_v1';
 
 export interface AlarmDefaults {
-  snd: SoundMode;
-  vib: VibMode;
   volume: number; // 0~1, Android 알람 최대 볼륨
 }
 
-const DEFAULTS: AlarmDefaults = { snd: 'default', vib: 'pulse', volume: 1 };
+const DEFAULTS: AlarmDefaults = { volume: 1 };
 
 // core.ts 등 React 트리 밖 코드(네이티브 알람 예약)에서도 최신 볼륨값을 동기적으로 읽을 수 있도록 캐시
 let cached: AlarmDefaults = DEFAULTS;

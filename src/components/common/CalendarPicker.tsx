@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from './AppText';
 import { DAYS } from '../../constants';
 import { pad, todayStr } from '../../utils';
 import { Palette } from '../../constants/colors';
