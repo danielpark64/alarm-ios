@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform, StyleSheet, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Platform, StyleSheet } from 'react-native';
 import Slider from '@react-native-community/slider';
 import Constants from 'expo-constants';
 import { Palette } from '../../constants/colors';
@@ -13,7 +13,11 @@ const FONT_SCALES: { id: FontScaleName; label: string }[] = [
   { id: 'large',  label: '크게' },
 ];
 
-export function SettingsView() {
+interface Props {
+  onStartTutorial?: () => void;
+}
+
+export function SettingsView({ onStartTutorial }: Props) {
   const C = useColors();
   const s = makeStyles(C);
   const { theme, setTheme } = useThemeSetting();
@@ -107,11 +111,11 @@ export function SettingsView() {
       <TouchableOpacity
         style={s.tutorialBanner}
         activeOpacity={0.8}
-        onPress={() => Alert.alert('준비 중', '알람 만들기 튜토리얼은 곧 추가될 예정이에요.')}
+        onPress={onStartTutorial}
       >
         <View style={s.tutorialIcon}><Text style={s.tutorialIconT}>🔁</Text></View>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={s.tutorialTitle}>N일 주기 알람 튜토리얼</Text>
+          <Text style={s.tutorialTitle}>N일 주기 알람 추가 따라하기</Text>
           <Text style={s.tutorialSub}>화면을 직접 보며 따라 만들어요</Text>
         </View>
         <Text style={s.tutorialArrow}>›</Text>

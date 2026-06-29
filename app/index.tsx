@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, Alert,
+  View, Text, TextInput, TouchableOpacity, Alert,
   StyleSheet, StatusBar, Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { useAlarms } from '../src/hooks/useAlarms';
 import { useAlarmNotifications } from '../src/hooks/useAlarmNotifications';
@@ -15,6 +16,7 @@ import { SettingsView } from '../src/components/Home/SettingsView';
 import { BottomNav, HomeTab } from '../src/components/Home/BottomNav';
 import { AlarmForm, AlarmFormHandle } from '../src/components/AlarmForm';
 import { AlarmRinging } from '../src/components/AlarmRinging';
+import { CycleAlarmTutorial, SpotlightRect } from '../src/components/Tutorial/CycleAlarmTutorial';
 import { nextAlarmText, getRepLimitedIds } from '../src/utils';
 import { Alarm } from '../src/constants';
 import { Palette } from '../src/constants/colors';
@@ -35,6 +37,66 @@ export default function App() {
   const [editTypeId, setEditTypeId] = useState<string>('commute');
   const editFormRef = useRef<AlarmFormHandle>(null);
   const [highlightId, setHighlightId] = useState<number|null>(null);
+  const [tutorialStep, setTutorialStep] = useState<number|null>(null);
+  const [spotlightRect, setSpotlightRect] = useState<SpotlightRect|null>(null);
+  const tutorialTypeRef = useRef<View>(null);
+  const tutorialTimeRef = useRef<View>(null);
+  const tutorialLabelRef = useRef<TextInput>(null);
+  const tutorialCycleRef = useRef<View>(null);
+  const tutorialPresetRef = useRef<View>(null);
+  const tutorialDateChipRef = useRef<View>(null);
+  const tutorialInfoBoxRef = useRef<View>(null);
+  const tutorialAddBtnRef = useRef<View>(null);
+  const tutorialDeleteBtnRef = useRef<View>(null);
+  const addFormRef = useRef<AlarmFormHandle>(null);
+
+  // 1~7: 추가 폼 스크롤 영역, 8: 추가 폼 상단바(스크롤 불필요), 9: 추가 직후 열리는 수정 화면의 삭제 버튼
+  const TUTORIAL_TARGETS: Record<number, React.RefObject<any>> = {
+    1: tutorialTypeRef, 2: tutorialTimeRef, 3: tutorialLabelRef, 4: tutorialCycleRef,
+    5: tutorialPresetRef, 6: tutorialDateChipRef, 7: tutorialInfoBoxRef, 8: tutorialAddBtnRef,
+    9: tutorialDeleteBtnRef,
+  };
+  const TUTORIAL_LAST_STEP = 10;
+
+  const exitTutorial = () => {
+    setTutorialStep(null);
+    setSpotlightRect(null);
+    setEditAlarm(null);
+    setTab('alarms');
+  };
+
+  const handleTutorialAdvance = () => {
+    if (tutorialStep === 0) { setTab('add'); setTutorialStep(1); return; }
+    if (tutorialStep === TUTORIAL_LAST_STEP) { setTutorialStep(null); setEditAlarm(null); return; }
+    if (tutorialStep !== null && tutorialStep < TUTORIAL_LAST_STEP) setTutorialStep(tutorialStep + 1);
+  };
+
+  // 4단계(반복방식)는 "다음"으로 건너뛸 수 없게 하고, 실제로 "N일 주기"를 선택해야만 다음 단계로 진행
+  // — 건너뛰면 5~7단계가 가리켜야 할 일수/시작일자 UI가 아직 화면에 없어 멈춘 것처럼 보이는 문제 방지
+  const handleTutorialRmChange = (rm: string) => {
+    if (tutorialStep === 4 && rm === 'cycle') setTutorialStep(5);
+  };
+
+  // 6단계(시작일자)도 "다음"으로 건너뛸 수 없게 하고, 실제로 캘린더에서 날짜를 선택/확인해야 다음 단계로 진행
+  const handleTutorialCalendarClose = () => {
+    if (tutorialStep === 6) setTutorialStep(7);
+  };
+
+  // 단계가 바뀔 때마다 가리킬 실제 버튼의 화면상 위치를 측정 — 레이아웃이 막 바뀐 직후라 한 프레임 늦춰서 측정
+  useEffect(() => {
+    const targetRef = tutorialStep !== null ? TUTORIAL_TARGETS[tutorialStep] : undefined;
+    if (!targetRef) { setSpotlightRect(null); return; }
+    // 추가 버튼(8)은 스크롤 영역 밖 상단바에 고정돼 있어 스크롤이 필요 없음. 9단계는 수정 화면(editFormRef) 스크롤 영역
+    const scrollFormRef = tutorialStep === 9 ? editFormRef : addFormRef;
+    if (tutorialStep !== 8) scrollFormRef.current?.scrollTargetIntoView(targetRef);
+    const measure = () => targetRef.current?.measureInWindow((x: number, y: number, width: number, height: number) => {
+      if (width > 0 && height > 0) setSpotlightRect({ x, y, width, height });
+    });
+    // 탭 전환/모드 전환/스크롤 직후라 네이티브 레이아웃이 아직 안 끝났을 수 있어 두 번 측정 (늦은 값으로 덮어씀)
+    const t1 = setTimeout(measure, 150);
+    const t2 = setTimeout(measure, 450);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [tutorialStep, tab]);
 
   const showOverlayPrompt = () => Alert.alert(
     '표시 권한 설정 방법',
@@ -49,6 +111,25 @@ export default function App() {
   useEffect(() => {
     if (!overlayGranted) showOverlayPrompt();
   }, [overlayGranted]);
+
+  // 앱을 처음 설치하고 켰을 때만 한 번 튜토리얼을 권유 (설정 배너만으로는 발견하기 어려움)
+  const TUTORIAL_PROMPT_KEY = '@tutorial_prompt_shown';
+  useEffect(() => {
+    if (!loaded) return;
+    (async () => {
+      const seen = await AsyncStorage.getItem(TUTORIAL_PROMPT_KEY);
+      if (seen) return;
+      await AsyncStorage.setItem(TUTORIAL_PROMPT_KEY, '1');
+      Alert.alert(
+        '처음이시군요!',
+        '주기 알람 따라하기를 해볼까요?\n(설정에서 언제든 보실 수 있습니다)',
+        [
+          { text: '나중에', style: 'cancel' },
+          { text: '네', onPress: () => setTutorialStep(0) },
+        ],
+      );
+    })();
+  }, [loaded]);
 
   const handleDeleteSelected = () => {
     if (!selectedIds.size) return;
@@ -66,7 +147,8 @@ export default function App() {
       { text:'취소', style:'cancel' },
       { text:'삭제', style:'destructive', onPress: async () => {
         await deleteAlarms(new Set([id]));
-        setEditAlarm(null);
+        if (tutorialStep !== null) exitTutorial();
+        else setEditAlarm(null);
       }},
     ]);
   };
@@ -96,6 +178,7 @@ export default function App() {
     return <View style={s.loading}><Text style={s.loadingT}>⏰</Text></View>;
 
   return (
+    <>
     <SafeAreaView style={s.root} edges={['top']}>
       <StatusBar barStyle={theme === 'light' ? 'dark-content' : 'light-content'} backgroundColor={C.bg}/>
 
@@ -137,9 +220,10 @@ export default function App() {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setEditAlarm(null);
           }}
-          onCancel={handleEditClose}
+          onCancel={tutorialStep !== null ? exitTutorial : handleEditClose}
           onDelete={() => handleDeleteOne(editAlarm.id)}
           onTypeChange={setEditTypeId}
+          deleteBtnRef={tutorialStep !== null ? tutorialDeleteBtnRef : undefined}
         />
       ) : (
         <>
@@ -167,17 +251,33 @@ export default function App() {
               setTimeout(() => setHighlightId(null), 5000);
             }}/>}
 
-          {tab==='settings' && <SettingsView />}
+          {tab==='settings' && <SettingsView onStartTutorial={() => setTutorialStep(0)} />}
 
           {tab==='add' && (
             <AlarmForm
-              initial={{typeId:'commute',hour:8,min:0,rm:'weekdays',days:[],cd:2,rd:1,snd:alarmDefaults.snd,vib:alarmDefaults.vib}}
+              ref={addFormRef}
+              initial={{typeId:'commute',hour:8,min:0,rm:'weekdays',days:[],cd:3,rd:1,snd:alarmDefaults.snd,vib:alarmDefaults.vib}}
               onSubmit={async data=>{
-                await addAlarm(data);
+                const created = await addAlarm(data);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 setTab('alarms');
+                if (tutorialStep !== null) {
+                  setEditAlarm(created);
+                  setEditTypeId(created.typeId ?? 'commute');
+                  setTutorialStep(9);
+                }
               }}
-              onCancel={()=>setTab('alarms')}
+              onCancel={() => tutorialStep !== null ? exitTutorial() : setTab('alarms')}
+              onRmChange={tutorialStep !== null ? handleTutorialRmChange : undefined}
+              onCalendarClose={tutorialStep !== null ? handleTutorialCalendarClose : undefined}
+              typeRef={tutorialTypeRef}
+              timeRef={tutorialTimeRef}
+              labelRef={tutorialLabelRef}
+              cycleRef={tutorialCycleRef}
+              presetRef={tutorialPresetRef}
+              dateChipRef={tutorialDateChipRef}
+              infoBoxRef={tutorialInfoBoxRef}
+              addBtnRef={tutorialAddBtnRef}
             />
           )}
         </>
@@ -197,6 +297,16 @@ export default function App() {
 
       <BottomNav tab={tab} setTab={setTab} bottomInset={insets.bottom} />
     </SafeAreaView>
+
+    {tutorialStep !== null && (
+      <CycleAlarmTutorial
+        step={tutorialStep}
+        rect={spotlightRect}
+        onAdvance={handleTutorialAdvance}
+        onSkip={exitTutorial}
+      />
+    )}
+    </>
   );
 }
 

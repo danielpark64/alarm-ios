@@ -12,6 +12,9 @@ interface Props {
   setRd: (v: number) => void;
   sd: string;
   setShowCal: (v: boolean) => void;
+  presetRef?: React.Ref<View>;
+  dateChipRef?: React.Ref<View>;
+  infoBoxRef?: React.Ref<View>;
 }
 
 function addDaysMD(sd: string, n: number): string {
@@ -21,7 +24,7 @@ function addDaysMD(sd: string, n: number): string {
   return `${dt.getMonth() + 1}/${dt.getDate()}`;
 }
 
-export function CycleRestControls({ rm, cd, setCd, rd, setRd, sd, setShowCal }: Props) {
+export function CycleRestControls({ rm, cd, setCd, rd, setRd, sd, setShowCal, presetRef, dateChipRef, infoBoxRef }: Props) {
   const s = makeStyles(useColors());
   const [, m, d] = sd.split('-').map(Number);
 
@@ -29,7 +32,7 @@ export function CycleRestControls({ rm, cd, setCd, rd, setRd, sd, setShowCal }: 
     <View style={s.cycleBox}>
       <View style={s.cycleDateRow}>
         <Text style={s.cycleDateLabel}>{rm === 'rest' ? '근무 시작일' : '오늘부터 며칠마다?'}</Text>
-        <TouchableOpacity style={s.cycleDateChip} onPress={() => setShowCal(true)}>
+        <TouchableOpacity ref={dateChipRef} style={s.cycleDateChip} onPress={() => setShowCal(true)}>
           <Text>📅</Text>
           <Text style={s.cycleDateChipText}>{m}/{d} 시작</Text>
         </TouchableOpacity>
@@ -47,7 +50,7 @@ export function CycleRestControls({ rm, cd, setCd, rd, setRd, sd, setShowCal }: 
           <Text style={s.stepBtnText}>＋</Text>
         </TouchableOpacity>
       </View>
-      <View style={s.presetRow}>
+      <View style={s.presetRow} ref={rm === 'cycle' ? presetRef : undefined}>
         {(rm === 'cycle' ? CYCLE_PRESETS : [1, 2, 3, 4, 5, 6, 7]).map(n => (
           <TouchableOpacity
             key={n}
@@ -81,7 +84,7 @@ export function CycleRestControls({ rm, cd, setCd, rd, setRd, sd, setShowCal }: 
       )}
 
       {rm === 'cycle' && (
-        <View style={s.cycleInfoBox}>
+        <View ref={infoBoxRef} style={s.cycleInfoBox}>
           <Text style={s.cycleInfo}>
             다음: {[0, cd, cd * 2, cd * 3].map(n => addDaysMD(sd, n)).join(' · ')}
           </Text>

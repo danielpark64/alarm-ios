@@ -7,13 +7,14 @@ import { makeStyles } from './styles';
 interface Props {
   typeId: Alarm['typeId'];
   onChange: (typeId: Alarm['typeId']) => void;
+  gridRef?: React.Ref<View>;
 }
 
-export function TypeSelector({ typeId, onChange }: Props) {
+export function TypeSelector({ typeId, onChange, gridRef }: Props) {
   const C = useColors();
   const s = makeStyles(C);
   return (
-    <View style={[s.typeGrid, { marginTop: 4 }]}>
+    <View ref={gridRef} style={[s.typeGrid, { marginTop: 4 }]}>
       {TYPES.map(t => {
         const active = typeId === t.id;
         return (

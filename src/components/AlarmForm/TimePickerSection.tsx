@@ -15,9 +15,10 @@ interface Props {
   setMin: (v: number) => void;
   sndVibMode: string;
   setSndVibMode: (mode: 'both' | 'snd' | 'vib') => void;
+  pickerRef?: React.Ref<View>;
 }
 
-export function TimePickerSection({ hour, setHour, min, setMin, sndVibMode, setSndVibMode }: Props) {
+export function TimePickerSection({ hour, setHour, min, setMin, sndVibMode, setSndVibMode, pickerRef }: Props) {
   const C = useColors();
   const s = makeStyles(C);
   const SND_VIB_OPTS: { mode: 'both'|'snd'|'vib'; label: string; renderIcon: () => React.ReactNode }[] = [
@@ -30,7 +31,7 @@ export function TimePickerSection({ hour, setHour, min, setMin, sndVibMode, setS
     <>
       <Text style={s.sLabel}>시간</Text>
       <View style={s.timeRow}>
-        <View style={s.timePickerSide}>
+        <View ref={pickerRef} style={s.timePickerSide}>
           <View style={s.timeStepper}>
             <ScrollPicker value={hour} items={HOURS} onChange={setHour} />
           </View>

@@ -5,10 +5,8 @@ import { todayStr } from '../utils';
 import { rescheduleAll } from '../utils/notifications';
 
 const KEY = 'alarms_v1_rn';
-const DEFAULT: Alarm[] = [
-  { id:1, typeId:'commute', hour:8,  min:0, label:'출근', rm:'wdcustom', days:[0,1,2,3,4], cd:1, rd:1, snd:'default', vib:'pulse', sd:todayStr(), active:true },
-  { id:2, typeId:'offwork', hour:18, min:0, label:'퇴근', rm:'wdcustom', days:[0,1,2,3,4], cd:1, rd:1, snd:'default', vib:'pulse', sd:todayStr(), active:true },
-];
+// 처음 설치 시에는 알람 없이 시작 — 첫 알람은 "따라하기" 튜토리얼에서 직접 만들도록 유도
+const DEFAULT: Alarm[] = [];
 
 // daily/weekdays/weekends → wdcustom 마이그레이션
 function migrateAlarm(a: Alarm): Alarm {
@@ -52,6 +50,7 @@ export function useAlarms() {
     const a: Alarm = { ...data, id: nextId, active: true };
     const next = [...alarms, a]; const nid = nextId + 1;
     setAlarms(next); setNextId(nid); await save(next, nid); await rescheduleAll(next);
+    return a;
   }, [alarms, nextId, save]);
 
   const updateAlarm = useCallback(async (id: number, data: Partial<Alarm>) => {

@@ -7,16 +7,17 @@ import { makeStyles } from './styles';
 interface Props {
   rm: string;
   setRm: (id: string) => void;
+  cycleRef?: React.Ref<View>;
 }
 
 const PRIMARY = [
-  { id: 'cycle', icon: '🔁', label: 'N일 주기', hint: '예: 2일마다' },
+  { id: 'cycle', icon: '🔁', label: 'N일 주기', hint: '예: 3일마다' },
   { id: 'rest',  icon: '🌙', label: 'N일 후 휴식', hint: '예: 4일 근무 2일 휴식' },
 ] as const;
 
 const SECONDARY_ORDER = ['wdcustom', 'monthly', 'yearly', 'once'];
 
-export function RepeatModeSelector({ rm, setRm }: Props) {
+export function RepeatModeSelector({ rm, setRm, cycleRef }: Props) {
   const s = makeStyles(useColors());
   const secondary = SECONDARY_ORDER
     .map(id => REPEAT.find(r => r.id === id))
@@ -32,6 +33,7 @@ export function RepeatModeSelector({ rm, setRm }: Props) {
           return (
             <TouchableOpacity
               key={p.id}
+              ref={p.id === 'cycle' ? cycleRef : undefined}
               style={[s.repeatPrimaryCard, active && s.repeatPrimaryActive]}
               onPress={() => setRm(p.id)}
             >

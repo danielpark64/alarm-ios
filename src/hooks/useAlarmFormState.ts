@@ -22,6 +22,8 @@ export function useAlarmFormState(
   initial: Partial<Alarm>,
   onSubmit: (data: Omit<Alarm, 'id' | 'active'>) => void,
   onTypeChange?: (typeId: string) => void,
+  onRmChange?: (rm: string) => void,
+  onCalendarClose?: () => void,
 ) {
   const [typeId,   setTypeId]  = useState(initial.typeId  ?? 'commute');
   const [hour,     setHour]    = useState(initial.hour    ?? 7);
@@ -43,6 +45,23 @@ export function useAlarmFormState(
   const [showCal,  setShowCal] = useState(false);
 
   useEffect(() => { onTypeChange?.(typeId); }, [typeId]);
+  useEffect(() => { onRmChange?.(rm); }, [rm]);
+  // cd/rd는 N일 주기·N일 후 휴식이 공유하는 값 — 새 알람에서 모드를 처음 전환할 때만 각 모드의 예시값으로 맞춰줌
+  // (수정 중인 기존 알람은 저장된 값을 그대로 유지해야 하므로 제외)
+  const prevRm = useRef(rm);
+  useEffect(() => {
+    if (initial.id == null && rm !== prevRm.current) {
+      if (rm === 'rest' && prevRm.current !== 'rest') { setCd(4); setRd(2); }
+      else if (rm === 'cycle' && prevRm.current !== 'cycle') { setCd(3); setRd(1); }
+    }
+    prevRm.current = rm;
+  }, [rm]);
+  // 캘린더 모달이 닫힐 때(날짜를 실제로 선택/확인) 알림 — 시작일자를 직접 선택했는지 감지하는 용도
+  const prevShowCal = useRef(showCal);
+  useEffect(() => {
+    if (prevShowCal.current && !showCal) onCalendarClose?.();
+    prevShowCal.current = showCal;
+  }, [showCal]);
 
   const type = getType(typeId);
 

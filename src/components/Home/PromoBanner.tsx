@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Linking, StyleSheet, Alert } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, Linking, StyleSheet, Alert, ScrollView, NativeSyntheticEvent, NativeScrollEvent, LayoutChangeEvent } from 'react-native';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
 import { useScale, rf } from '../../utils/responsive';
@@ -29,36 +29,92 @@ const SLIDES = [
   },
 ] as const;
 
-// 알람 탭 하단 배너 — 수수뮤직/커피후원 슬라이드를 자동 롤링 (모든 플랫폼)
+// 알람 탭 하단 배너 — 수수뮤직/커피후원 슬라이드를 자동 롤링 + 사용자가 직접 밀어서도 전환 가능 (모든 플랫폼)
+// 양쪽 끝에 첫/마지막 슬라이드의 복제본을 추가해 두고, 경계에 닿으면 애니메이션 없이
+// 반대쪽 실제 슬라이드로 순간 이동시켜서 어느 방향으로 밀어도 끊김 없이 무한 순환되도록 함.
+// 슬라이드가 나중에 늘어나도 그대로 동작하는 일반적인 구현.
 export function PromoBanner() {
   const scale = useScale();
   const C = useColors();
   const s = makeStyles(C);
   const slides = SLIDES;
-  const [idx, setIdx] = useState(0);
+  const count = slides.length;
+  const extended = count > 1 ? [slides[count - 1], ...slides, slides[0]] : slides;
+  const [width, setWidth] = useState(0);
+  const [dotIdx, setDotIdx] = useState(0);
+  const posRef = useRef(1); // extended 배열 기준 위치, 실제 슬라이드는 1..count
+  const scrollRef = useRef<ScrollView>(null);
 
+  const handleLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
+
+  // 레이아웃 측정 직후, 실제 첫 슬라이드(복제본 다음 위치)로 애니메이션 없이 이동
   useEffect(() => {
-    if (slides.length < 2) return;
-    const t = setInterval(() => setIdx(i => (i + 1) % slides.length), ROTATE_MS);
-    return () => clearInterval(t);
-  }, [slides.length]);
+    if (width > 0 && count > 1) {
+      scrollRef.current?.scrollTo({ x: width * posRef.current, animated: false });
+    }
+  }, [width, count]);
 
-  const slide = slides[idx];
+  // 5초마다 자동 롤링 — 사용자가 직접 밀어서 dotIdx가 바뀌어도 이 effect가 재시작되며 타이머가 리셋됨
+  useEffect(() => {
+    if (count < 2 || !width) return;
+    const t = setInterval(() => {
+      posRef.current += 1;
+      scrollRef.current?.scrollTo({ x: width * posRef.current, animated: true });
+    }, ROTATE_MS);
+    return () => clearInterval(t);
+  }, [count, width, dotIdx]);
+
+  // 경계의 복제 슬라이드에 도착하면 반대쪽 실제 슬라이드로 즉시(애니메이션 없이) 점프
+  const settleAt = (rawPos: number) => {
+    let pos = rawPos;
+    if (pos <= 0) {
+      pos = count;
+      scrollRef.current?.scrollTo({ x: width * pos, animated: false });
+    } else if (pos >= count + 1) {
+      pos = 1;
+      scrollRef.current?.scrollTo({ x: width * pos, animated: false });
+    }
+    posRef.current = pos;
+    setDotIdx(pos - 1);
+  };
+
+  const handleMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!width) return;
+    settleAt(Math.round(e.nativeEvent.contentOffset.x / width));
+  };
 
   return (
-    <View>
-      <TouchableOpacity style={[s.promoBanner, { borderColor: slide.boxBorder, backgroundColor: slide.boxBg }]} activeOpacity={0.8} onPress={slide.onPress}>
-        <View style={[s.promoIcon, { backgroundColor: slide.iconBg }]}><Text style={s.promoIconT}>{slide.icon}</Text></View>
-        <View style={{flex:1, minWidth:0}}>
-          <Text style={[s.promoTitle,{fontSize:rf(14,scale)}]} numberOfLines={1} ellipsizeMode="tail">{slide.title}</Text>
-          <Text style={[s.promoSub,{fontSize:rf(11,scale)}]} numberOfLines={1} ellipsizeMode="tail">{slide.sub}</Text>
-        </View>
-        <Text style={s.promoArrow}>›</Text>
-      </TouchableOpacity>
-      {slides.length > 1 && (
+    <View onLayout={handleLayout}>
+      {width > 0 && (
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          scrollEnabled={count > 1}
+          onMomentumScrollEnd={handleMomentumEnd}
+        >
+          {extended.map((slide, i) => (
+            <TouchableOpacity
+              key={`${slide.key}-${i}`}
+              style={[s.promoBanner, { width, borderColor: slide.boxBorder, backgroundColor: slide.boxBg }]}
+              activeOpacity={0.8}
+              onPress={slide.onPress}
+            >
+              <View style={[s.promoIcon, { backgroundColor: slide.iconBg }]}><Text style={s.promoIconT}>{slide.icon}</Text></View>
+              <View style={{flex:1, minWidth:0}}>
+                <Text style={[s.promoTitle,{fontSize:rf(14,scale)}]} numberOfLines={1} ellipsizeMode="tail">{slide.title}</Text>
+                <Text style={[s.promoSub,{fontSize:rf(11,scale)}]} numberOfLines={1} ellipsizeMode="tail">{slide.sub}</Text>
+              </View>
+              <Text style={s.promoArrow}>›</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+      {count > 1 && (
         <View style={s.dots}>
           {slides.map((sl, i) => (
-            <View key={sl.key} style={[s.dot, i === idx && s.dotActive]} />
+            <View key={sl.key} style={[s.dot, i === dotIdx && s.dotActive]} />
           ))}
         </View>
       )}
