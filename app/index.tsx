@@ -14,6 +14,7 @@ import { ClockHeader } from '../src/components/Home/ClockHeader';
 import { CalendarView } from '../src/components/Home/CalendarView';
 import { AlarmsTab } from '../src/components/Home/AlarmsTab';
 import { SettingsView } from '../src/components/Home/SettingsView';
+import { HelpScreen } from '../src/components/Help/HelpScreen';
 import { BottomNav, HomeTab } from '../src/components/Home/BottomNav';
 import { AlarmForm, AlarmFormHandle } from '../src/components/AlarmForm';
 import { AlarmRinging } from '../src/components/AlarmRinging';
@@ -33,6 +34,7 @@ export default function App() {
   const { selectMode, selectedIds, enterSelectMode, toggleSelect, selectAll, exitSelectMode } = useSelectMode();
   const [tab, setTab] = useState<HomeTab>('alarms');
   const [editAlarm, setEditAlarm] = useState<Alarm|null>(null);
+  const [showHelp, setShowHelp] = useState(false);
   const [editTypeId, setEditTypeId] = useState<string>('commute');
   const editFormRef = useRef<AlarmFormHandle>(null);
   const [highlightId, setHighlightId] = useState<number|null>(null);
@@ -209,8 +211,13 @@ export default function App() {
         </View>
       )}
 
-      {/* 수정 화면 — 추가와 동일하게 전체화면으로 통일 (바텀시트 모달 제거) */}
-      {editAlarm ? (
+      {/* 사용법 안내 — 전체화면 */}
+      {showHelp ? (
+        <HelpScreen
+          onClose={() => setShowHelp(false)}
+          onStartTutorial={() => { setShowHelp(false); setTutorialStep(0); }}
+        />
+      ) : editAlarm ? (
         <AlarmForm
           ref={editFormRef}
           initial={editAlarm}
@@ -250,7 +257,7 @@ export default function App() {
               setTimeout(() => setHighlightId(null), 5000);
             }}/>}
 
-          {tab==='settings' && <SettingsView onStartTutorial={() => setTutorialStep(0)} />}
+          {tab==='settings' && <SettingsView onStartTutorial={() => setTutorialStep(0)} onOpenHelp={() => setShowHelp(true)} />}
 
           {tab==='add' && (
             <AlarmForm
@@ -294,7 +301,7 @@ export default function App() {
         />
       )}
 
-      <BottomNav tab={tab} setTab={setTab} bottomInset={insets.bottom} />
+      <BottomNav tab={tab} setTab={t => { setShowHelp(false); setTab(t); }} bottomInset={insets.bottom} />
     </SafeAreaView>
 
     {tutorialStep !== null && (

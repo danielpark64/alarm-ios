@@ -16,9 +16,10 @@ const FONT_SCALES: { id: FontScaleName; label: string }[] = [
 
 interface Props {
   onStartTutorial?: () => void;
+  onOpenHelp?: () => void;
 }
 
-export function SettingsView({ onStartTutorial }: Props) {
+export function SettingsView({ onStartTutorial, onOpenHelp }: Props) {
   const C = useColors();
   const s = makeStyles(C);
   const { theme, setTheme } = useThemeSetting();
@@ -90,6 +91,19 @@ export function SettingsView({ onStartTutorial }: Props) {
       )}
 
       <TouchableOpacity
+        style={s.helpBanner}
+        activeOpacity={0.8}
+        onPress={onOpenHelp}
+      >
+        <View style={s.tutorialIcon}><Text style={s.tutorialIconT}>📖</Text></View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={s.tutorialTitle}>사용법 안내</Text>
+          <Text style={s.tutorialSub}>기본 사용법과 잘 안 보이는 기능까지 알려드려요</Text>
+        </View>
+        <Text style={s.tutorialArrow}>›</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
         style={s.tutorialBanner}
         activeOpacity={0.8}
         onPress={onStartTutorial}
@@ -132,7 +146,8 @@ function makeStyles(C: Palette) {
     volumeHeadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
     volumeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     volumeIcon: { fontSize: 13 },
-    tutorialBanner: { flexDirection: 'row', alignItems: 'center', marginTop: 14, padding: 12, borderRadius: 14, backgroundColor: 'rgba(162,155,254,0.10)', borderWidth: 1, borderColor: 'rgba(162,155,254,0.3)' },
+    helpBanner: { flexDirection: 'row', alignItems: 'center', marginTop: 14, padding: 12, borderRadius: 14, backgroundColor: 'rgba(255,180,80,0.10)', borderWidth: 1, borderColor: 'rgba(255,180,80,0.3)' },
+    tutorialBanner: { flexDirection: 'row', alignItems: 'center', marginTop: 10, padding: 12, borderRadius: 14, backgroundColor: 'rgba(162,155,254,0.10)', borderWidth: 1, borderColor: 'rgba(162,155,254,0.3)' },
     tutorialIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(162,155,254,0.18)', marginRight: 12 },
     tutorialIconT: { fontSize: 17 },
     tutorialTitle: { fontSize: 14, fontWeight: '700', color: C.txt },
