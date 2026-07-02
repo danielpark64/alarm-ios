@@ -79,6 +79,14 @@ export function useAlarmFormState(
     });
   };
 
+  // 라벨 입력 가드 — 기타가 아닌 타입은 타입 이름 접두어("출근" 등)를 지울 수 없다.
+  // 접두어를 건드린 편집은 무시하고, 뒷부분만 자유롭게 수정 가능. 기타는 전체 자유.
+  const setLabelGuarded = (text: string) => {
+    if (typeId === 'custom') { setLabel(text); return; }
+    const typeName = getType(typeId).label;
+    setLabel(prev => text.startsWith(typeName) ? text : prev);
+  };
+
   const toggleDay = (i: number) =>
     setDays(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]);
 
@@ -153,7 +161,7 @@ export function useAlarmFormState(
   };
 
   return {
-    typeId, hour, setHour, min, setMin, label, setLabel,
+    typeId, hour, setHour, min, setMin, label, setLabel: setLabelGuarded,
     rm, setRm, days, setDays, cd, setCd, rd, setRd,
     sd, setSd, lastDay, setLastDay, showCal, setShowCal,
     handleTypeChange, toggleDay, handleSubmit, submit, isDirty,

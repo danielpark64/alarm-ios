@@ -32,7 +32,8 @@ export default function App() {
   const { alarms, loaded, addAlarm, updateAlarm, deleteAlarms, toggleAlarm } = useAlarms();
   const { notifGranted, requestPermission, overlayGranted, requestOverlayPermission, tick, ringing, stopRinging, snoozeRinging } = useAlarmNotifications(alarms, updateAlarm);
   const { selectMode, selectedIds, enterSelectMode, toggleSelect, selectAll, exitSelectMode } = useSelectMode();
-  const [tab, setTab] = useState<HomeTab>('alarms');
+  // 메인 화면은 달력 — 교대근무자는 약속 잡을 때 근무표(달력)부터 본다
+  const [tab, setTab] = useState<HomeTab>('calendar');
   const [editAlarm, setEditAlarm] = useState<Alarm|null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [editTypeId, setEditTypeId] = useState<string>('commute');
@@ -112,6 +113,11 @@ export default function App() {
   useEffect(() => {
     if (!overlayGranted) showOverlayPrompt();
   }, [overlayGranted]);
+
+  // 알람이 하나도 없는 신규 사용자는 빈 달력 대신 알람 탭(빈 상태 안내)에서 시작
+  useEffect(() => {
+    if (loaded && alarms.length === 0) setTab('alarms');
+  }, [loaded]);
 
   // 앱을 처음 설치하고 켰을 때만 한 번 튜토리얼을 권유 (설정 배너만으로는 발견하기 어려움)
   const TUTORIAL_PROMPT_KEY = '@tutorial_prompt_shown';

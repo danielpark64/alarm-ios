@@ -6,23 +6,24 @@ import { useColors } from '../../hooks/useTheme';
 
 export type HomeTab = 'alarms' | 'calendar' | 'add' | 'settings';
 
-// 하단 네비 — 알람 / 달력 / 설정 (추가는 헤더의 + 버튼으로 진입)
+// 하단 네비 — 달력 / 알람 / 설정 (추가는 헤더의 + 버튼으로 진입)
+// 달력이 메인 화면이라 첫 자리에 둔다
 export function BottomNav({ tab, setTab, bottomInset }: { tab: HomeTab; setTab: (t: HomeTab) => void; bottomInset: number }) {
   const s = makeStyles(useColors());
   return (
     <View style={[s.nav, { paddingBottom: Math.max(bottomInset, 14) }]}>
-      <TouchableOpacity style={s.navBtn} onPress={()=>setTab('alarms')}>
-        <View style={[s.navI, tab==='alarms' && s.navIA]}>
-          <Text style={s.navIT}>⏰</Text>
-        </View>
-        <Text style={[s.navL, tab==='alarms' && s.navLA]}>알람</Text>
-      </TouchableOpacity>
-
       <TouchableOpacity style={s.navBtn} onPress={()=>setTab('calendar')}>
         <View style={[s.navI, tab==='calendar' && s.navIA]}>
           <Text style={s.navIT}>📅</Text>
         </View>
         <Text style={[s.navL, tab==='calendar' && s.navLA]}>달력</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={s.navBtn} onPress={()=>setTab('alarms')}>
+        <View style={[s.navI, tab==='alarms' && s.navIA]}>
+          <Text style={s.navIT}>⏰</Text>
+        </View>
+        <Text style={[s.navL, tab==='alarms' && s.navLA]}>알람</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={s.navBtn} onPress={()=>setTab('settings')}>

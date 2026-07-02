@@ -2,7 +2,8 @@ export const TYPES = [
   { id: 'commute',  label: '출근', icon: '🚇', color: '#2196F3' },
   { id: 'offwork',  label: '퇴근', icon: '🏠', color: '#E53935' },
   { id: 'meal',     label: '식사', icon: '🍽️', color: '#4ADE80' },
-  { id: 'exercise', label: '운동', icon: '🏃', color: '#F57C00' },
+  // 주황은 비번 빨강과 한 계열이라 달력에서 헷갈림 → 노랑 계열로
+  { id: 'exercise', label: '운동', icon: '🏃', color: '#F9A825' },
   { id: 'custom',   label: '기타', icon: '✏️', color: '#9C27B0' },
 ] as const;
 export const REPEAT = [

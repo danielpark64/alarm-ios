@@ -164,6 +164,44 @@ export function alarmsForDate(alarms: Alarm[], dateStr: string): Alarm[] {
   });
 }
 
+// ─── 달력 근무표 표시 ───
+// 근무표 판정 대상: 주기(cycle/rest) 반복 + 출근/퇴근 타입 알람만.
+// 운동·식사 등 다른 타입은 주기 알람이어도 근무표(배경색/비번)에 관여하지 않는다.
+export const isWorkAlarm = (a: Alarm) =>
+  a.active && (a.rm === 'cycle' || a.rm === 'rest') && (a.typeId === 'commute' || a.typeId === 'offwork');
+
+// 근무조 색 팔레트 — 시간대가 아니라 알람별로 배정한다.
+// 같은 시간대 안에서 갈리는 교대(예: 04:20 초번 / 05:20 말번)도 색으로 구분되도록,
+// 근무 알람을 시각순으로 정렬해 순서대로 색을 준다.
+// 비번이 빨간색이므로 팔레트에서 빨강 계열(주황/분홍)은 제외
+const SHIFT_PALETTE = ['#3B9BE0', '#1D9E75', '#00ACC1', '#7C6FE0', '#C9A227', '#8B7355'];
+
+// 활성 근무 알람 전체 기준으로 알람 id → 색 매핑을 만든다
+export function shiftColorMap(alarms: Alarm[]): Record<number, string> {
+  const work = alarms.filter(isWorkAlarm).sort((a,b) => a.hour-b.hour || a.min-b.min || a.id-b.id);
+  const map: Record<number, string> = {};
+  work.forEach((a, i) => { map[a.id] = SHIFT_PALETTE[i % SHIFT_PALETTE.length]; });
+  return map;
+}
+
+// 해당 날짜의 근무조 대표 알람. 같은 날 여러 개(출근+퇴근)면 출근 우선, 이른 시각 우선.
+export function shiftForDate(alarms: Alarm[], dateStr: string): Alarm | null {
+  const rings = alarmsForDate(alarms.filter(isWorkAlarm), dateStr);
+  if (!rings.length) return null;
+  rings.sort((a, b) =>
+    (a.typeId === 'commute' ? 0 : 1) - (b.typeId === 'commute' ? 0 : 1) ||
+    a.hour - b.hour || a.min - b.min);
+  return rings[0];
+}
+
+// 비번: 근무 알람이 하나라도 있고 그 시작일 이후인데, 그날 아무 근무 알람도 안 울리는 날
+export function isOffDay(alarms: Alarm[], dateStr: string): boolean {
+  const work = alarms.filter(isWorkAlarm);
+  if (!work.length) return false;
+  if (!work.some(a => !a.sd || dateStr >= a.sd)) return false;
+  return alarmsForDate(work, dateStr).length === 0;
+}
+
 export const nextAlarmText = (alarms: Alarm[]): string => {
   const active = alarms.filter(a => a.active);
   if (!active.length) return '';
