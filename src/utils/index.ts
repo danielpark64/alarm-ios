@@ -218,6 +218,15 @@ export function lunarDateText(dateStr: string): string {
   return `음력 ${intercalation ? '윤' : ''}${month}월 ${day}일`;
 }
 
+// 달력 칸에 넣을 짧은 음력 표시 — "6.4" 형식. 지원 범위 밖이면 빈 문자열.
+export function lunarShortText(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const cal = new KoreanLunarCalendar();
+  if (!cal.setSolarDate(y, m, d)) return '';
+  const { month, day, intercalation } = cal.getLunarCalendar();
+  return `${intercalation ? '윤' : ''}${month}.${day}`;
+}
+
 // 매년 반복(음력 기준) 알람용 — 특정 solarYear 안에서 그 음력 월/일에 해당하는 양력 날짜(YYYY-MM-DD)를 찾는다.
 // 음력 12월은 다음 양력 해로 넘어갈 수 있어 lunarYear를 solarYear, solarYear-1 순으로 시도한다.
 // 윤달(intercalation)은 무시하고 평달 기준으로만 계산한다.

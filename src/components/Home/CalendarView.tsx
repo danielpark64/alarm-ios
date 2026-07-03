@@ -1,22 +1,22 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
-import { View, FlatList, TouchableOpacity, Modal, StyleSheet, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import { View, FlatList, TouchableOpacity, Modal, StyleSheet, useWindowDimensions, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { Text } from '../common/AppText';
 import { Alarm, DAYS } from '../../constants';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
-import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, shiftForDate, isOffDay, shiftColorMap, lunarDateText } from '../../utils';
+import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, shiftForDate, isOffDay, shiftColorMap, lunarDateText, lunarShortText } from '../../utils';
 import { getHoliday } from '../../constants/holidays';
 
 // 달력 화면 — 근무 알람(주기+출근/퇴근)은 배경색으로 근무조를 표시하고,
 // 그 외 알람만 칩으로 보여준다. 날짜를 누르면 하루 상세 팝업이 뜬다.
-// 월 이동은 위/아래로 계속 스와이프하는 세로 페이징 방식(수십 년 범위 — 사실상 무한 스크롤).
+// 좌우로 스와이프하면 한 달씩(무한), 오른쪽 화살표 바로는 1년씩 점프한다.
 interface Props {
   alarms: Alarm[];
   onEditAlarm: (a: Alarm) => void;
   onUpdateAlarm?: (id: number, data: Partial<Alarm>) => void;
 }
 
-// 항상 6주(42칸)로 맞춰서 매달 페이지 높이가 동일하게 — 세로 페이징에 필수
+// 항상 6주(42칸)로 맞춰서 매달 페이지 폭이 동일하게 — 가로 페이징에 필수
 const ROWS = 6;
 const TOTAL_CELLS = ROWS * 7;
 const CELL_H = 72;
@@ -24,6 +24,7 @@ const CELL_MB = 3;
 const ITEM_HEIGHT = ROWS * (CELL_H + CELL_MB);
 // 앞뒤 20년치 — 실사용상 끝에 닿을 일이 없어 사실상 무한 스크롤처럼 느껴진다
 const RANGE = 240;
+const YEAR_JUMP = 12; // 오른쪽 화살표 바 한 번에 1년(=12개월)
 
 interface DayInfo { alarms: Alarm[]; shift: Alarm|null; off: boolean }
 
@@ -55,18 +56,18 @@ function buildCells(year: number, month: number): (number|null)[] {
 
 interface MonthGridProps {
   year: number; month: number; alarms: Alarm[];
-  colorOf: Record<number, string>; today: string;
+  colorOf: Record<number, string>; today: string; showLunar: boolean; width: number;
   cv: ReturnType<typeof makeStyles>;
   onSelectDate: (ds: string) => void;
 }
 
-const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, colorOf, today, cv, onSelectDate }: MonthGridProps) {
+const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, colorOf, today, showLunar, width, cv, onSelectDate }: MonthGridProps) {
   const cells = useMemo(() => buildCells(year, month), [year, month]);
   const dayMap = useMemo(() => buildDayMap(alarms, year, month), [alarms, year, month]);
   const offset = cells.findIndex(c => c !== null);
 
   return (
-    <View style={[cv.grid, { height: ITEM_HEIGHT }]}>
+    <View style={[cv.grid, { height: ITEM_HEIGHT, width, paddingHorizontal: 14 }]}>
       {cells.map((d, i) => {
         if (!d) return <View key={i} style={cv.cell}/>;
         const ds = `${year}-${pad(month+1)}-${pad(d)}`;
@@ -94,6 +95,9 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, colorOf, 
               (dow >= 5 || holiday) && {color:'#e07070'},
               isToday && cv.dayNumToday,
             ]}>{d}</Text>
+            {showLunar && (
+              <Text style={cv.lunarLabel} numberOfLines={1}>{lunarShortText(ds)}</Text>
+            )}
             {holiday && (
               <Text style={cv.holidayLabel} numberOfLines={1}>{holiday}</Text>
             )}
@@ -128,6 +132,7 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, colorOf, 
 export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
   const C = useColors();
   const cv = makeStyles(C);
+  const { width: winWidth } = useWindowDimensions();
   const today = todayStr();
   const todayDate = new Date(today);
   const anchorYear  = todayDate.getFullYear();
@@ -135,6 +140,7 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
 
   const [pageIndex, setPageIndex] = useState(RANGE);
   const [selDate, setSelDate] = useState<string|null>(null);
+  const [showLunar, setShowLunar] = useState(false);
   const listRef = useRef<FlatList>(null);
 
   const indexToYearMonth = useCallback((idx: number) => {
@@ -145,15 +151,17 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
   const { year, month } = indexToYearMonth(pageIndex);
 
   const goToIndex = (idx: number) => {
-    if (idx < 0 || idx > RANGE * 2) return;
-    setPageIndex(idx);
-    listRef.current?.scrollToIndex({ index: idx, animated: true });
+    const clamped = Math.max(0, Math.min(RANGE * 2, idx));
+    setPageIndex(clamped);
+    listRef.current?.scrollToIndex({ index: clamped, animated: true });
   };
   const prevMonth = () => goToIndex(pageIndex - 1);
   const nextMonth = () => goToIndex(pageIndex + 1);
+  const prevYear  = () => goToIndex(pageIndex - YEAR_JUMP);
+  const nextYear  = () => goToIndex(pageIndex + YEAR_JUMP);
 
   const onMomentumScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const idx = Math.round(e.nativeEvent.contentOffset.y / ITEM_HEIGHT);
+    const idx = Math.round(e.nativeEvent.contentOffset.x / winWidth);
     if (idx !== pageIndex) setPageIndex(idx);
   };
 
@@ -182,7 +190,15 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
           <TouchableOpacity onPress={prevMonth} style={cv.navBtn}>
             <Text style={cv.navArrow}>‹</Text>
           </TouchableOpacity>
-          <Text style={cv.navTitle}>{year}년 {month+1}월</Text>
+          <View style={cv.navTitleRow}>
+            <Text style={cv.navTitle}>{year}년 {month+1}월</Text>
+            <TouchableOpacity
+              style={[cv.lunarToggle, showLunar && cv.lunarToggleActive]}
+              onPress={() => setShowLunar(v => !v)}
+            >
+              <Text style={[cv.lunarToggleText, showLunar && cv.lunarToggleTextActive]}>음력</Text>
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity onPress={nextMonth} style={cv.navBtn}>
             <Text style={cv.navArrow}>›</Text>
           </TouchableOpacity>
@@ -198,23 +214,35 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
         </View>
       </View>
 
-      {/* 날짜 그리드 — 위/아래로 계속 스와이프해서 달 이동 (20년 범위) */}
-      <FlatList
-        ref={listRef}
-        data={pages}
-        keyExtractor={(i) => String(i)}
-        renderItem={({ item }) => {
-          const { year: y, month: m } = indexToYearMonth(item);
-          return <MonthGrid year={y} month={m} alarms={alarms} colorOf={colorOf} today={today} cv={cv} onSelectDate={setSelDate} />;
-        }}
-        getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
-        initialScrollIndex={RANGE}
-        pagingEnabled
-        showsVerticalScrollIndicator={false}
-        onMomentumScrollEnd={onMomentumScrollEnd}
-        style={{ height: ITEM_HEIGHT }}
-        contentContainerStyle={{ paddingHorizontal: 14 }}
-      />
+      {/* 날짜 그리드 — 좌우로 계속 스와이프해서 달 이동 (20년 범위), 오른쪽 바로 1년씩 점프 */}
+      <View style={{ height: ITEM_HEIGHT, position: 'relative' }}>
+        <FlatList
+          ref={listRef}
+          data={pages}
+          horizontal
+          keyExtractor={(i) => String(i)}
+          renderItem={({ item }) => {
+            const { year: y, month: m } = indexToYearMonth(item);
+            return <MonthGrid year={y} month={m} alarms={alarms} colorOf={colorOf} today={today} showLunar={showLunar} width={winWidth} cv={cv} onSelectDate={setSelDate} />;
+          }}
+          getItemLayout={(_, index) => ({ length: winWidth, offset: winWidth * index, index })}
+          initialScrollIndex={RANGE}
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={onMomentumScrollEnd}
+          style={{ height: ITEM_HEIGHT }}
+        />
+        {/* 연도 이동 오버레이 — 그리드 폭에 영향 없이 위에 떠 있음 */}
+        <View style={cv.yearBar} pointerEvents="box-none">
+          <TouchableOpacity style={cv.yearBarBtn} onPress={prevYear}>
+            <Text style={cv.yearBarArrow}>▲</Text>
+          </TouchableOpacity>
+          <Text style={cv.yearBarLabel}>년</Text>
+          <TouchableOpacity style={cv.yearBarBtn} onPress={nextYear}>
+            <Text style={cv.yearBarArrow}>▼</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       <View style={{paddingHorizontal:14}}>
         {/* 범례 */}
@@ -325,10 +353,20 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
 
 function makeStyles(C: Palette) {
   return StyleSheet.create({
-    nav:         { flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:14 },
+    nav:         { flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:10 },
     navBtn:      { padding:10 },
     navArrow:    { fontSize:28, color:C.txt, fontWeight:'900' },
     navTitle:    { fontSize:18, fontWeight:'900', color:C.txt },
+    navTitleRow: { flexDirection:'row', alignItems:'center', gap:8 },
+    lunarToggle:      { paddingHorizontal:9, paddingVertical:4, borderRadius:9, borderWidth:1, borderColor:C.border2 },
+    lunarToggleActive:{ backgroundColor:'rgba(162,155,254,0.16)', borderColor:C.accent },
+    lunarToggleText:      { fontSize:11, fontWeight:'700', color:C.txt3 },
+    lunarToggleTextActive:{ color:C.accent },
+    // 연도 이동 오버레이 — 그리드 위에 떠 있어 칸 폭에 영향 없음
+    yearBar:      { position:'absolute', right:6, top:'50%', marginTop:-46, width:30, borderRadius:14, backgroundColor:'rgba(30,30,38,0.55)', alignItems:'center', paddingVertical:8, gap:6 },
+    yearBarBtn:   { padding:4 },
+    yearBarArrow: { fontSize:12, color:'#cfcbe8', fontWeight:'900' },
+    yearBarLabel: { fontSize:9, color:'#cfcbe8', fontWeight:'700' },
     grid:        { flexDirection:'row', flexWrap:'wrap' },
     headCell:    { width:'14.28%', alignItems:'center', paddingVertical:6 },
     headText:    { fontSize:11, fontWeight:'700', color:C.txt3 },
@@ -338,6 +376,7 @@ function makeStyles(C: Palette) {
     cellToday:   { borderWidth:1.5, borderStyle:'solid', borderColor:C.accent },
     dayNum:      { fontSize:13, fontWeight:'700', color:C.txt, marginBottom:2, textAlign:'center' },
     dayNumToday: { color:C.accent, fontWeight:'900' },
+    lunarLabel:  { fontSize:9, fontWeight:'600', color:C.txt3, textAlign:'center', marginTop:-2, marginBottom:1 },
     // 공휴일 이름표 — 비번(빨강)과 헷갈리지 않게 골드 계열로 구분
     holidayLabel:{ fontSize:9, fontWeight:'800', color:'#e0a44d', textAlign:'center', marginBottom:1 },
     shiftLabel:  { fontSize:13, fontWeight:'900', textAlign:'center', marginBottom:1 },
