@@ -45,8 +45,15 @@ export async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: str
     ...(threadIdentifier ? { threadIdentifier } : {}),
   };
 
+  // "이날만 끄기"가 예약 창(14일) 안에 있으면 요일 알람도 날짜 기반으로 전환
+  // (주간 반복 트리거는 특정 날짜 하나만 뺄 수 없기 때문)
+  const p2d = (n: number) => String(n).padStart(2, '0');
+  const now0 = new Date();
+  const todayDs = `${now0.getFullYear()}-${p2d(now0.getMonth()+1)}-${p2d(now0.getDate())}`;
+  const hasUpcomingSkips = (alarm.skips ?? []).some(s => s >= todayDs);
+
   // ── wdcustom (요일 선택) ──────────────────────────────────────────
-  if (alarm.rm === 'wdcustom' && alarm.days.length > 0) {
+  if (alarm.rm === 'wdcustom' && alarm.days.length > 0 && !hasUpcomingSkips) {
     const iw = (d: number) => (d + 2) % 7 || 7;
     for (const d of alarm.days) {
       await Notifications.scheduleNotificationAsync({
@@ -71,6 +78,10 @@ export async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: str
     if (ft <= new Date()) continue;
     let fires = false;
     if (alarm.rm === 'once') fires = ds === alarm.sd;
+    else if (alarm.rm === 'wdcustom') {
+      const dow = (date.getDay() + 6) % 7; // 0=월 ~ 6=일
+      fires = (alarm.days || []).includes(dow);
+    }
     else if (alarm.rm === 'cycle') {
       const s = new Date(alarm.sd || ds); s.setHours(0,0,0,0);
       const d = Math.round((date.getTime() - s.getTime()) / 86400000);
@@ -98,6 +109,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: str
         fires = date.getMonth() === sdM - 1 && date.getDate() === sdD;
       }
     }
+    if (fires && alarm.skips?.includes(ds)) fires = false; // 이날만 끄기
     if (!fires) continue;
     await Notifications.scheduleNotificationAsync({
       identifier: makeId(alarm.id, `date_${ds}`),

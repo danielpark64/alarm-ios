@@ -1,6 +1,7 @@
 export const TYPES = [
   { id: 'commute',  label: '출근', icon: '🚇', color: '#2196F3' },
-  { id: 'offwork',  label: '퇴근', icon: '🏠', color: '#E53935' },
+  // 빨강은 비번 전용으로 양보 — 비번이 달력에서 유일하게 빨갛게 띄도록
+  { id: 'offwork',  label: '퇴근', icon: '🏠', color: '#00ACC1' },
   { id: 'meal',     label: '식사', icon: '🍽️', color: '#4ADE80' },
   // 주황은 비번 빨강과 한 계열이라 달력에서 헷갈림 → 노랑 계열로
   { id: 'exercise', label: '운동', icon: '🏃', color: '#F9A825' },
@@ -35,4 +36,5 @@ export interface Alarm {
   label: string; rm: RepeatMode; days: number[];
   cd: number; rd: number; snd: SoundMode; vib: VibMode; sd: string; active: boolean;
   lastDay?: boolean;
+  skips?: string[]; // "이날만 끄기" — 해당 날짜(YYYY-MM-DD)에는 안 울림. 지난 날짜는 로드 시 정리
 }

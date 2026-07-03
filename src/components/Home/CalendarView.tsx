@@ -8,7 +8,13 @@ import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, shiftForDate, isOff
 
 // 달력 화면 — 근무 알람(주기+출근/퇴근)은 배경색으로 근무조를 표시하고,
 // 그 외 알람만 칩으로 보여준다. 날짜를 누르면 하루 상세 팝업이 뜬다.
-export function CalendarView({ alarms, onEditAlarm }: { alarms: Alarm[]; onEditAlarm: (a: Alarm) => void }) {
+interface Props {
+  alarms: Alarm[];
+  onEditAlarm: (a: Alarm) => void;
+  onUpdateAlarm?: (id: number, data: Partial<Alarm>) => void;
+}
+
+export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
   const C = useColors();
   const cv = makeStyles(C);
   const today = todayStr();
@@ -33,7 +39,8 @@ export function CalendarView({ alarms, onEditAlarm }: { alarms: Alarm[]; onEditA
     for (let d=1; d<=daysInMonth; d++) {
       const ds = `${year}-${pad(month+1)}-${pad(d)}`;
       map[ds] = {
-        alarms: alarmsForDate(alarms, ds),
+        // 팝업에서 "이날 꺼진 알람"도 보여줘야 하므로 skip 포함 목록을 쓰고, 칩에서는 걸러낸다
+        alarms: alarmsForDate(alarms, ds, true),
         shift:  shiftForDate(alarms, ds),
         off:    isOffDay(alarms, ds),
       };
@@ -95,7 +102,7 @@ export function CalendarView({ alarms, onEditAlarm }: { alarms: Alarm[]; onEditA
           const isToday = ds === today;
           const dow = (offset + d - 1) % 7;
           const info = dayMap[ds];
-          const chips = info.alarms.filter(a => !isWorkAlarm(a));
+          const chips = info.alarms.filter(a => !isWorkAlarm(a) && !a.skips?.includes(ds));
           const sc = info.shift ? colorOf[info.shift.id] : null;
 
           return (
@@ -186,20 +193,43 @@ export function CalendarView({ alarms, onEditAlarm }: { alarms: Alarm[]; onEditA
                 .sort((a,b) => a.hour-b.hour || a.min-b.min)
                 .map((al, ai) => {
                   const alType = getType(al.typeId);
+                  const skipped = !!(selDate && al.skips?.includes(selDate));
+                  // "이날만 끄기"는 오늘 이후 + 반복 알람만 (한 번 알람은 스위치로 끄면 됨)
+                  const canSkip = !!onUpdateAlarm && !!selDate && selDate >= today && al.rm !== 'once';
+                  const toggleSkip = () => {
+                    if (!selDate || !onUpdateAlarm) return;
+                    const next = skipped
+                      ? (al.skips ?? []).filter(s => s !== selDate)
+                      : [...(al.skips ?? []), selDate];
+                    onUpdateAlarm(al.id, { skips: next.length ? next : undefined });
+                  };
                   return (
-                    <TouchableOpacity
-                      key={ai}
-                      style={cv.modalAlarmRow}
-                      activeOpacity={0.7}
-                      onPress={() => { setSelDate(null); onEditAlarm(al); }}
-                    >
-                      <Text style={cv.modalAlarmIcon}>{alType.icon}</Text>
-                      <View style={{flex:1, minWidth:0}}>
-                        <Text style={cv.modalAlarmTime}>{pad(al.hour)}:{pad(al.min)}</Text>
-                        <Text style={cv.modalAlarmLabel} numberOfLines={1}>{al.label || alType.label}</Text>
-                      </View>
-                      <Text style={cv.modalArrow}>›</Text>
-                    </TouchableOpacity>
+                    <View key={ai} style={cv.modalAlarmRow}>
+                      <TouchableOpacity
+                        style={[cv.modalAlarmMain, skipped && {opacity:0.45}]}
+                        activeOpacity={0.7}
+                        onPress={() => { setSelDate(null); onEditAlarm(al); }}
+                      >
+                        <Text style={cv.modalAlarmIcon}>{alType.icon}</Text>
+                        <View style={{flex:1, minWidth:0}}>
+                          <Text style={cv.modalAlarmTime}>{pad(al.hour)}:{pad(al.min)}</Text>
+                          <Text style={cv.modalAlarmLabel} numberOfLines={1}>
+                            {al.label || alType.label}{skipped ? ' · 이날 꺼짐' : ''}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                      {canSkip && (
+                        <TouchableOpacity
+                          style={skipped ? cv.skipBtnOn : cv.skipBtn}
+                          activeOpacity={0.7}
+                          onPress={toggleSkip}
+                        >
+                          <Text style={skipped ? cv.skipBtnOnText : cv.skipBtnText}>
+                            {skipped ? '다시 켜기' : '이날 끄기'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   );
                 })
             ) : (
@@ -225,8 +255,8 @@ function makeStyles(C: Palette) {
     headCell:    { width:'14.28%', alignItems:'center', paddingVertical:6 },
     headText:    { fontSize:11, fontWeight:'700', color:C.txt3 },
     cell:        { width:'14.28%', minHeight:72, padding:3, borderRadius:8, marginBottom:3 },
-    // 비번 = "달력의 빨간 날" — 옅은 빨간 채움 + 빨간 점선으로 한눈에 띄게
-    cellOff:     { borderWidth:1.8, borderStyle:'dashed', borderColor:'#e05252', backgroundColor:'rgba(224,82,82,0.13)' },
+    // 비번 = "달력의 빨간 날" — 진한 빨간 채움 + 굵은 빨간 점선으로 한눈에 띄게
+    cellOff:     { borderWidth:3, borderStyle:'dashed', borderColor:'#f05555', backgroundColor:'rgba(224,82,82,0.26)' },
     cellToday:   { borderWidth:1.5, borderStyle:'solid', borderColor:C.accent },
     dayNum:      { fontSize:13, fontWeight:'700', color:C.txt, marginBottom:2, textAlign:'center' },
     dayNumToday: { color:C.accent, fontWeight:'900' },
@@ -238,7 +268,7 @@ function makeStyles(C: Palette) {
     legend:      { flexDirection:'row', flexWrap:'wrap', gap:12, marginTop:12, paddingHorizontal:4, paddingTop:10, borderTopWidth:1, borderTopColor:C.border },
     legendItem:  { flexDirection:'row', alignItems:'center', gap:5 },
     legendBox:   { width:11, height:11, borderRadius:3 },
-    legendBoxOff:{ width:11, height:11, borderRadius:3, borderWidth:1.8, borderStyle:'dashed', borderColor:'#e05252', backgroundColor:'rgba(224,82,82,0.13)' },
+    legendBoxOff:{ width:11, height:11, borderRadius:3, borderWidth:1.8, borderStyle:'dashed', borderColor:'#e05252', backgroundColor:'rgba(224,82,82,0.26)' },
     legendText:  { fontSize:12, fontWeight:'600', color:C.txt2 },
     legendTextOff:{ fontSize:12, fontWeight:'800', color:'#e05252' },
     modalBack:   { flex:1, backgroundColor:'rgba(0,0,0,0.55)', justifyContent:'center', padding:28 },
@@ -246,9 +276,14 @@ function makeStyles(C: Palette) {
     modalTitle:  { fontSize:19, fontWeight:'800', color:C.txt, marginBottom:12, textAlign:'center' },
     modalShiftRow:{ borderRadius:12, paddingVertical:8, paddingHorizontal:12, marginBottom:10, alignItems:'center' },
     modalShiftText:{ fontSize:15, fontWeight:'800' },
-    modalOffRow: { borderRadius:12, paddingVertical:8, paddingHorizontal:12, marginBottom:10, alignItems:'center', borderWidth:1.8, borderStyle:'dashed', borderColor:'#e05252', backgroundColor:'rgba(224,82,82,0.13)' },
+    modalOffRow: { borderRadius:12, paddingVertical:8, paddingHorizontal:12, marginBottom:10, alignItems:'center', borderWidth:1.8, borderStyle:'dashed', borderColor:'#e05252', backgroundColor:'rgba(224,82,82,0.26)' },
     modalOffText:{ fontSize:15, fontWeight:'800', color:'#e05252' },
-    modalAlarmRow:{ flexDirection:'row', alignItems:'center', gap:12, paddingVertical:12, borderBottomWidth:1, borderBottomColor:C.border },
+    modalAlarmRow:{ flexDirection:'row', alignItems:'center', gap:10, paddingVertical:12, borderBottomWidth:1, borderBottomColor:C.border },
+    modalAlarmMain:{ flex:1, minWidth:0, flexDirection:'row', alignItems:'center', gap:12 },
+    skipBtn:     { paddingHorizontal:12, paddingVertical:10, borderRadius:12, borderWidth:1.3, borderColor:'#e05252' },
+    skipBtnText: { fontSize:13, fontWeight:'700', color:'#f06565' },
+    skipBtnOn:   { paddingHorizontal:12, paddingVertical:10, borderRadius:12, borderWidth:1.3, borderColor:C.accent, backgroundColor:'rgba(162,155,254,0.12)' },
+    skipBtnOnText:{ fontSize:13, fontWeight:'700', color:C.accent },
     modalAlarmIcon:{ fontSize:22 },
     modalAlarmTime:{ fontSize:18, fontWeight:'800', color:C.txt },
     modalAlarmLabel:{ fontSize:13, color:C.txt2, marginTop:1 },

@@ -41,6 +41,7 @@ export function getNextFireDate(alarm: Alarm): Date | null {
     if (cand <= now) continue;
     const cs = `${cand.getFullYear()}-${pad(cand.getMonth()+1)}-${pad(cand.getDate())}`;
     if (cs < startDate) continue;
+    if (alarm.skips?.includes(cs)) continue;
     const dow = (cand.getDay() + 6) % 7; // 0=Mon 6=Sun
     let fires = false;
     switch (alarm.rm) {
@@ -120,11 +121,13 @@ export function getRepLimitedIds(alarms: Alarm[]): Set<number> {
 }
 
 // 해당 날짜에 울리는 알람 목록 계산
-export function alarmsForDate(alarms: Alarm[], dateStr: string): Alarm[] {
+// includeSkipped: 하루 팝업처럼 "이날 꺼진 알람"도 함께 보여줘야 할 때 true
+export function alarmsForDate(alarms: Alarm[], dateStr: string, includeSkipped = false): Alarm[] {
   const date = new Date(dateStr);
   const dow  = (date.getDay() + 6) % 7; // 0=월 ~ 6=일
   return alarms.filter(a => {
     if (!a.active) return false;
+    if (!includeSkipped && a.skips?.includes(dateStr)) return false;
     if (a.sd && dateStr < a.sd) return false;
     if (a.rm === 'daily')    return true;
     if (a.rm === 'weekdays') return dow < 5;

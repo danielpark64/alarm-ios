@@ -8,8 +8,13 @@ const KEY = 'alarms_v1_rn';
 // 처음 설치 시에는 알람 없이 시작 — 첫 알람은 "따라하기" 튜토리얼에서 직접 만들도록 유도
 const DEFAULT: Alarm[] = [];
 
-// daily/weekdays/weekends → wdcustom 마이그레이션
+// daily/weekdays/weekends → wdcustom 마이그레이션 + 지난 "이날만 끄기" 날짜 정리
 function migrateAlarm(a: Alarm): Alarm {
+  if (a.skips?.length) {
+    const today = todayStr();
+    const kept = a.skips.filter(s => s >= today);
+    if (kept.length !== a.skips.length) a = { ...a, skips: kept.length ? kept : undefined };
+  }
   if (a.rm === 'daily')    return { ...a, rm: 'wdcustom', days: [0,1,2,3,4,5,6] };
   if (a.rm === 'weekdays') return { ...a, rm: 'wdcustom', days: [0,1,2,3,4] };
   if (a.rm === 'weekends') return { ...a, rm: 'wdcustom', days: [5,6] };

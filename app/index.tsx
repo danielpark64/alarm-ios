@@ -257,7 +257,7 @@ export default function App() {
             />
           )}
 
-          {tab==='calendar' && <CalendarView alarms={alarms} onEditAlarm={al => {
+          {tab==='calendar' && <CalendarView alarms={alarms} onUpdateAlarm={updateAlarm} onEditAlarm={al => {
               setTab('alarms');
               setHighlightId(al.id);
               setTimeout(() => setHighlightId(null), 5000);
