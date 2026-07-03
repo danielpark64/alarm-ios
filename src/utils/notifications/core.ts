@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Alarm } from '../../constants';
-import { getType, pad, getNextFireDate } from '../index';
+import { getType, pad, getNextFireDate, lunarToSolarInYear } from '../index';
 import { scheduleNative } from './android';
 import { weekdaySlotId, mainNativeId } from './alarmIds';
 import { getAlarmDefaults } from '../../hooks/useAlarmDefaults';
@@ -101,7 +101,9 @@ export async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: str
       }
     } else if (alarm.rm === 'yearly' && alarm.sd) {
       const [, sdM, sdD] = alarm.sd.split('-').map(Number);
-      if (sdM === 2 && sdD === 29) {
+      if (alarm.lunar) {
+        fires = ds === lunarToSolarInYear(date.getFullYear(), sdM, sdD);
+      } else if (sdM === 2 && sdD === 29) {
         const y = date.getFullYear();
         const isLeap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
         fires = date.getMonth() === 1 && date.getDate() === (isLeap ? 29 : 28);

@@ -115,10 +115,13 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
                 rm={form.rm}
                 lastDay={form.lastDay}
                 setLastDay={form.setLastDay}
+                lunar={form.lunar}
+                setLunar={form.setLunar}
                 setShowCal={form.setShowCal}
                 dateLabel={form.dateLabel}
                 dateLocked={form.dateLocked}
                 isLeapDay={form.isLeapDay}
+                lunarSolarPreview={form.lunarSolarPreview}
               />
             )}
 

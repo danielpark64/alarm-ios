@@ -37,4 +37,5 @@ export interface Alarm {
   cd: number; rd: number; snd: SoundMode; vib: VibMode; sd: string; active: boolean;
   lastDay?: boolean;
   skips?: string[]; // "이날만 끄기" — 해당 날짜(YYYY-MM-DD)에는 안 울림. 지난 날짜는 로드 시 정리
+  lunar?: boolean; // 매년(yearly) 반복 전용 — true면 sd의 월/일을 음력으로 해석해 매년 그 음력 날짜(양력 환산)에 울림
 }

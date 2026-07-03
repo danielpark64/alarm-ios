@@ -1,3 +1,4 @@
+import KoreanLunarCalendar from 'korean-lunar-calendar';
 import { Alarm, TYPES, SOUNDS, VIBS, DAYS } from '../constants';
 export const pad = (n: number) => String(n).padStart(2, '0');
 export const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
@@ -21,7 +22,7 @@ export const repeatLabel = (al: Alarm): string => {
   if (al.rm==='cycle')   return `${al.cd??1}일 주기`;
   if (al.rm==='rest')    return `${al.cd??2}일 알람 후 ${al.rd??1}일 휴식`;
   if (al.rm==='monthly') return al.lastDay ? '매월 말일' : `매월 ${new Date(al.sd||todayStr()).getDate()}일`;
-  if (al.rm==='yearly')  return `매년 ${new Date(al.sd||todayStr()).getMonth()+1}월 ${new Date(al.sd||todayStr()).getDate()}일`;
+  if (al.rm==='yearly')  return `매년 ${al.lunar ? '음력 ' : ''}${new Date(al.sd||todayStr()).getMonth()+1}월 ${new Date(al.sd||todayStr()).getDate()}일`;
   return '한 번';
 };
 
@@ -76,7 +77,9 @@ export function getNextFireDate(alarm: Alarm): Date | null {
       case 'yearly': {
         if (alarm.sd) {
           const [, sdM, sdD] = alarm.sd.split('-').map(Number);
-          if (sdM === 2 && sdD === 29) {
+          if (alarm.lunar) {
+            fires = cs === lunarToSolarInYear(cand.getFullYear(), sdM, sdD);
+          } else if (sdM === 2 && sdD === 29) {
             const y = cand.getFullYear();
             const isLeap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
             fires = cand.getMonth() === 1 && cand.getDate() === (isLeap ? 29 : 28);
@@ -156,6 +159,7 @@ export function alarmsForDate(alarms: Alarm[], dateStr: string, includeSkipped =
     if (a.rm === 'yearly') {
       if (!a.sd) return false;
       const [, sdM, sdD] = a.sd.split('-').map(Number);
+      if (a.lunar) return dateStr === lunarToSolarInYear(date.getFullYear(), sdM, sdD);
       if (sdM === 2 && sdD === 29) {
         const y = date.getFullYear();
         const isLeap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
@@ -203,6 +207,29 @@ export function isOffDay(alarms: Alarm[], dateStr: string): boolean {
   if (!work.length) return false;
   if (!work.some(a => !a.sd || dateStr >= a.sd)) return false;
   return alarmsForDate(work, dateStr).length === 0;
+}
+
+// 양력 날짜(YYYY-MM-DD) → 음력 "M월 D일" 문자열. 지원 범위(1000~2050년) 밖이면 빈 문자열.
+export function lunarDateText(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const cal = new KoreanLunarCalendar();
+  if (!cal.setSolarDate(y, m, d)) return '';
+  const { month, day, intercalation } = cal.getLunarCalendar();
+  return `음력 ${intercalation ? '윤' : ''}${month}월 ${day}일`;
+}
+
+// 매년 반복(음력 기준) 알람용 — 특정 solarYear 안에서 그 음력 월/일에 해당하는 양력 날짜(YYYY-MM-DD)를 찾는다.
+// 음력 12월은 다음 양력 해로 넘어갈 수 있어 lunarYear를 solarYear, solarYear-1 순으로 시도한다.
+// 윤달(intercalation)은 무시하고 평달 기준으로만 계산한다.
+export function lunarToSolarInYear(solarYear: number, lunarMonth: number, lunarDay: number): string | null {
+  const cal = new KoreanLunarCalendar();
+  for (const lunarYear of [solarYear, solarYear - 1]) {
+    if (cal.setLunarDate(lunarYear, lunarMonth, lunarDay, false)) {
+      const { year, month, day } = cal.getSolarCalendar();
+      if (year === solarYear) return `${year}-${pad(month)}-${pad(day)}`;
+    }
+  }
+  return null;
 }
 
 export const nextAlarmText = (alarms: Alarm[]): string => {

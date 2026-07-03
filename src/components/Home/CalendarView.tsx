@@ -1,54 +1,164 @@
-import React, { useState, useMemo } from 'react';
-import { View, ScrollView, TouchableOpacity, Modal, StyleSheet } from 'react-native';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
+import { View, FlatList, TouchableOpacity, Modal, StyleSheet, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { Text } from '../common/AppText';
 import { Alarm, DAYS } from '../../constants';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
-import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, shiftForDate, isOffDay, shiftColorMap } from '../../utils';
+import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, shiftForDate, isOffDay, shiftColorMap, lunarDateText } from '../../utils';
+import { getHoliday } from '../../constants/holidays';
 
 // 달력 화면 — 근무 알람(주기+출근/퇴근)은 배경색으로 근무조를 표시하고,
 // 그 외 알람만 칩으로 보여준다. 날짜를 누르면 하루 상세 팝업이 뜬다.
+// 월 이동은 위/아래로 계속 스와이프하는 세로 페이징 방식(수십 년 범위 — 사실상 무한 스크롤).
 interface Props {
   alarms: Alarm[];
   onEditAlarm: (a: Alarm) => void;
   onUpdateAlarm?: (id: number, data: Partial<Alarm>) => void;
 }
 
+// 항상 6주(42칸)로 맞춰서 매달 페이지 높이가 동일하게 — 세로 페이징에 필수
+const ROWS = 6;
+const TOTAL_CELLS = ROWS * 7;
+const CELL_H = 72;
+const CELL_MB = 3;
+const ITEM_HEIGHT = ROWS * (CELL_H + CELL_MB);
+// 앞뒤 20년치 — 실사용상 끝에 닿을 일이 없어 사실상 무한 스크롤처럼 느껴진다
+const RANGE = 240;
+
+interface DayInfo { alarms: Alarm[]; shift: Alarm|null; off: boolean }
+
+function buildDayMap(alarms: Alarm[], year: number, month: number): Record<string, DayInfo> {
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const map: Record<string, DayInfo> = {};
+  for (let d=1; d<=daysInMonth; d++) {
+    const ds = `${year}-${pad(month+1)}-${pad(d)}`;
+    map[ds] = {
+      // 팝업에서 "이날 꺼진 알람"도 보여줘야 하므로 skip 포함 목록을 쓰고, 칩에서는 걸러낸다
+      alarms: alarmsForDate(alarms, ds, true),
+      shift:  shiftForDate(alarms, ds),
+      off:    isOffDay(alarms, ds),
+    };
+  }
+  return map;
+}
+
+function buildCells(year: number, month: number): (number|null)[] {
+  const firstDow = new Date(year, month, 1).getDay();
+  const offset = (firstDow + 6) % 7;
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const cells: (number|null)[] = [];
+  for (let i=0; i<offset; i++) cells.push(null);
+  for (let d=1; d<=daysInMonth; d++) cells.push(d);
+  while (cells.length < TOTAL_CELLS) cells.push(null);
+  return cells;
+}
+
+interface MonthGridProps {
+  year: number; month: number; alarms: Alarm[];
+  colorOf: Record<number, string>; today: string;
+  cv: ReturnType<typeof makeStyles>;
+  onSelectDate: (ds: string) => void;
+}
+
+const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, colorOf, today, cv, onSelectDate }: MonthGridProps) {
+  const cells = useMemo(() => buildCells(year, month), [year, month]);
+  const dayMap = useMemo(() => buildDayMap(alarms, year, month), [alarms, year, month]);
+  const offset = cells.findIndex(c => c !== null);
+
+  return (
+    <View style={[cv.grid, { height: ITEM_HEIGHT }]}>
+      {cells.map((d, i) => {
+        if (!d) return <View key={i} style={cv.cell}/>;
+        const ds = `${year}-${pad(month+1)}-${pad(d)}`;
+        const isToday = ds === today;
+        const dow = (offset + d - 1) % 7;
+        const info = dayMap[ds];
+        const chips = info.alarms.filter(a => !isWorkAlarm(a) && !a.skips?.includes(ds));
+        const sc = info.shift ? colorOf[info.shift.id] : null;
+        const holiday = getHoliday(ds);
+
+        return (
+          <TouchableOpacity
+            key={i}
+            activeOpacity={0.7}
+            onPress={() => onSelectDate(ds)}
+            style={[
+              cv.cell,
+              sc       != null && { backgroundColor: sc + '22' },
+              info.off          && cv.cellOff,
+              isToday           && cv.cellToday,
+            ]}
+          >
+            <Text style={[
+              cv.dayNum,
+              (dow >= 5 || holiday) && {color:'#e07070'},
+              isToday && cv.dayNumToday,
+            ]}>{d}</Text>
+            {holiday && (
+              <Text style={cv.holidayLabel} numberOfLines={1}>{holiday}</Text>
+            )}
+            {info.shift && (
+              <Text style={[cv.shiftLabel, {color: sc!}]} numberOfLines={1}>
+                {getType(info.shift.typeId).label}
+              </Text>
+            )}
+            {info.off && (
+              <Text style={cv.offLabel}>비번</Text>
+            )}
+            {chips.slice(0,2).map((al, ai) => {
+              const alType = getType(al.typeId);
+              return (
+                <Text
+                  key={ai}
+                  style={[cv.alarmChip, { color: alType.color, backgroundColor: alType.color + '22', borderColor: alType.color + '55', borderWidth: 0.5 }]}
+                  numberOfLines={1}
+                >{al.label}</Text>
+              );
+            })}
+            {chips.length > 2 && (
+              <Text style={cv.moreChip}>+{chips.length-2}</Text>
+            )}
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+});
+
 export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
   const C = useColors();
   const cv = makeStyles(C);
   const today = todayStr();
   const todayDate = new Date(today);
-  const [year,  setYear]  = useState(todayDate.getFullYear());
-  const [month, setMonth] = useState(todayDate.getMonth());
+  const anchorYear  = todayDate.getFullYear();
+  const anchorMonth = todayDate.getMonth();
+
+  const [pageIndex, setPageIndex] = useState(RANGE);
   const [selDate, setSelDate] = useState<string|null>(null);
+  const listRef = useRef<FlatList>(null);
 
-  const prevMonth = () => { if(month===0){setMonth(11);setYear(y=>y-1);}else setMonth(m=>m-1); };
-  const nextMonth = () => { if(month===11){setMonth(0);setYear(y=>y+1);}else setMonth(m=>m+1); };
+  const indexToYearMonth = useCallback((idx: number) => {
+    const total = anchorYear * 12 + anchorMonth + (idx - RANGE);
+    return { year: Math.floor(total / 12), month: ((total % 12) + 12) % 12 };
+  }, [anchorYear, anchorMonth]);
 
-  const firstDow    = new Date(year, month, 1).getDay();
-  const offset      = (firstDow + 6) % 7;
-  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const { year, month } = indexToYearMonth(pageIndex);
 
-  const cells: (number|null)[] = [];
-  for (let i=0; i<offset; i++) cells.push(null);
-  for (let d=1; d<=daysInMonth; d++) cells.push(d);
+  const goToIndex = (idx: number) => {
+    if (idx < 0 || idx > RANGE * 2) return;
+    setPageIndex(idx);
+    listRef.current?.scrollToIndex({ index: idx, animated: true });
+  };
+  const prevMonth = () => goToIndex(pageIndex - 1);
+  const nextMonth = () => goToIndex(pageIndex + 1);
 
-  const dayMap = useMemo(() => {
-    const map: Record<string, { alarms: Alarm[]; shift: Alarm|null; off: boolean }> = {};
-    for (let d=1; d<=daysInMonth; d++) {
-      const ds = `${year}-${pad(month+1)}-${pad(d)}`;
-      map[ds] = {
-        // 팝업에서 "이날 꺼진 알람"도 보여줘야 하므로 skip 포함 목록을 쓰고, 칩에서는 걸러낸다
-        alarms: alarmsForDate(alarms, ds, true),
-        shift:  shiftForDate(alarms, ds),
-        off:    isOffDay(alarms, ds),
-      };
-    }
-    return map;
-  }, [alarms, year, month, daysInMonth]);
+  const onMomentumScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.y / ITEM_HEIGHT);
+    if (idx !== pageIndex) setPageIndex(idx);
+  };
 
-  // 범례: 이번 달 칸을 실제로 칠하는 대표 알람만 (보조 알람은 하루 팝업에서 확인)
+  // 현재 보이는 달 기준 범례/비번 여부 (칸 렌더링 자체는 MonthGrid가 각자 계산)
+  const dayMap = useMemo(() => buildDayMap(alarms, year, month), [alarms, year, month]);
   const legendAlarms = useMemo(() => {
     const seen = new Map<number, Alarm>();
     Object.values(dayMap).forEach(info => {
@@ -62,109 +172,69 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
   const selInfo = selDate ? dayMap[selDate] : null;
   const selDateObj = selDate ? new Date(selDate) : null;
 
-  // 달력 칸용 짧은 라벨 — 라벨이 타입 이름("출근" 등)으로 시작하면 그 접두어를 떼고
-  // 구분되는 뒷부분만 크게 보여준다. (색이 이미 근무임을 나타내므로)
-  const cellLabel = (a: Alarm) => {
-    const typeName = getType(a.typeId).label;
-    const l = a.label || typeName;
-    if (l.startsWith(typeName)) {
-      const rest = l.slice(typeName.length).trim();
-      return rest || typeName;
-    }
-    return l;
-  };
+  const pages = useMemo(() => Array.from({ length: RANGE * 2 + 1 }, (_, i) => i), []);
 
   return (
-    <ScrollView style={{flex:1, backgroundColor:C.bg}} contentContainerStyle={{padding:14, paddingBottom:100}}>
-      {/* 월 네비 */}
-      <View style={cv.nav}>
-        <TouchableOpacity onPress={prevMonth} style={cv.navBtn}>
-          <Text style={cv.navArrow}>‹</Text>
-        </TouchableOpacity>
-        <Text style={cv.navTitle}>{year}년 {month+1}월</Text>
-        <TouchableOpacity onPress={nextMonth} style={cv.navBtn}>
-          <Text style={cv.navArrow}>›</Text>
-        </TouchableOpacity>
-      </View>
+    <View style={{flex:1, backgroundColor:C.bg}}>
+      <View style={{padding:14, paddingBottom:0}}>
+        {/* 월 네비 */}
+        <View style={cv.nav}>
+          <TouchableOpacity onPress={prevMonth} style={cv.navBtn}>
+            <Text style={cv.navArrow}>‹</Text>
+          </TouchableOpacity>
+          <Text style={cv.navTitle}>{year}년 {month+1}월</Text>
+          <TouchableOpacity onPress={nextMonth} style={cv.navBtn}>
+            <Text style={cv.navArrow}>›</Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* 요일 헤더 */}
-      <View style={cv.grid}>
-        {DAYS.map((d,i) => (
-          <View key={i} style={cv.headCell}>
-            <Text style={[cv.headText, i>=5 && {color:'#e07070'}]}>{d}</Text>
-          </View>
-        ))}
-
-        {/* 날짜 셀 */}
-        {cells.map((d, i) => {
-          if (!d) return <View key={i} style={cv.cell}/>;
-          const ds = `${year}-${pad(month+1)}-${pad(d)}`;
-          const isToday = ds === today;
-          const dow = (offset + d - 1) % 7;
-          const info = dayMap[ds];
-          const chips = info.alarms.filter(a => !isWorkAlarm(a) && !a.skips?.includes(ds));
-          const sc = info.shift ? colorOf[info.shift.id] : null;
-
-          return (
-            <TouchableOpacity
-              key={i}
-              activeOpacity={0.7}
-              onPress={() => setSelDate(ds)}
-              style={[
-                cv.cell,
-                sc       != null && { backgroundColor: sc + '22' },
-                info.off          && cv.cellOff,
-                isToday           && cv.cellToday,
-              ]}
-            >
-              <Text style={[
-                cv.dayNum,
-                dow >= 5 && {color:'#e07070'},
-                isToday && cv.dayNumToday,
-              ]}>{d}</Text>
-              {info.shift && (
-                <Text style={[cv.shiftLabel, {color: sc!}]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>
-                  {cellLabel(info.shift)}
-                </Text>
-              )}
-              {info.off && (
-                <Text style={cv.offLabel}>비번</Text>
-              )}
-              {chips.slice(0,2).map((al, ai) => {
-                const alType = getType(al.typeId);
-                return (
-                  <Text
-                    key={ai}
-                    style={[cv.alarmChip, { color: alType.color, backgroundColor: alType.color + '22', borderColor: alType.color + '55', borderWidth: 0.5 }]}
-                    numberOfLines={1}
-                  >{al.label}</Text>
-                );
-              })}
-              {chips.length > 2 && (
-                <Text style={cv.moreChip}>+{chips.length-2}</Text>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* 범례 */}
-      {(legendAlarms.length > 0 || hasOff) && (
-        <View style={cv.legend}>
-          {legendAlarms.map((a, i) => (
-            <View key={i} style={cv.legendItem}>
-              <View style={[cv.legendBox, {backgroundColor: colorOf[a.id]}]}/>
-              <Text style={cv.legendText}>{a.label || getType(a.typeId).label} {pad(a.hour)}:{pad(a.min)}</Text>
+        {/* 요일 헤더 — 달이 바뀌어도 고정 */}
+        <View style={cv.grid}>
+          {DAYS.map((d,i) => (
+            <View key={i} style={cv.headCell}>
+              <Text style={[cv.headText, i>=5 && {color:'#e07070'}]}>{d}</Text>
             </View>
           ))}
-          {hasOff && (
-            <View style={cv.legendItem}>
-              <View style={cv.legendBoxOff}/>
-              <Text style={cv.legendTextOff}>비번</Text>
-            </View>
-          )}
         </View>
-      )}
+      </View>
+
+      {/* 날짜 그리드 — 위/아래로 계속 스와이프해서 달 이동 (20년 범위) */}
+      <FlatList
+        ref={listRef}
+        data={pages}
+        keyExtractor={(i) => String(i)}
+        renderItem={({ item }) => {
+          const { year: y, month: m } = indexToYearMonth(item);
+          return <MonthGrid year={y} month={m} alarms={alarms} colorOf={colorOf} today={today} cv={cv} onSelectDate={setSelDate} />;
+        }}
+        getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
+        initialScrollIndex={RANGE}
+        pagingEnabled
+        showsVerticalScrollIndicator={false}
+        onMomentumScrollEnd={onMomentumScrollEnd}
+        style={{ height: ITEM_HEIGHT }}
+        contentContainerStyle={{ paddingHorizontal: 14 }}
+      />
+
+      <View style={{paddingHorizontal:14}}>
+        {/* 범례 */}
+        {(legendAlarms.length > 0 || hasOff) && (
+          <View style={cv.legend}>
+            {legendAlarms.map((a, i) => (
+              <View key={i} style={cv.legendItem}>
+                <View style={[cv.legendBox, {backgroundColor: colorOf[a.id]}]}/>
+                <Text style={cv.legendText}>{a.label || getType(a.typeId).label} {pad(a.hour)}:{pad(a.min)}</Text>
+              </View>
+            ))}
+            {hasOff && (
+              <View style={cv.legendItem}>
+                <View style={cv.legendBoxOff}/>
+                <Text style={cv.legendTextOff}>비번</Text>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
 
       {/* 하루 상세 팝업 */}
       <Modal visible={selDate != null} transparent animationType="fade" onRequestClose={() => setSelDate(null)}>
@@ -174,6 +244,14 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
               <Text style={cv.modalTitle}>
                 {selDateObj.getMonth()+1}월 {selDateObj.getDate()}일 ({DAYS[(selDateObj.getDay()+6)%7]})
               </Text>
+            )}
+            {selDate && (
+              <Text style={cv.modalLunar}>{lunarDateText(selDate)}</Text>
+            )}
+            {selDate && getHoliday(selDate) && (
+              <View style={cv.modalHolidayRow}>
+                <Text style={cv.modalHolidayText}>{getHoliday(selDate)}</Text>
+              </View>
             )}
             {selInfo?.shift && (
               <View style={[cv.modalShiftRow, {backgroundColor: colorOf[selInfo.shift.id] + '22'}]}>
@@ -241,7 +319,7 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -254,12 +332,14 @@ function makeStyles(C: Palette) {
     grid:        { flexDirection:'row', flexWrap:'wrap' },
     headCell:    { width:'14.28%', alignItems:'center', paddingVertical:6 },
     headText:    { fontSize:11, fontWeight:'700', color:C.txt3 },
-    cell:        { width:'14.28%', minHeight:72, padding:3, borderRadius:8, marginBottom:3 },
+    cell:        { width:'14.28%', height:CELL_H, marginBottom:CELL_MB, padding:3, borderRadius:8 },
     // 비번 = "달력의 빨간 날" — 진한 빨간 채움 + 굵은 빨간 점선으로 한눈에 띄게
     cellOff:     { borderWidth:3, borderStyle:'dashed', borderColor:'#f05555', backgroundColor:'rgba(224,82,82,0.26)' },
     cellToday:   { borderWidth:1.5, borderStyle:'solid', borderColor:C.accent },
     dayNum:      { fontSize:13, fontWeight:'700', color:C.txt, marginBottom:2, textAlign:'center' },
     dayNumToday: { color:C.accent, fontWeight:'900' },
+    // 공휴일 이름표 — 비번(빨강)과 헷갈리지 않게 골드 계열로 구분
+    holidayLabel:{ fontSize:9, fontWeight:'800', color:'#e0a44d', textAlign:'center', marginBottom:1 },
     shiftLabel:  { fontSize:13, fontWeight:'900', textAlign:'center', marginBottom:1 },
     // 비번은 빨간 글자 — "달력의 빨간 날 = 쉬는 날" 관습에 맞춰 직관적으로
     offLabel:    { fontSize:13, fontWeight:'900', color:'#f06565', textAlign:'center', marginBottom:1 },
@@ -273,7 +353,10 @@ function makeStyles(C: Palette) {
     legendTextOff:{ fontSize:12, fontWeight:'800', color:'#e05252' },
     modalBack:   { flex:1, backgroundColor:'rgba(0,0,0,0.55)', justifyContent:'center', padding:28 },
     modalCard:   { backgroundColor:C.bg2, borderRadius:20, padding:20, borderWidth:1, borderColor:C.border },
-    modalTitle:  { fontSize:19, fontWeight:'800', color:C.txt, marginBottom:12, textAlign:'center' },
+    modalTitle:  { fontSize:19, fontWeight:'800', color:C.txt, textAlign:'center' },
+    modalLunar:  { fontSize:12, fontWeight:'600', color:C.txt3, textAlign:'center', marginBottom:12 },
+    modalHolidayRow:{ borderRadius:12, paddingVertical:6, paddingHorizontal:12, marginBottom:8, alignItems:'center', backgroundColor:'rgba(224,164,77,0.14)' },
+    modalHolidayText:{ fontSize:13, fontWeight:'800', color:'#e0a44d' },
     modalShiftRow:{ borderRadius:12, paddingVertical:8, paddingHorizontal:12, marginBottom:10, alignItems:'center' },
     modalShiftText:{ fontSize:15, fontWeight:'800' },
     modalOffRow: { borderRadius:12, paddingVertical:8, paddingHorizontal:12, marginBottom:10, alignItems:'center', borderWidth:1.8, borderStyle:'dashed', borderColor:'#e05252', backgroundColor:'rgba(224,82,82,0.26)' },

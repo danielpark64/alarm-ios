@@ -10,6 +10,7 @@ import * as Haptics from 'expo-haptics';
 import { useAlarms } from '../src/hooks/useAlarms';
 import { useAlarmNotifications } from '../src/hooks/useAlarmNotifications';
 import { useSelectMode } from '../src/hooks/useSelectMode';
+import { useHolidaySync } from '../src/hooks/useHolidaySync';
 import { ClockHeader } from '../src/components/Home/ClockHeader';
 import { CalendarView } from '../src/components/Home/CalendarView';
 import { AlarmsTab } from '../src/components/Home/AlarmsTab';
@@ -30,6 +31,7 @@ export default function App() {
   const { theme } = useThemeSetting();
   const s = makeStyles(C);
   const { alarms, loaded, addAlarm, updateAlarm, deleteAlarms, toggleAlarm } = useAlarms();
+  useHolidaySync();
   const { notifGranted, requestPermission, overlayGranted, requestOverlayPermission, tick, ringing, stopRinging, snoozeRinging } = useAlarmNotifications(alarms, updateAlarm);
   const { selectMode, selectedIds, enterSelectMode, toggleSelect, selectAll, exitSelectMode } = useSelectMode();
   // 메인 화면은 달력 — 교대근무자는 약속 잡을 때 근무표(달력)부터 본다

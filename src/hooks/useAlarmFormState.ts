@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Alarm } from '../constants';
-import { getType, pad, todayStr } from '../utils';
+import { getType, pad, todayStr, lunarToSolarInYear } from '../utils';
 import { fmtDisplayDate } from '../components/common/CalendarPicker';
 
 // 초기 반복모드를 폼 내부 표현(wdcustom)으로 정규화
@@ -42,6 +42,7 @@ export function useAlarmFormState(
   const [vib,      setVib]     = useState(initial.vib     ?? 'pulse');
   const [sd,       setSd]      = useState(initial.sd      ?? todayStr());
   const [lastDay,  setLastDay] = useState(initial.lastDay ?? false);
+  const [lunar,    setLunar]   = useState(initial.lunar   ?? false);
   const [showCal,  setShowCal] = useState(false);
 
   useEffect(() => { onTypeChange?.(typeId); }, [typeId]);
@@ -111,6 +112,7 @@ export function useAlarmFormState(
     if (vib     !== (initial.vib     ?? 'pulse'))         return true;
     if (sd      !== (initial.sd      ?? todayStr()))      return true;
     if (lastDay !== (initial.lastDay ?? false))           return true;
+    if (lunar   !== (initial.lunar   ?? false))           return true;
     return false;
   };
 
@@ -123,6 +125,7 @@ export function useAlarmFormState(
       label: label.trim() || type.label,
       rm: rm as Alarm['rm'], days: effectiveDays, cd, rd, snd, vib, sd,
       lastDay: rm === 'monthly' ? lastDay : false,
+      lunar: rm === 'yearly' ? lunar : false,
     });
   };
 
@@ -137,18 +140,25 @@ export function useAlarmFormState(
 
   // ── 날짜 표시 ──
   const isToday    = sd === todayStr();
-  const dateLabel  = isToday ? `오늘 · ${fmtDisplayDate(sd)}` : `${fmtDisplayDate(sd)}부터`;
+  const [, sdM, sdD] = sd.split('-').map(Number);
+  // 매년+음력이면 달력에서 고른 월/일을 "음력 M월 D일"로 해석 — 연도는 무의미하므로 표시 안 함
+  const dateLabel  = (rm === 'yearly' && lunar)
+    ? `음력 ${sdM}월 ${sdD}일`
+    : isToday ? `오늘 · ${fmtDisplayDate(sd)}` : `${fmtDisplayDate(sd)}부터`;
   const dateLocked = rm === 'monthly' && lastDay;
-  const isLeapDay  = sd.endsWith('-02-29');
+  const isLeapDay  = !lunar && sd.endsWith('-02-29');
+  // 음력 기준일 때 올해(선택한 연도) 기준 실제 양력 날짜 미리보기
+  const lunarSolarPreview = (rm === 'yearly' && lunar)
+    ? lunarToSolarInYear(Number(sd.split('-')[0]), sdM, sdD)
+    : null;
 
   // 매월/매년 반복 요약 텍스트
-  const [, sdM, sdD] = sd.split('-').map(Number);
   const repeatSummary = rm === 'monthly'
     ? (lastDay
       ? `🗓️ 매월 말일 ${pad(hour)}:${pad(min)}`
       : `🗓️ 매월 ${sdD}일 ${pad(hour)}:${pad(min)}`)
     : rm === 'yearly'
-      ? `🗓️ 매년 ${sdM}월 ${sdD}일 ${pad(hour)}:${pad(min)}`
+      ? `🗓️ 매년 ${lunar ? '음력 ' : ''}${sdM}월 ${sdD}일 ${pad(hour)}:${pad(min)}`
       : '';
 
   // ── 소리+진동 3-way ──
@@ -163,9 +173,9 @@ export function useAlarmFormState(
   return {
     typeId, hour, setHour, min, setMin, label, setLabel: setLabelGuarded,
     rm, setRm, days, setDays, cd, setCd, rd, setRd,
-    sd, setSd, lastDay, setLastDay, showCal, setShowCal,
+    sd, setSd, lastDay, setLastDay, lunar, setLunar, showCal, setShowCal,
     handleTypeChange, toggleDay, handleSubmit, submit, isDirty,
-    type, isToday, dateLabel, dateLocked, isLeapDay, repeatSummary,
+    type, isToday, dateLabel, dateLocked, isLeapDay, lunarSolarPreview, repeatSummary,
     sndVibMode, setSndVibMode,
   };
 }
