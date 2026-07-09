@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@drawable/widget_bg"
+    android:padding="6dp">
+
+    <TextView
+        android:id="@+id/widget_shift_dot"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="●"
+        android:textSize="14sp"
+        android:textColor="#a29bfe"
+        android:gravity="center" />
+
+    <TextView
+        android:id="@+id/widget_shift_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="--"
+        android:textColor="#c8c8e0"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:gravity="center" />
+
+    <!-- 중/대 위젯용 더미 뷰 (코드 호환) -->
+    <TextView
+        android:id="@+id/widget_alarm_label"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/widget_alarm_time"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+
+</LinearLayout>

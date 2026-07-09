@@ -40,6 +40,21 @@
       android:excludeFromRecents="true"
       android:taskAffinity=""
       android:launchMode="singleInstance"/>
+    <service android:name=".WidgetListService"
+      android:permission="android.permission.BIND_REMOTEVIEWS"
+      android:exported="false" />
+    <receiver android:name=".AlarmWidgetMedium" android:exported="true" android:label="교대근무 알람 (중)">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+      </intent-filter>
+      <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_medium_info"/>
+    </receiver>
+    <receiver android:name=".AlarmWidgetLarge" android:exported="true" android:label="교대근무 알람 (대)">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+      </intent-filter>
+      <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_large_info"/>
+    </receiver>
     <activity android:name=".MainActivity" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|smallestScreenSize" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:theme="@style/Theme.App.SplashScreen" android:exported="true" android:screenOrientation="portrait">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>

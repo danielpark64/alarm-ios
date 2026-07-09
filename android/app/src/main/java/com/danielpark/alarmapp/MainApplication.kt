@@ -22,6 +22,7 @@ class MainApplication : Application(), ReactApplication {
       packageList =
         PackageList(this).packages.apply {
           add(AlarmPackage())
+          add(WidgetPackage())
         }
     )
   }

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingTop="3dp"
+    android:paddingBottom="3dp"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp">
+
+    <TextView
+        android:id="@+id/widget_list_day"
+        android:layout_width="28dp"
+        android:layout_height="wrap_content"
+        android:text="월"
+        android:textColor="#888899"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:gravity="center" />
+
+    <TextView
+        android:id="@+id/widget_list_shift"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="출근"
+        android:textColor="#c8c8e0"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:layout_marginStart="6dp" />
+
+</LinearLayout>

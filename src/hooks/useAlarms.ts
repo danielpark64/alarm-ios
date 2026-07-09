@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alarm } from '../constants';
 import { todayStr } from '../utils';
 import { rescheduleAll } from '../utils/notifications';
+import { syncWidget } from '../utils/widgetSync';
 
 const KEY = 'alarms_v1_rn';
 // 처음 설치 시에는 알람 없이 시작 — 첫 알람은 "따라하기" 튜토리얼에서 직접 만들도록 유도
@@ -43,12 +44,14 @@ export function useAlarms() {
       setAlarms(loaded);
       // 앱 시작 시 전체 재스케줄링 — 사운드 설정 변경 등 즉시 반영
       await rescheduleAll(loaded);
+      syncWidget(loaded);
       setLoaded(true);
     })();
   }, []);
 
   const save = useCallback(async (a: Alarm[], nid: number) => {
     await AsyncStorage.setItem(KEY, JSON.stringify({ alarms: a, nextId: nid }));
+    syncWidget(a);
   }, []);
 
   const addAlarm = useCallback(async (data: Omit<Alarm,'id'|'active'>) => {
