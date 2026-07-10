@@ -74,4 +74,8 @@ export async function syncWidget(alarms: Alarm[]) {
   });
 
   WidgetModule.updateWidgetData(payload);
+
+  // 활성 알람 ID 목록을 네이티브에 전달 — AlarmReceiver가 비활성 알람을 차단하는 데 사용
+  const activeIds = alarms.filter(a => a.active).map(a => a.id).join(',');
+  WidgetModule.saveActiveAlarmIds?.(activeIds);
 }

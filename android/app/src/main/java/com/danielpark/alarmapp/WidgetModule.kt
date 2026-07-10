@@ -16,4 +16,11 @@ class WidgetModule(private val reactContext: ReactApplicationContext) :
         prefs.edit().putString("widgetData", json).apply()
         refreshAllWidgets(reactContext)
     }
+
+    // 활성 알람 ID 목록을 SharedPreferences에 저장 — AlarmReceiver가 비활성 알람 필터링에 사용
+    @ReactMethod
+    fun saveActiveAlarmIds(ids: String) {
+        val prefs = reactContext.getSharedPreferences("AlarmWidgetData", android.content.Context.MODE_PRIVATE)
+        prefs.edit().putString("activeAlarmIds", ids).apply()
+    }
 }

@@ -19,6 +19,15 @@ class AlarmReceiver : BroadcastReceiver() {
         val vibOn   = intent.getBooleanExtra("vibOn", true)
         val volume  = intent.getFloatExtra("volume", 1f)
 
+        // 비활성 알람 차단 — JS 측이 꺼둔 alarmId는 울리지 않음
+        if (alarmId >= 0) {
+            val prefs = context.getSharedPreferences("AlarmWidgetData", Context.MODE_PRIVATE)
+            val activeIds = prefs.getString("activeAlarmIds", "")
+                ?.split(",")?.mapNotNull { it.trim().toIntOrNull() }?.toSet()
+                ?: emptySet()
+            if (alarmId !in activeIds) return
+        }
+
         // ForegroundService 시작 (소리 루프 + 진동)
         val svcIntent = Intent(context, AlarmService::class.java).apply {
             putExtra(AlarmService.EXTRA_TITLE, title)
