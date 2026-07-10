@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "알람",
+    "name": "교대알람",
     "slug": "alarm-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,8 +16,9 @@
       "package": "com.danielpark.alarmapp",
       "icon": "./assets/icon.png",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#f5f6fa"
+        "foregroundImage": "./assets/android-icon-foreground-new.png",
+        "monochromeImage": "./assets/android-icon-monochrome-new.png",
+        "backgroundColor": "#5D4FA4"
       },
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",

@@ -13,7 +13,7 @@ export type RingingState = { title: string; body: string; alarmId?: number; grou
 // 알림 권한/리스너/포그라운드 재스케줄/네이티브 울림 이벤트를 한곳에서 관리
 export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number, patch: Partial<Alarm>) => Promise<void>) {
   const [notifGranted, setNotifGranted] = useState(false);
-  const [overlayGranted, setOverlayGranted] = useState(true);
+  const [overlayGranted, setOverlayGranted] = useState<boolean | null>(null);
   const [tick, setTick] = useState(0);
   const [ringing, setRinging] = useState<RingingState | null>(null);
   const appStateRef    = useRef(AppState.currentState);
@@ -27,6 +27,13 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       const ok = await requestNotificationPermission();
       setNotifGranted(ok);
       await registerNotificationCategories();
+
+      // 알림 권한 다이얼로그가 완전히 닫힌 뒤에 오버레이 권한 체크를 시작 —
+      // 두 팝업(OS 다이얼로그 + 커스텀 Alert)이 동시에 뜨면 일부 기기(One UI 등)에서
+      // 뒤에 뜬 팝업이 터치를 못 받거나 아예 안 보이는 문제가 있었음
+      if (Platform.OS === 'android' && AlarmModule?.canDrawOverlays) {
+        setOverlayGranted(await AlarmModule.canDrawOverlays());
+      }
     })();
   }, []);
 
@@ -34,7 +41,6 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
   useEffect(() => {
     if (Platform.OS !== 'android' || !AlarmModule?.canDrawOverlays) return;
     const check = async () => setOverlayGranted(await AlarmModule.canDrawOverlays());
-    check();
     const sub = AppState.addEventListener('change', (next) => {
       if (next === 'active') check();
     });

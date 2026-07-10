@@ -112,8 +112,9 @@ export default function App() {
   );
 
   // 권한이 꺼져 있으면 앱을 켤 때마다 자동으로 한 번 안내 (배너만으로는 못 알아챌 수 있음)
+  // overlayGranted === null은 "아직 확인 전"이라 여기선 무시 — false로 확정된 경우에만 안내
   useEffect(() => {
-    if (!overlayGranted) showOverlayPrompt();
+    if (overlayGranted === false) showOverlayPrompt();
   }, [overlayGranted]);
 
   // 알람이 하나도 없는 신규 사용자는 빈 달력 대신 알람 탭(빈 상태 안내)에서 시작
@@ -204,14 +205,15 @@ export default function App() {
         </TouchableOpacity>
       </View>
 
-      {(!notifGranted || !overlayGranted) && (
+      {/* 표시 권한(다른 앱 위에 표시)은 안드로이드 전용 — iOS는 overlayGranted가 항상 null이라 Platform 체크 필수 */}
+      {(!notifGranted || (Platform.OS === 'android' && !overlayGranted)) && (
         <View style={s.permRow}>
           {!notifGranted && (
             <TouchableOpacity style={s.permChip} onPress={requestPermission}>
               <Text style={s.permChipT}>🔔 알림 권한 허용</Text>
             </TouchableOpacity>
           )}
-          {!overlayGranted && (
+          {Platform.OS === 'android' && !overlayGranted && (
             <TouchableOpacity style={s.permChip} onPress={showOverlayPrompt}>
               <Text style={s.permChipT}>📱 표시 권한 허용</Text>
             </TouchableOpacity>

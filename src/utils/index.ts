@@ -35,7 +35,10 @@ export function getNextFireDate(alarm: Alarm): Date | null {
   const now  = new Date();
   const today = todayStr();
   const startDate = alarm.sd || today;
-  for (let ahead = 0; ahead <= 14; ahead++) {
+  // 매년(음력 포함) 알람은 1년 가까이 뒤일 수 있어 "다음 알람" 미리보기가 놓치지 않도록 넉넉히 훑는다.
+  // (실제 OS 알림 예약은 별도로 14일 창만 쓰므로 여기 범위 확장은 성능에 영향 없음)
+  const searchDays = alarm.rm === 'yearly' ? 400 : 14;
+  for (let ahead = 0; ahead <= searchDays; ahead++) {
     const cand = new Date(now);
     cand.setDate(cand.getDate() + ahead);
     cand.setHours(alarm.hour, alarm.min, 0, 0);

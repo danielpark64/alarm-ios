@@ -1,5 +1,6 @@
 import '../src/ReactotronConfig';
 import { Stack } from 'expo-router';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -12,12 +13,14 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   useEffect(() => { SplashScreen.hideAsync(); }, []);
   return (
-    <ThemeProvider>
-      <AlarmDefaultsProvider>
-        <FontScaleProvider>
-          <SafeAreaProvider><Stack screenOptions={{ headerShown: false }} /></SafeAreaProvider>
-        </FontScaleProvider>
-      </AlarmDefaultsProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <AlarmDefaultsProvider>
+          <FontScaleProvider>
+            <SafeAreaProvider><Stack screenOptions={{ headerShown: false }} /></SafeAreaProvider>
+          </FontScaleProvider>
+        </AlarmDefaultsProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
