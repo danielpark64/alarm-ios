@@ -18,6 +18,8 @@ export function scheduleNative(
 // 기준으로 스케줄되므로, 가능한 모든 합성 ID 기준 rep 슬롯도 함께 취소함
 export function cancelNativeAlarms(alarmId: number) {
   if (Platform.OS !== 'android' || !AlarmModule) return;
+  // bare alarmId — AlarmReceiver가 weekly 재스케줄 시 이 코드로 등록함
+  AlarmModule.cancelAlarm(alarmId);
   for (let i = 0; i < 10; i++) AlarmModule.cancelAlarm(alarmId * 100 + i);
   for (let i = 0; i < 14; i++) {
     const id = mainNativeId(alarmId, i);
