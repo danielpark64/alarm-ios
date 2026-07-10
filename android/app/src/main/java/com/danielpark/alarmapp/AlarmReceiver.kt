@@ -20,12 +20,14 @@ class AlarmReceiver : BroadcastReceiver() {
         val volume  = intent.getFloatExtra("volume", 1f)
 
         // 비활성 알람 차단 — JS 측이 꺼둔 alarmId는 울리지 않음
+        // activeAlarmIds가 null/빈 문자열이면 목록 미설정(앱 미실행/재부팅 직후) → 허용(fail-safe open)
         if (alarmId >= 0) {
             val prefs = context.getSharedPreferences("AlarmWidgetData", Context.MODE_PRIVATE)
-            val activeIds = prefs.getString("activeAlarmIds", "")
-                ?.split(",")?.mapNotNull { it.trim().toIntOrNull() }?.toSet()
-                ?: emptySet()
-            if (alarmId !in activeIds) return
+            val activeIdsStr = prefs.getString("activeAlarmIds", null)
+            if (!activeIdsStr.isNullOrEmpty()) {
+                val activeIds = activeIdsStr.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
+                if (alarmId !in activeIds) return
+            }
         }
 
         // ForegroundService 시작 (소리 루프 + 진동)
