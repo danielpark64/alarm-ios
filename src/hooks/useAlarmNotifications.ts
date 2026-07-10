@@ -110,7 +110,7 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       if (r.actionIdentifier === 'snooze') {
         // Android 전용 — iOS는 스누즈 버튼 없음
         Notifications.scheduleNotificationAsync({
-          content: { ...r.notification.request.content, title:'⏰ 스누즈', sound: __DEV__ ? true : 'alarm_long.wav' },
+          content: { title: '⏰ 스누즈', body: r.notification.request.content.body ?? undefined, sound: __DEV__ ? true : 'alarm_long.wav', categoryIdentifier: 'alarm' },
           trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(Date.now()+5*60*1000) },
         });
       } else {

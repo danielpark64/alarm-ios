@@ -36,14 +36,14 @@ export async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: str
   const vibOn    = alarm.vib === 'pulse';
   const volume   = getAlarmDefaults().volume;
 
-  const baseContent: Notifications.NotificationContentInput = {
+  const baseContent = {
     title, body: bodyText,
     sound: soundOn ? (__DEV__ ? true : 'alarm_long.wav') : undefined,
-    vibrationPattern: getVibrationPattern(alarm.vib),
+    vibrate: getVibrationPattern(alarm.vib),
     data: { alarmId: alarm.id, rm: alarm.rm, groupKey: `${alarm.hour}_${alarm.min}` },
     categoryIdentifier: 'alarm',
     ...(threadIdentifier ? { threadIdentifier } : {}),
-  };
+  } as Notifications.NotificationContentInput;
 
   // "이날만 끄기"가 예약 창(14일) 안에 있으면 요일 알람도 날짜 기반으로 전환
   // (주간 반복 트리거는 특정 날짜 하나만 뺄 수 없기 때문)
@@ -147,14 +147,14 @@ export async function scheduleGroupReps(group: Alarm[]) {
   const hasSound = active.some(a => a.snd === 'default');
   const hasVib   = active.some(a => a.vib === 'pulse');
 
-  const repBase: Notifications.NotificationContentInput = {
+  const repBase = {
     title: `⏰ ${label}`,
     body: `${pad(first.hour)}:${pad(first.min)} 알람`,
     sound: hasSound ? (__DEV__ ? true : 'alarm_long.wav') : undefined,
-    vibrationPattern: hasVib ? [0,200,150,200,150,200] : undefined,
+    vibrate: hasVib ? [0,200,150,200,150,200] : undefined,
     categoryIdentifier: 'alarm',
     threadIdentifier: `grp_${gkey}`,
-  };
+  } as Notifications.NotificationContentInput;
 
   for (const offset of [1, 2]) {
     await Notifications.scheduleNotificationAsync({

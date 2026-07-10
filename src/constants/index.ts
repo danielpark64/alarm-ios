@@ -28,7 +28,7 @@ export const CYCLE_PRESETS = [2,3,4,7,10,30];
 // 인앱 알람 울림 팝업의 "5분 후" 스누즈 버튼 노출 여부. false면 끄기 버튼만 표시.
 export const SNOOZE_ENABLED = false;
 export type AlarmType  = typeof TYPES[number]['id'];
-export type RepeatMode = typeof REPEAT[number]['id'] | 'weekdays' | 'weekends';
+export type RepeatMode = typeof REPEAT[number]['id'] | 'weekdays' | 'weekends' | 'daily';
 export type SoundMode  = 'none' | 'default';
 export type VibMode    = 'none' | 'pulse';
 export interface Alarm {
