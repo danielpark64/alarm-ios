@@ -1,11 +1,32 @@
 import KoreanLunarCalendar from 'korean-lunar-calendar';
-import { Alarm, TYPES, SOUNDS, VIBS, DAYS } from '../constants';
+import { Alarm, TYPES, SOUNDS, VIBS, DAYS, SHIFTS, ShiftPeriod } from '../constants';
 export const pad = (n: number) => String(n).padStart(2, '0');
 export const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
 export const fmtDate = (s: string) => { if (!s) return ''; const [y,m,d] = s.split('-'); return `${y}.${m}.${d}`; };
 export const getType  = (id: string) => TYPES.find(t => t.id === id) ?? TYPES[TYPES.length-1];
 export const getSound = (id: string) => SOUNDS.find(s => s.id === id) ?? SOUNDS[1];
 export const getVib   = (id: string) => VIBS.find(v => v.id === id) ?? VIBS[0];
+// 달력 근무일 칸 라벨 — 사용자가 근무 시간대를 직접 지정했으면(해당사항없음 제외) 그 이름을, 아니면 기존 종류(출근/퇴근)명을 보여준다
+// 기타는 사용자가 직접 입력한 shiftCustom 텍스트를 우선 사용(비어있으면 "기타")
+export const shiftPeriodLabel = (a: Alarm): string => {
+  if (a.shift && a.shift !== 'none') {
+    if (a.shift === 'custom') return a.shiftCustom?.trim() || SHIFTS.find(s => s.id === 'custom')!.label;
+    return SHIFTS.find(s => s.id === a.shift)!.label;
+  }
+  return getType(a.typeId).label;
+};
+// 근무 시간대가 사용자에 의해 명시적으로 지정된 경우에만 고정 색을 반환 — 달력에서 시간순 자동 배색과 구분해 눈에 띄게 표시
+export const shiftPeriodColor = (a: Alarm): string | null => {
+  if (a.shift && a.shift !== 'none') return SHIFTS.find(s => s.id === a.shift)!.color;
+  return null;
+};
+// 라벨 입력칸 맨 앞에 붙는 근무 시간대 접두어. 해당사항없음이면 빈 문자열(기존과 동일).
+// 기타는 shiftCustom 텍스트(비어있으면 접두어 없음 — 사용자가 아직 입력 전이므로 라벨을 건드리지 않음)
+export const shiftPrefixFor = (shift: ShiftPeriod, shiftCustom?: string): string => {
+  if (shift === 'none') return '';
+  if (shift === 'custom') return shiftCustom?.trim() ? `${shiftCustom.trim()} ` : '';
+  return `${SHIFTS.find(s => s.id === shift)!.label} `;
+};
 export const repeatLabel = (al: Alarm): string => {
   if (al.rm==='once') return '한 번';
   if (al.rm==='wdcustom' || al.rm==='daily' || al.rm==='weekdays' || al.rm==='weekends') {

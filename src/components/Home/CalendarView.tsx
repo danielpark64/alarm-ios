@@ -1,17 +1,15 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { View, FlatList, TouchableOpacity, Modal, StyleSheet, useWindowDimensions, NativeSyntheticEvent, NativeScrollEvent, LayoutChangeEvent } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useSharedValue, runOnJS } from 'react-native-reanimated';
 import { Text } from '../common/AppText';
 import { Alarm, DAYS } from '../../constants';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
-import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, shiftForDate, isOffDay, shiftColorMap, lunarDateText, lunarShortText } from '../../utils';
+import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, shiftForDate, isOffDay, shiftColorMap, shiftPeriodLabel, shiftPeriodColor, lunarDateText, lunarShortText } from '../../utils';
 import { getHoliday } from '../../constants/holidays';
 
 // 달력 화면 — 근무 알람(주기+출근/퇴근)은 배경색으로 근무조를 표시하고,
 // 그 외 알람만 칩으로 보여준다. 날짜를 누르면 하루 상세 팝업이 뜬다.
-// 좌우로 스와이프하면 한 달씩(무한), 오른쪽 화살표 바로는 1년씩 점프한다.
+// 좌우로 스와이프하면 한 달씩(무한) 이동, 상단 연도 숫자를 누르면 연도 선택 팝업이 뜬다.
 interface Props {
   alarms: Alarm[];
   onEditAlarm: (a: Alarm) => void;
@@ -27,7 +25,11 @@ const CELL_MB = 2;
 const FALLBACK_CELL_H = 58;
 // 앞뒤 20년치 — 실사용상 끝에 닿을 일이 없어 사실상 무한 스크롤처럼 느껴진다
 const RANGE = 240;
-const YEAR_JUMP = 12; // 오른쪽 화살표 바 한 번에 1년(=12개월)
+// 연도 선택 팝업 — 2열 세로 배치. 현재 연도가 1열 가운데(위에서 3번째)에 오도록 페이지를 잡아서
+// 바로 앞뒤 연도가 같은 열 안에서 위/아래로 붙게 한다(다른 열로 떨어지면 "앞뒤"라는 인접감이 안 느껴짐).
+const YEAR_ROWS = 4;
+const YEARS_PER_PAGE = YEAR_ROWS * 2;
+const YEAR_CENTER_OFFSET = 2; // 페이지 시작 연도 = 현재 연도 - 2 (1열의 3번째 자리에 오도록)
 
 interface DayInfo { alarms: Alarm[]; shift: Alarm|null; off: boolean }
 
@@ -79,7 +81,9 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, colorOf, 
         const dow = (offset + d - 1) % 7;
         const info = dayMap[ds];
         const chips = info.alarms.filter(a => !isWorkAlarm(a) && !a.skips?.includes(ds));
-        const sc = info.shift ? colorOf[info.shift.id] : null;
+        // 사용자가 근무 시간대(초/중/말/기타)를 직접 지정했으면 고정색으로 눈에 띄게, 아니면 기존 시간순 자동 배색
+        const explicitShiftColor = info.shift ? shiftPeriodColor(info.shift) : null;
+        const sc = explicitShiftColor ?? (info.shift ? colorOf[info.shift.id] : null);
         const holiday = getHoliday(ds);
 
         return (
@@ -90,7 +94,6 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, colorOf, 
             style={[
               cv.cell,
               { height: cellH },
-              sc       != null && { backgroundColor: sc + '22' },
               info.off          && cv.cellOff,
               isToday           && cv.cellToday,
             ]}
@@ -107,9 +110,12 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, colorOf, 
               <Text style={cv.holidayLabel} numberOfLines={1}>{holiday}</Text>
             )}
             {info.shift && (
-              <Text style={[cv.shiftLabel, {color: sc!}]} numberOfLines={1}>
-                {getType(info.shift.typeId).label}
-              </Text>
+              <View style={cv.shiftTagRow}>
+                <View style={[cv.shiftDot, { backgroundColor: sc! }]} />
+                <Text style={[cv.shiftLabel, {color: sc!}]} numberOfLines={1}>
+                  {shiftPeriodLabel(info.shift)}
+                </Text>
+              </View>
             )}
             {info.off && (
               <Text style={cv.offLabel}>비번</Text>
@@ -146,6 +152,7 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
   const [pageIndex, setPageIndex] = useState(RANGE);
   const [selDate, setSelDate] = useState<string|null>(null);
   const [showLunar, setShowLunar] = useState(false);
+  const [showYearPicker, setShowYearPicker] = useState(false);
   const listRef = useRef<FlatList>(null);
 
   // 달력 칸 영역에 실제로 할당된 높이를 측정해서 칸 크기를 역산 — 폰/태블릿 등 화면비가 달라도
@@ -174,42 +181,31 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
   };
   const prevMonth = () => goToIndex(pageIndex - 1);
   const nextMonth = () => goToIndex(pageIndex + 1);
-  // 연도 점프는 12칸을 애니메이션으로 다 지나가면 중간에 빈 화면이 보이므로 즉시 이동
-  const prevYear  = () => goToIndex(pageIndex - YEAR_JUMP, false);
-  const nextYear  = () => goToIndex(pageIndex + YEAR_JUMP, false);
+  // 연도 선택 팝업에서 고른 연도로 이동 — 같은 달을 유지한 채 해당 연도로 즉시 이동
+  const selectYear = (newYear: number) => {
+    goToIndex(RANGE + (newYear - anchorYear) * 12 + (month - anchorMonth), false);
+  };
+  // 현재 페이지 시작 연도 — 팝업을 열 때마다 현재 연도가 1열 가운데 자리에 오도록 재설정
+  const [yearPageStart, setYearPageStart] = useState(anchorYear - YEAR_CENTER_OFFSET);
+  useEffect(() => {
+    if (showYearPicker) setYearPageStart(year - YEAR_CENTER_OFFSET);
+  }, [showYearPicker, year]);
+  // 순서대로 채운 배열을 반으로 나누면 앞 4개가 1열, 뒤 4개가 2열 — 현재 연도와 바로 앞뒤 연도가 1열 안에서 위아래로 붙는다
+  const yearOptions = useMemo(
+    () => Array.from({ length: YEARS_PER_PAGE }, (_, i) => yearPageStart + i),
+    [yearPageStart],
+  );
+  const yearCol1 = yearOptions.slice(0, YEAR_ROWS);
+  const yearCol2 = yearOptions.slice(YEAR_ROWS);
+  const prevYearPage = () => setYearPageStart(v => v - YEARS_PER_PAGE);
+  const nextYearPage = () => setYearPageStart(v => v + YEARS_PER_PAGE);
 
   const onMomentumScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / winWidth);
     if (idx !== pageIndex) setPageIndex(idx);
   };
 
-  // 세로 스와이프 = 연도 점프(같은 달, ±12개월).
-  // PanResponder(JS 쪽 터치 중재)는 iOS의 네이티브 UIScrollView pan 제스처가 훨씬 먼저·적극적으로
-  // 가로채가는 바람에 기기/손 방향에 따라 인식률이 들쭉날쭉했음 — 네이티브 제스처 인식기 레벨에서
-  // 직접 중재하는 react-native-gesture-handler로 교체해 양쪽 플랫폼에서 동일하게 동작하도록 함.
-  // activeOffsetY: 세로로 이만큼 움직여야 이 제스처가 활성화됨. failOffsetX: 그 전에 가로로 이만큼
-  // 움직이면 이 제스처는 즉시 포기하고 가로 FlatList 스크롤에 넘겨줌.
-  const yearJumpFired = useSharedValue(false);
-  const yearPan = Gesture.Pan()
-    .activeOffsetY([-10, 10])
-    .failOffsetX([-15, 15])
-    .onStart(() => { yearJumpFired.value = false; })
-    .onUpdate((e) => {
-      if (yearJumpFired.value) return;
-      if (e.translationY < -22) { yearJumpFired.value = true; runOnJS(nextYear)(); }
-      else if (e.translationY > 22) { yearJumpFired.value = true; runOnJS(prevYear)(); }
-    });
-
-  // 현재 보이는 달 기준 범례/비번 여부 (칸 렌더링 자체는 MonthGrid가 각자 계산)
   const dayMap = useMemo(() => buildDayMap(alarms, year, month), [alarms, year, month]);
-  const legendAlarms = useMemo(() => {
-    const seen = new Map<number, Alarm>();
-    Object.values(dayMap).forEach(info => {
-      if (info.shift && !seen.has(info.shift.id)) seen.set(info.shift.id, info.shift);
-    });
-    return [...seen.values()].sort((a,b) => a.hour-b.hour || a.min-b.min);
-  }, [dayMap]);
-  const hasOff = useMemo(() => Object.values(dayMap).some(i => i.off), [dayMap]);
   const colorOf = useMemo(() => shiftColorMap(alarms), [alarms]);
 
   const selInfo = selDate ? dayMap[selDate] : null;
@@ -226,7 +222,11 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
             <Text style={cv.navArrow}>‹</Text>
           </TouchableOpacity>
           <View style={cv.navTitleRow}>
-            <Text style={cv.navTitle}>{year}년 {month+1}월</Text>
+            <TouchableOpacity style={cv.yearTapBtn} activeOpacity={0.6} onPress={() => setShowYearPicker(true)}>
+              <Text style={cv.navTitle}>{year}년</Text>
+              <Text style={cv.yearChevron}>▾</Text>
+            </TouchableOpacity>
+            <Text style={cv.navTitle}> {month+1}월</Text>
             <TouchableOpacity
               style={[cv.lunarToggle, showLunar && cv.lunarToggleActive]}
               onPress={() => setShowLunar(v => !v)}
@@ -249,66 +249,71 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
         </View>
       </View>
 
-      {/* 날짜 그리드 — 좌우로 계속 스와이프해서 달 이동, 위/아래로 스와이프하면 1년씩 점프 (둘 다 무한) */}
+      {/* 날짜 그리드 — 좌우로 계속 스와이프해서 달 이동 (무한) */}
       {/* flex:1로 남는 공간을 다 차지하게 하고 그 실측 높이로 칸 크기를 역산 (폰/태블릿 화면비 대응) */}
-      <GestureDetector gesture={yearPan}>
-        <View style={{ flex: 1, position: 'relative' }} onLayout={onGridAreaLayout}>
-          <FlatList
-            ref={listRef}
-            data={pages}
-            horizontal
-            keyExtractor={(i) => String(i)}
-            renderItem={({ item }) => {
-              const { year: y, month: m } = indexToYearMonth(item);
-              return <MonthGrid year={y} month={m} alarms={alarms} colorOf={colorOf} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} itemHeight={itemHeight} onSelectDate={setSelDate} />;
-            }}
-            getItemLayout={(_, index) => ({ length: winWidth, offset: winWidth * index, index })}
-            initialScrollIndex={RANGE}
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={onMomentumScrollEnd}
-            style={{ height: itemHeight }}
-            // 저사양 기기에서 연도 점프(12칸 이동) 시 렌더링 부하를 줄이기 위해 오프스크린 렌더 범위를 최소화
-            windowSize={3}
-            maxToRenderPerBatch={2}
-            initialNumToRender={1}
-            updateCellsBatchingPeriod={30}
-            removeClippedSubviews
-          />
-          {/* 연도 이동 화살표 — 그리드 어디서나 세로로 스와이프해도 되고, 여기 탭해도 된다 */}
-          <View style={cv.yearStrip} pointerEvents="box-none">
-            <View style={cv.yearBar} pointerEvents="box-none">
-              <TouchableOpacity style={cv.yearBarBtn} onPress={prevYear}>
-                <Text style={cv.yearBarArrow}>▲</Text>
+      <View style={{ flex: 1, position: 'relative' }} onLayout={onGridAreaLayout}>
+        <FlatList
+          ref={listRef}
+          data={pages}
+          horizontal
+          keyExtractor={(i) => String(i)}
+          renderItem={({ item }) => {
+            const { year: y, month: m } = indexToYearMonth(item);
+            return <MonthGrid year={y} month={m} alarms={alarms} colorOf={colorOf} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} itemHeight={itemHeight} onSelectDate={setSelDate} />;
+          }}
+          getItemLayout={(_, index) => ({ length: winWidth, offset: winWidth * index, index })}
+          initialScrollIndex={RANGE}
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={onMomentumScrollEnd}
+          style={{ height: itemHeight }}
+          windowSize={3}
+          maxToRenderPerBatch={2}
+          initialNumToRender={1}
+          updateCellsBatchingPeriod={30}
+          removeClippedSubviews
+        />
+      </View>
+
+      {/* 연도 선택 팝업 */}
+      <Modal visible={showYearPicker} transparent animationType="fade" onRequestClose={() => setShowYearPicker(false)}>
+        <TouchableOpacity style={cv.modalBack} activeOpacity={1} onPress={() => setShowYearPicker(false)}>
+          <TouchableOpacity activeOpacity={1} style={cv.yearModalCard} onPress={() => {}}>
+            <View style={cv.yearNavRow}>
+              <TouchableOpacity onPress={prevYearPage} style={cv.navBtn}>
+                <Text style={cv.navArrow}>‹</Text>
               </TouchableOpacity>
-              <Text style={cv.yearBarLabel}>년</Text>
-              <TouchableOpacity style={cv.yearBarBtn} onPress={nextYear}>
-                <Text style={cv.yearBarArrow}>▼</Text>
+              <Text style={cv.modalTitle}>연도 선택</Text>
+              <TouchableOpacity onPress={nextYearPage} style={cv.navBtn}>
+                <Text style={cv.navArrow}>›</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
-      </GestureDetector>
-
-      <View style={{paddingHorizontal:14}}>
-        {/* 범례 */}
-        {(legendAlarms.length > 0 || hasOff) && (
-          <View style={cv.legend}>
-            {legendAlarms.map((a, i) => (
-              <View key={i} style={cv.legendItem}>
-                <View style={[cv.legendBox, {backgroundColor: colorOf[a.id]}]}/>
-                <Text style={cv.legendText}>{a.label || getType(a.typeId).label} {pad(a.hour)}:{pad(a.min)}</Text>
-              </View>
-            ))}
-            {hasOff && (
-              <View style={cv.legendItem}>
-                <View style={cv.legendBoxOff}/>
-                <Text style={cv.legendTextOff}>비번</Text>
-              </View>
-            )}
-          </View>
-        )}
-      </View>
+            <View style={cv.yearGrid}>
+              {[yearCol1, yearCol2].map((col, ci) => (
+                <View key={ci} style={cv.yearCol}>
+                  {col.map((y) => {
+                    const isActive = y === year;
+                    const isNear = y === year - 1 || y === year + 1;
+                    return (
+                      <TouchableOpacity
+                        key={y}
+                        style={[cv.yearBtn, isNear && cv.yearBtnNear, isActive && cv.yearBtnActive]}
+                        activeOpacity={0.7}
+                        onPress={() => { selectYear(y); setShowYearPicker(false); }}
+                      >
+                        <Text style={[cv.yearBtnText, isNear && cv.yearBtnTextNear, isActive && cv.yearBtnTextActive]}>{y}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ))}
+            </View>
+            <TouchableOpacity style={cv.modalClose} onPress={() => setShowYearPicker(false)}>
+              <Text style={cv.modalCloseText}>닫기</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* 하루 상세 팝업 */}
       <Modal visible={selDate != null} transparent animationType="fade" onRequestClose={() => setSelDate(null)}>
@@ -402,42 +407,51 @@ function makeStyles(C: Palette) {
     nav:         { flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:4 },
     navBtn:      { padding:10 },
     navArrow:    { fontSize:28, color:C.txt, fontWeight:'900' },
-    navTitle:    { fontSize:18, fontWeight:'900', color:C.txt },
+    navTitle:    { fontSize:20, fontWeight:'900', color:C.txt },
     navTitleRow: { flexDirection:'row', alignItems:'center', gap:8 },
     lunarToggle:      { paddingHorizontal:9, paddingVertical:4, borderRadius:9, borderWidth:1, borderColor:C.border2 },
     lunarToggleActive:{ backgroundColor:'rgba(162,155,254,0.16)', borderColor:C.accent },
     lunarToggleText:      { fontSize:11, fontWeight:'700', color:C.txt3 },
     lunarToggleTextActive:{ color:C.accent },
-    // 연도 이동 오버레이 — 그리드 위에 떠 있어 칸 폭에 영향 없음
-    // 세로 스와이프 전용 영역 — 가로 스와이프(달 이동)와 겹치지 않게 오른쪽 가장자리로만 한정
-    yearStrip:    { position:'absolute', right:0, top:0, bottom:0, width:52, alignItems:'center', justifyContent:'center' },
-    yearBar:      { width:30, borderRadius:14, backgroundColor:'rgba(30,30,38,0.55)', alignItems:'center', paddingVertical:8, gap:6 },
-    yearBarBtn:   { padding:4 },
-    yearBarArrow: { fontSize:12, color:'#cfcbe8', fontWeight:'900' },
-    yearBarLabel: { fontSize:9, color:'#cfcbe8', fontWeight:'700' },
+    // 연도가 탭 가능한 버튼임을 알아보기 쉽게 배경 pill + 아래쪽 화살표로 강조
+    // 연도 탭 영역 — 고령자도 "여기가 눌리는 곳"임을 한눈에 알 수 있게 큼직한 알약 버튼 + 진한 배경으로 강조
+    yearTapBtn:  { flexDirection:'row', alignItems:'center', paddingHorizontal:14, paddingVertical:8, borderRadius:14, backgroundColor:C.bg3, borderWidth:1.5, borderColor:C.border2 },
+    yearChevron: { fontSize:16, fontWeight:'900', color:C.txt3, marginLeft:4 },
+    yearModalCard:{ backgroundColor:C.bg2, borderRadius:22, padding:16, borderWidth:1, borderColor:C.border, alignSelf:'center', width:320 },
+    yearNavRow:  { flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:4 },
+    // 스크롤 없이 2열×4줄(8개), 좌우 화살표로 8년씩 이동. 순서대로 채운 배열을 반으로 나눠 1열/2열에 넣으므로
+    // 현재 연도(가운데 자리)와 바로 앞뒤 연도가 같은 열 안에서 위아래로 붙어 보인다.
+    yearGrid:    { flexDirection:'row', justifyContent:'center', gap:8, marginTop:16 },
+    yearCol:     { flexDirection:'column', gap:8, flex:1 },
+    yearBtn:     { height:56, borderRadius:16, alignItems:'center', justifyContent:'center', backgroundColor:C.bg3 },
+    // 바로 앞뒤 연도는 옅은 테두리로 2단계 강조 — 현재 연도로 시선이 자연스럽게 이어지도록
+    yearBtnNear: { borderWidth:2, borderColor:C.accent, backgroundColor:C.bg3 },
+    yearBtnTextNear:{ color:C.accent, fontWeight:'900' },
+    // 선택된 연도는 배경을 꽉 채운 단일 강조로만 표시 — 앱 전반의 활성 버튼 톤(accent2 채움 + 흰 글자)과 통일
+    yearBtnActive:{ backgroundColor:C.accent2 },
+    yearBtnText: { fontSize:19, fontWeight:'800', color:C.txt3 },
+    yearBtnTextActive:{ color:'#fff', fontWeight:'900' },
     grid:        { flexDirection:'row', flexWrap:'wrap' },
     headCell:    { width:'14.28%', alignItems:'center', paddingVertical:3 },
     headText:    { fontSize:11, fontWeight:'700', color:C.txt3 },
     cell:        { width:'14.28%', marginBottom:CELL_MB, padding:2, borderRadius:8 },
-    // 비번 = "달력의 빨간 날" — 진한 빨간 채움 + 굵은 빨간 점선으로 한눈에 띄게
-    cellOff:     { borderWidth:3, borderStyle:'dashed', borderColor:'#f05555', backgroundColor:'rgba(224,82,82,0.26)' },
+    // 비번 = "달력의 빨간 날" — 다른 셀은 전부 테두리가 없으니, 비번만 유일한 점선 테두리 패턴으로 색 없이도 눈에 띔.
+    // 배경은 아주 옅게(5%)만 남겨서 색으로 훑어볼 때도 살짝 도움이 되게.
+    cellOff:     { borderWidth:2.5, borderStyle:'dashed', borderColor:'#e05252', backgroundColor:'rgba(224,82,82,0.05)' },
     cellToday:   { borderWidth:1.5, borderStyle:'solid', borderColor:C.accent },
     dayNum:      { fontSize:12, fontWeight:'700', color:C.txt, marginBottom:1, textAlign:'center' },
     dayNumToday: { color:C.accent, fontWeight:'900' },
     lunarLabel:  { fontSize:9, fontWeight:'600', color:C.txt3, textAlign:'center', marginTop:-2, marginBottom:1 },
     // 공휴일 이름표 — 비번(빨강)과 헷갈리지 않게 골드 계열로 구분
     holidayLabel:{ fontSize:9, fontWeight:'800', color:'#e0a44d', textAlign:'center', marginBottom:1 },
-    shiftLabel:  { fontSize:12, fontWeight:'900', textAlign:'center', marginBottom:1 },
-    // 비번은 빨간 글자 — "달력의 빨간 날 = 쉬는 날" 관습에 맞춰 직관적으로
-    offLabel:    { fontSize:12, fontWeight:'900', color:'#f06565', textAlign:'center', marginBottom:1 },
+    // 근무 시간대는 셀 전체가 아니라 작은 점+글자 태그로만 — 비번과 시각적으로 경쟁하지 않도록 낮춰서 위계를 분리
+    shiftTagRow: { flexDirection:'row', alignItems:'center', justifyContent:'center', gap:3, marginBottom:1 },
+    shiftDot:    { width:7, height:7, borderRadius:3.5 },
+    shiftLabel:  { fontSize:11.5, fontWeight:'800', textAlign:'center' },
+    // 비번은 유일하게 점선 테두리인 패턴 자체로 눈에 띄게 — 배경은 아주 옅게(5%)만 남기고 글자를 굵고 진하게
+    offLabel:    { fontSize:12, fontWeight:'900', color:'#e05252', textAlign:'center', marginBottom:1 },
     alarmChip:   { fontSize:9, fontWeight:'700', color:C.accent2, backgroundColor:'rgba(108,92,231,0.18)', borderRadius:4, paddingHorizontal:3, paddingVertical:1, marginBottom:1 },
     moreChip:    { fontSize:9, color:C.txt3, fontWeight:'700', textAlign:'center' },
-    legend:      { flexDirection:'row', flexWrap:'wrap', gap:12, marginTop:12, paddingHorizontal:4, paddingTop:10, borderTopWidth:1, borderTopColor:C.border },
-    legendItem:  { flexDirection:'row', alignItems:'center', gap:5 },
-    legendBox:   { width:11, height:11, borderRadius:3 },
-    legendBoxOff:{ width:11, height:11, borderRadius:3, borderWidth:1.8, borderStyle:'dashed', borderColor:'#e05252', backgroundColor:'rgba(224,82,82,0.26)' },
-    legendText:  { fontSize:12, fontWeight:'600', color:C.txt2 },
-    legendTextOff:{ fontSize:12, fontWeight:'800', color:'#e05252' },
     modalBack:   { flex:1, backgroundColor:'rgba(0,0,0,0.55)', justifyContent:'center', padding:28 },
     modalCard:   { backgroundColor:C.bg2, borderRadius:20, padding:20, borderWidth:1, borderColor:C.border },
     modalTitle:  { fontSize:19, fontWeight:'800', color:C.txt, textAlign:'center' },

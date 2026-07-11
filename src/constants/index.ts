@@ -7,6 +7,14 @@ export const TYPES = [
   { id: 'exercise', label: '운동', icon: '🏃', color: '#F9A825' },
   { id: 'custom',   label: '기타', icon: '✏️', color: '#9C27B0' },
 ] as const;
+// 색은 종류(TYPES) 색상, 비번의 빨강과 겹치지 않도록 선정 — 달력에서 근무 시간대별로 한눈에 구분되게
+export const SHIFTS = [
+  { id: 'early',  label: '초번', color: '#2F80ED' },
+  { id: 'mid',    label: '중번', color: '#27AE60' },
+  { id: 'late',   label: '말번', color: '#F2994A' },
+  { id: 'custom', label: '기타', color: '#9B51E0' },
+  { id: 'none',   label: '해당없음', color: '#9CA3AF' },
+] as const;
 export const REPEAT = [
   { id: 'once',     label: '한 번' },
   { id: 'wdcustom', label: '요일' },
@@ -31,6 +39,7 @@ export type AlarmType  = typeof TYPES[number]['id'];
 export type RepeatMode = typeof REPEAT[number]['id'] | 'weekdays' | 'weekends' | 'daily';
 export type SoundMode  = 'none' | 'default';
 export type VibMode    = 'none' | 'pulse';
+export type ShiftPeriod = typeof SHIFTS[number]['id'];
 export interface Alarm {
   id: number; typeId: AlarmType; hour: number; min: number;
   label: string; rm: RepeatMode; days: number[];
@@ -38,4 +47,6 @@ export interface Alarm {
   lastDay?: boolean;
   skips?: string[]; // "이날만 끄기" — 해당 날짜(YYYY-MM-DD)에는 안 울림. 지난 날짜는 로드 시 정리
   lunar?: boolean; // 매년(yearly) 반복 전용 — true면 sd의 월/일을 음력으로 해석해 매년 그 음력 날짜(양력 환산)에 울림
+  shift?: ShiftPeriod; // 근무 시간대(초번/중번/말번 등) — 미지정 시 기존 알람과 동일하게 동작
+  shiftCustom?: string; // shift가 'custom'(기타)일 때 사용자가 직접 입력한 근무 시간대 이름
 }

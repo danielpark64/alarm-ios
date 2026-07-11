@@ -16,9 +16,15 @@ return StyleSheet.create({
   sLabel:          { fontSize: 12, fontWeight: '900', letterSpacing: 0.5, color: C.txt3, marginTop: 16, marginBottom: 8 },
   // 종류
   typeGrid:        { flexDirection: 'row', gap: 6 },
-  typeBtn:         { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 11, borderRadius: 14, borderWidth: 1.5, backgroundColor: C.bg2 },
-  typeBtnIcon:     { fontSize: 18, marginBottom: 3 },
-  typeBtnLabel:    { fontSize: 11, fontWeight: '700' },
+  typeBtn:         { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 7, borderRadius: 12, borderWidth: 1.5, backgroundColor: C.bg2 },
+  typeBtnIcon:     { fontSize: 14, marginBottom: 2 },
+  typeBtnLabel:    { fontSize: 10, fontWeight: '700' },
+  // 근무 시간대(초번/중번/말번/기타/해당없음) — 간격(반복 주기) 선택기와 동일하게 칩마다 글자 폭만큼만 차지하는
+  // 한 줄 알약 스타일. 항목별 고정색은 SHIFTS 상수 참조, active면 그 색으로 채우고 비active는 글자만 그 색.
+  shiftGrid:       { flexDirection: 'row', gap: 6, marginTop: 4 },
+  shiftBtn:        { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 14, borderWidth: 1.3, borderColor: C.border2, backgroundColor: C.bg2 },
+  shiftBtnLabel:   { fontSize: 13, fontWeight: '700' },
+  shiftCustomInput:{ minHeight: 44, borderWidth: 1, borderColor: C.border2, borderRadius: 12, paddingHorizontal: 13, fontSize: 14, fontWeight: '600', color: C.txt, backgroundColor: C.bg2, marginTop: 8 },
   // 날짜
   dateRow:         { flexDirection: 'row', gap: 8, alignItems: 'stretch' },
   dateBtn:         { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: C.bg3, borderWidth: 1, borderColor: C.border2, borderRadius: 13, padding: 14, gap: 8 },

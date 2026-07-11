@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Alarm } from '../constants';
-import { getType, pad, todayStr, lunarToSolarInYear } from '../utils';
+import { Alarm, ShiftPeriod } from '../constants';
+import { getType, pad, todayStr, lunarToSolarInYear, shiftPrefixFor } from '../utils';
 import { fmtDisplayDate } from '../components/common/CalendarPicker';
 
 // 초기 반복모드를 폼 내부 표현(wdcustom)으로 정규화
@@ -43,6 +43,8 @@ export function useAlarmFormState(
   const [sd,       setSd]      = useState(initial.sd      ?? todayStr());
   const [lastDay,  setLastDay] = useState(initial.lastDay ?? false);
   const [lunar,    setLunar]   = useState(initial.lunar   ?? false);
+  const [shift,    setShift]   = useState<ShiftPeriod>(initial.shift ?? 'none');
+  const [shiftCustom, setShiftCustom] = useState(initial.shiftCustom ?? '');
   const [showCal,  setShowCal] = useState(false);
 
   useEffect(() => { onTypeChange?.(typeId); }, [typeId]);
@@ -66,26 +68,52 @@ export function useAlarmFormState(
 
   const type = getType(typeId);
 
-  // 타입 버튼 → 라벨 앞부분만 교체 (뒤 커스텀 텍스트 보존)
+  // 타입 버튼 → 라벨 앞부분만 교체 (근무 시간대 접두어·뒤 커스텀 텍스트는 보존)
   const handleTypeChange = (newTypeId: Alarm['typeId']) => {
+    const shiftPre = shiftPrefixFor(shift, shiftCustom);
     const oldName = getType(typeId).label;
     const newName = getType(newTypeId).label;
     setTypeId(newTypeId);
-    setLabel(prev => {
-      if (newTypeId === 'custom')             return '';                               // 기타 → 비움
-      if (!prev || prev === oldName)          return newName;                         // 비어있거나 타입명 그대로
-      if (oldName.startsWith(prev))           return newName;                         // 타입명 일부만 남은 경우 (예: "퇴" → "출근")
-      if (prev.startsWith(oldName))           return newName + prev.slice(oldName.length); // 타입명+추가텍스트
-      return prev;                                                                     // 완전 커스텀 → 유지
+    setLabel(prevFull => {
+      const prev = prevFull.startsWith(shiftPre) ? prevFull.slice(shiftPre.length) : prevFull;
+      let rest: string;
+      if (newTypeId === 'custom')             rest = '';                               // 기타 → 비움
+      else if (!prev || prev === oldName)     rest = newName;                          // 비어있거나 타입명 그대로
+      else if (oldName.startsWith(prev))      rest = newName;                          // 타입명 일부만 남은 경우 (예: "퇴" → "출근")
+      else if (prev.startsWith(oldName))      rest = newName + prev.slice(oldName.length); // 타입명+추가텍스트
+      else                                    rest = prev;                             // 완전 커스텀 → 유지
+      return shiftPre + rest;
     });
   };
 
-  // 라벨 입력 가드 — 기타가 아닌 타입은 타입 이름 접두어("출근" 등)를 지울 수 없다.
-  // 접두어를 건드린 편집은 무시하고, 뒷부분만 자유롭게 수정 가능. 기타는 전체 자유.
+  // 근무 시간대 버튼 → 라벨 맨 앞의 접두어만 교체("초번 출근" 등, 뒷부분은 그대로 보존). 해당사항없음이면 접두어 제거(기존과 동일)
+  const handleShiftChange = (newShift: ShiftPeriod) => {
+    const oldPre = shiftPrefixFor(shift, shiftCustom);
+    const newPre = shiftPrefixFor(newShift, shiftCustom);
+    setShift(newShift);
+    setLabel(prev => {
+      const rest = prev.startsWith(oldPre) ? prev.slice(oldPre.length) : prev;
+      return newPre + rest;
+    });
+  };
+
+  // 기타 선택 시 직접 입력하는 근무 시간대 이름 → 라벨 접두어도 실시간으로 같이 교체
+  const handleShiftCustomChange = (text: string) => {
+    const oldPre = shiftPrefixFor(shift, shiftCustom);
+    const newPre = shiftPrefixFor(shift, text);
+    setShiftCustom(text);
+    setLabel(prev => {
+      const rest = prev.startsWith(oldPre) ? prev.slice(oldPre.length) : prev;
+      return newPre + rest;
+    });
+  };
+
+  // 라벨 입력 가드 — 근무 시간대 접두어("초번 " 등) + 기타가 아닌 타입은 타입 이름("출근" 등)을 지울 수 없다.
+  // 접두어를 건드린 편집은 무시하고, 뒷부분만 자유롭게 수정 가능. 기타는 타입 이름 부분만 자유.
   const setLabelGuarded = (text: string) => {
-    if (typeId === 'custom') { setLabel(text); return; }
-    const typeName = getType(typeId).label;
-    setLabel(prev => text.startsWith(typeName) ? text : prev);
+    const shiftPre = shiftPrefixFor(shift, shiftCustom);
+    const requiredPrefix = typeId === 'custom' ? shiftPre : shiftPre + getType(typeId).label;
+    setLabel(prev => text.startsWith(requiredPrefix) ? text : prev);
   };
 
   const toggleDay = (i: number) =>
@@ -113,6 +141,8 @@ export function useAlarmFormState(
     if (sd      !== (initial.sd      ?? todayStr()))      return true;
     if (lastDay !== (initial.lastDay ?? false))           return true;
     if (lunar   !== (initial.lunar   ?? false))           return true;
+    if (shift   !== (initial.shift   ?? 'none'))          return true;
+    if (shiftCustom !== (initial.shiftCustom ?? ''))      return true;
     return false;
   };
 
@@ -126,6 +156,8 @@ export function useAlarmFormState(
       rm: rm as Alarm['rm'], days: effectiveDays, cd, rd, snd, vib, sd,
       lastDay: rm === 'monthly' ? lastDay : false,
       lunar: rm === 'yearly' ? lunar : false,
+      shift,
+      shiftCustom: shift === 'custom' ? shiftCustom.trim() : undefined,
     });
   };
 
@@ -173,8 +205,8 @@ export function useAlarmFormState(
   return {
     typeId, hour, setHour, min, setMin, label, setLabel: setLabelGuarded,
     rm, setRm, days, setDays, cd, setCd, rd, setRd,
-    sd, setSd, lastDay, setLastDay, lunar, setLunar, showCal, setShowCal,
-    handleTypeChange, toggleDay, handleSubmit, submit, isDirty,
+    sd, setSd, lastDay, setLastDay, lunar, setLunar, shift, setShift, shiftCustom, showCal, setShowCal,
+    handleTypeChange, handleShiftChange, handleShiftCustomChange, toggleDay, handleSubmit, submit, isDirty,
     type, isToday, dateLabel, dateLocked, isLeapDay, lunarSolarPreview, repeatSummary,
     sndVibMode, setSndVibMode,
   };

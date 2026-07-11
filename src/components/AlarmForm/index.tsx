@@ -5,6 +5,7 @@ import { Alarm } from '../../constants';
 import { useColors } from '../../hooks/useTheme';
 import { useAlarmFormState } from '../../hooks/useAlarmFormState';
 import { TypeSelector } from './TypeSelector';
+import { ShiftSelector } from './ShiftSelector';
 import { DateSection } from './DateSection';
 import { DateModal } from './DateModal';
 import { TimePickerSection } from './TimePickerSection';
@@ -84,7 +85,28 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
           contentContainerStyle={s.scrollContent}
         >
           <View ref={contentRef}>
+            {/* 근무 시간대 */}
+            <Text style={[s.sLabel, { marginTop: 4 }]}>근무 시간대</Text>
+            <ShiftSelector
+              shift={form.shift}
+              onChange={form.handleShiftChange}
+              shiftCustom={form.shiftCustom}
+              onCustomChange={form.handleShiftCustomChange}
+            />
+
             <TypeSelector typeId={form.typeId} onChange={form.handleTypeChange} gridRef={typeRef} />
+
+            {/* 라벨 */}
+            <Text style={s.sLabel}>알람내용</Text>
+            <TextInput
+              ref={labelRef}
+              style={s.input}
+              value={form.label}
+              onChangeText={form.setLabel}
+              placeholder="이름을 입력하세요"
+              placeholderTextColor={C.txt3}
+              returnKeyType="done"
+            />
 
             <TimePickerSection
               hour={form.hour}
@@ -94,18 +116,6 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
               sndVibMode={form.sndVibMode}
               setSndVibMode={form.setSndVibMode}
               pickerRef={timeRef}
-            />
-
-            {/* 라벨 */}
-            <Text style={s.sLabel}>라벨</Text>
-            <TextInput
-              ref={labelRef}
-              style={s.input}
-              value={form.label}
-              onChangeText={form.setLabel}
-              placeholder="이름을 입력하세요"
-              placeholderTextColor={C.txt3}
-              returnKeyType="done"
             />
 
             <RepeatModeSelector rm={form.rm} setRm={form.setRm} cycleRef={cycleRef} />
