@@ -95,16 +95,27 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
     const s2 = Notifications.addNotificationResponseReceivedListener(async r => {
       const data     = r.notification.request.content.data as any;
       const alarmId  = data?.alarmId  as number | undefined;
+      const alarmIds = data?.alarmIds as number[] | undefined;
       const groupKey = data?.groupKey as string | undefined;
       const rm       = data?.rm       as string | undefined;
 
-      // 그룹 또는 개별 rep 슬롯 취소
+      // 그룹 또는 개별 rep 슬롯 취소 (Expo 쪽)
       if (groupKey) {
         await Notifications.cancelScheduledNotificationAsync(`grp_${groupKey}_rep1`);
         await Notifications.cancelScheduledNotificationAsync(`grp_${groupKey}_rep2`);
       } else if (alarmId != null) {
         await Notifications.cancelScheduledNotificationAsync(`alarm_${alarmId}_rep1`);
         await Notifications.cancelScheduledNotificationAsync(`alarm_${alarmId}_rep2`);
+      }
+
+      // 네이티브 쪽 rep도 같이 취소 — Expo 알림의 액션 버튼으로 껐을 때 네이티브
+      // AlarmManager가 발화 시점에 독립적으로 걸어둔 +1/+2분 예약이 안 지워지면
+      // 잠시 후 다시 울리는 문제가 있었음 (cancelReps는 PendingIntent.FLAG_NO_CREATE라
+      // 해당 없는 id를 넘겨도 안전)
+      if (AlarmModule) {
+        for (const id of alarmIds ?? (alarmId != null ? [alarmId] : [])) {
+          AlarmModule.stopAlarm(id);
+        }
       }
 
       if (r.actionIdentifier === 'snooze') {
