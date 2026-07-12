@@ -1,5 +1,5 @@
 import KoreanLunarCalendar from 'korean-lunar-calendar';
-import { Alarm, TYPES, SOUNDS, VIBS, DAYS, SHIFTS, ShiftPeriod } from '../constants';
+import { Alarm, TYPES, SOUNDS, VIBS, DAYS, SHIFTS, ShiftPeriod, WorkSegment } from '../constants';
 export const pad = (n: number) => String(n).padStart(2, '0');
 export const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
 export const fmtDate = (s: string) => { if (!s) return ''; const [y,m,d] = s.split('-'); return `${y}.${m}.${d}`; };
@@ -8,16 +8,19 @@ export const getSound = (id: string) => SOUNDS.find(s => s.id === id) ?? SOUNDS[
 export const getVib   = (id: string) => VIBS.find(v => v.id === id) ?? VIBS[0];
 // 달력 근무일 칸 라벨 — 사용자가 근무 시간대를 직접 지정했으면(해당사항없음 제외) 그 이름을, 아니면 기존 종류(출근/퇴근)명을 보여준다
 // 기타는 사용자가 직접 입력한 shiftCustom 텍스트를 우선 사용(비어있으면 "기타")
-export const shiftPeriodLabel = (a: Alarm): string => {
-  if (a.shift && a.shift !== 'none') {
-    if (a.shift === 'custom') return a.shiftCustom?.trim() || SHIFTS.find(s => s.id === 'custom')!.label;
-    return SHIFTS.find(s => s.id === a.shift)!.label;
+// resolved를 넘기면(로테이션 알람의 특정 날짜 세그먼트 등) 그 값을 우선 사용 — 생략 시 기존처럼 a.shift를 그대로 읽음
+export const shiftPeriodLabel = (a: Alarm, resolved?: { shift: ShiftPeriod; shiftCustom?: string } | null): string => {
+  const r = resolved !== undefined ? resolved : (a.shift && a.shift !== 'none' ? { shift: a.shift, shiftCustom: a.shiftCustom } : null);
+  if (r) {
+    if (r.shift === 'custom') return r.shiftCustom?.trim() || SHIFTS.find(s => s.id === 'custom')!.label;
+    if (r.shift !== 'none') return SHIFTS.find(s => s.id === r.shift)!.label;
   }
   return getType(a.typeId).label;
 };
 // 근무 시간대가 사용자에 의해 명시적으로 지정된 경우에만 고정 색을 반환 — 달력에서 시간순 자동 배색과 구분해 눈에 띄게 표시
-export const shiftPeriodColor = (a: Alarm): string | null => {
-  if (a.shift && a.shift !== 'none') return SHIFTS.find(s => s.id === a.shift)!.color;
+export const shiftPeriodColor = (a: Alarm, resolved?: { shift: ShiftPeriod; shiftCustom?: string } | null): string | null => {
+  const r = resolved !== undefined ? resolved : (a.shift && a.shift !== 'none' ? { shift: a.shift, shiftCustom: a.shiftCustom } : null);
+  if (r && r.shift !== 'none') return SHIFTS.find(s => s.id === r.shift)!.color;
   return null;
 };
 // 라벨 입력칸 맨 앞에 붙는 근무 시간대 접두어. 해당사항없음이면 빈 문자열(기존과 동일).
@@ -42,6 +45,11 @@ export const repeatLabel = (al: Alarm): string => {
   }
   if (al.rm==='cycle')   return `${al.cd??1}일 주기`;
   if (al.rm==='rest')    return `${al.cd??2}일 알람 후 ${al.rd??1}일 휴식`;
+  if (al.rm==='pattern') {
+    const segs = al.pattern ?? [];
+    if (segs.length <= 1) return '근무 로테이션';
+    return segs.map(s => `${s.days}일${s.isRest ? ' 휴식' : ''}`).join(' → ') + ' 반복';
+  }
   if (al.rm==='monthly') return al.lastDay ? '매월 말일' : `매월 ${new Date(al.sd||todayStr()).getDate()}일`;
   if (al.rm==='yearly')  return `매년 ${al.lunar ? '음력 ' : ''}${new Date(al.sd||todayStr()).getMonth()+1}월 ${new Date(al.sd||todayStr()).getDate()}일`;
   return '한 번';
@@ -50,6 +58,48 @@ export const repeatLabel = (al: Alarm): string => {
 function dayDiff(a: Date, b: Date): number {
   return Math.floor((Date.UTC(b.getFullYear(),b.getMonth(),b.getDate()) -
                      Date.UTC(a.getFullYear(),a.getMonth(),a.getDate())) / 86400000);
+}
+
+// 근무 시간대 로테이션 패턴에서 sd(시작일) 기준 dateStr이 속한 세그먼트를 찾는다.
+// cycle의 d%cd===0, rest의 d%p<cd 수식을 "블록 여러 개"로 일반화한 버전 — 달력/스케줄러 공용 순수 함수.
+export function resolveSegment(pattern: WorkSegment[], sd: string, dateStr: string): { segment: WorkSegment; index: number } | null {
+  if (!pattern.length) return null;
+  const s = new Date((sd || dateStr) + 'T00:00:00');
+  const d = new Date(dateStr + 'T00:00:00');
+  const diff = dayDiff(s, d);
+  if (diff < 0) return null;
+  const total = pattern.reduce((sum, seg) => sum + Math.max(1, seg.days), 0);
+  const offset = diff % total;
+  let acc = 0;
+  for (let i = 0; i < pattern.length; i++) {
+    acc += Math.max(1, pattern[i].days);
+    if (offset < acc) return { segment: pattern[i], index: i };
+  }
+  return null;
+}
+
+// 로테이션 알람이 dateStr에 실제로 어떤 시간대로 표시돼야 하는지 — 근무 세그먼트가 아니면(휴식/범위 밖) null.
+// 비로테이션 알람은 기존 alarm.shift를 그대로 반환(하위호환).
+export function effectiveShift(a: Alarm, dateStr: string): { shift: ShiftPeriod; shiftCustom?: string } | null {
+  if (a.rm === 'pattern' && a.pattern?.length) {
+    const r = resolveSegment(a.pattern, a.sd, dateStr);
+    if (r && !r.segment.isRest) return { shift: r.segment.shift, shiftCustom: r.segment.shiftCustom };
+    return null;
+  }
+  if (a.shift && a.shift !== 'none') return { shift: a.shift, shiftCustom: a.shiftCustom };
+  return null;
+}
+
+// 로테이션 알람이 dateStr에 실제로 울리는 시각(출근/퇴근 세그먼트별) — 휴식일이면 null.
+// 비로테이션 알람은 기존 alarm.hour/min을 그대로 반환(하위호환).
+export function effectiveTime(a: Alarm, dateStr: string): { hour: number; min: number } | null {
+  if (a.rm === 'pattern' && a.pattern?.length) {
+    const r = resolveSegment(a.pattern, a.sd, dateStr);
+    if (!r || r.segment.isRest) return null;
+    const t = a.groupRole === 'offwork' ? r.segment.offworkTime : r.segment.commuteTime;
+    return t ?? null;
+  }
+  return { hour: a.hour, min: a.min };
 }
 
 export function getNextFireDate(alarm: Alarm): Date | null {
@@ -62,11 +112,22 @@ export function getNextFireDate(alarm: Alarm): Date | null {
   for (let ahead = 0; ahead <= searchDays; ahead++) {
     const cand = new Date(now);
     cand.setDate(cand.getDate() + ahead);
-    cand.setHours(alarm.hour, alarm.min, 0, 0);
-    if (cand <= now) continue;
     const cs = `${cand.getFullYear()}-${pad(cand.getMonth()+1)}-${pad(cand.getDate())}`;
     if (cs < startDate) continue;
     if (alarm.skips?.includes(cs)) continue;
+
+    // 로테이션 알람은 날짜마다 시각이 달라서(세그먼트별 출근/퇴근 시각) 일반 알람처럼
+    // 맨 위에서 alarm.hour/min으로 setHours할 수 없다 — 세그먼트를 먼저 찾은 뒤 그 시각을 쓴다.
+    if (alarm.rm === 'pattern') {
+      const t = effectiveTime(alarm, cs);
+      if (!t) continue;
+      cand.setHours(t.hour, t.min, 0, 0);
+      if (cand <= now) continue;
+      return cand;
+    }
+
+    cand.setHours(alarm.hour, alarm.min, 0, 0);
+    if (cand <= now) continue;
     const dow = (cand.getDay() + 6) % 7; // 0=Mon 6=Sun
     let fires = false;
     switch (alarm.rm) {
@@ -172,6 +233,11 @@ export function alarmsForDate(alarms: Alarm[], dateStr: string, includeSkipped =
       const p = (a.cd||2) + (a.rd||1);
       return d >= 0 && (d % p) < (a.cd||2);
     }
+    if (a.rm === 'pattern') {
+      if (!a.pattern?.length) return false;
+      const r = resolveSegment(a.pattern, a.sd, dateStr);
+      return !!r && !r.segment.isRest;
+    }
     if (a.rm === 'monthly') {
       if (a.lastDay) {
         const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth()+1, 0).getDate();
@@ -199,7 +265,7 @@ export function alarmsForDate(alarms: Alarm[], dateStr: string, includeSkipped =
 // 근무표 판정 대상: 주기(cycle/rest) 반복 + 출근/퇴근 타입 알람만.
 // 운동·식사 등 다른 타입은 주기 알람이어도 근무표(배경색/비번)에 관여하지 않는다.
 export const isWorkAlarm = (a: Alarm) =>
-  a.active && (a.rm === 'cycle' || a.rm === 'rest') && (a.typeId === 'commute' || a.typeId === 'offwork');
+  a.active && (a.rm === 'cycle' || a.rm === 'rest' || a.rm === 'pattern') && (a.typeId === 'commute' || a.typeId === 'offwork');
 
 // 근무조 색 팔레트 — 시간대가 아니라 알람별로 배정한다.
 // 같은 시간대 안에서 갈리는 교대(예: 04:20 초번 / 05:20 말번)도 색으로 구분되도록,
@@ -219,9 +285,13 @@ export function shiftColorMap(alarms: Alarm[]): Record<number, string> {
 export function shiftForDate(alarms: Alarm[], dateStr: string): Alarm | null {
   const rings = alarmsForDate(alarms.filter(isWorkAlarm), dateStr);
   if (!rings.length) return null;
-  rings.sort((a, b) =>
-    (a.typeId === 'commute' ? 0 : 1) - (b.typeId === 'commute' ? 0 : 1) ||
-    a.hour - b.hour || a.min - b.min);
+  // 로테이션 알람은 최상위 hour/min이 레거시 값이라 그날 실제 시각(effectiveTime)으로 정렬해야 함
+  const effTime = (a: Alarm) => effectiveTime(a, dateStr) ?? { hour: a.hour, min: a.min };
+  rings.sort((a, b) => {
+    const ta = effTime(a), tb = effTime(b);
+    return (a.typeId === 'commute' ? 0 : 1) - (b.typeId === 'commute' ? 0 : 1) ||
+      ta.hour - tb.hour || ta.min - tb.min;
+  });
   return rings[0];
 }
 

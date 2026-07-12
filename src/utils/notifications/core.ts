@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Alarm } from '../../constants';
-import { getType, pad, getNextFireDate, lunarToSolarInYear } from '../index';
+import { getType, pad, getNextFireDate, lunarToSolarInYear, effectiveShift, effectiveTime } from '../index';
+import { roleLabel } from '../workPattern';
 import { scheduleNative } from './android';
 import { weekdaySlotId, mainNativeId } from './alarmIds';
 import { getAlarmDefaults } from '../../hooks/useAlarmDefaults';
@@ -25,9 +26,62 @@ function nextJsWeekday(h: number, m: number, jsDay: number): Date {
 function appDayToCalendar(d: number): number { return d === 6 ? 1 : d + 2; }
 function appDayToJs(d: number): number       { return d === 6 ? 0 : d + 1; }
 
+// ── 근무 시간대 로테이션(rm==='pattern') 전용 경로 — 날짜마다 시각/라벨이 달라서
+// 일반 알람처럼 title/bodyText를 루프 밖에서 한 번만 계산할 수 없다. 세그먼트가 바뀌지
+// 않는 일반 알람 경로(아래 scheduleAlarmTriggers 본문)는 이 분기와 완전히 분리해서
+// 한 글자도 건드리지 않는다 — 가장 많이 테스트된 영역이라 회귀 위험을 최소화하기 위함.
+async function schedulePatternAlarmTriggers(alarm: Alarm, threadIdentifier?: string) {
+  const type    = getType(alarm.typeId);
+  const soundOn = alarm.snd === 'default';
+  const vibOn   = alarm.vib === 'pulse';
+  const volume  = getAlarmDefaults().volume;
+  const role    = alarm.groupRole ?? 'commute';
+
+  const p2 = (n: number) => String(n).padStart(2, '0');
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let nativeIdx = 0;
+  for (let i = 0; i < 14; i++) {
+    const date = new Date(today); date.setDate(today.getDate() + i);
+    const ds = `${date.getFullYear()}-${p2(date.getMonth()+1)}-${p2(date.getDate())}`;
+    if (alarm.sd && ds < alarm.sd) continue;
+    if (alarm.skips?.includes(ds)) continue; // 이날만 끄기
+
+    const shiftInfo = effectiveShift(alarm, ds); // 휴식일이면 null
+    if (!shiftInfo) continue;
+    const t = effectiveTime(alarm, ds); // 이 역할(퇴근 등)이 이 세그먼트에 없으면 null
+    if (!t) continue;
+
+    const ft = new Date(date); ft.setHours(t.hour, t.min, 0, 0);
+    if (ft <= new Date()) continue;
+
+    const title    = `${type.icon} ${roleLabel(shiftInfo, role)}`;
+    const bodyText = `${pad(t.hour)}:${pad(t.min)} 알람`;
+    const content = {
+      title, body: bodyText,
+      sound: soundOn ? (__DEV__ ? true : 'alarm_long.wav') : undefined,
+      vibrate: getVibrationPattern(alarm.vib),
+      data: { alarmId: alarm.id, rm: alarm.rm, groupKey: `${alarm.hour}_${alarm.min}` },
+      categoryIdentifier: 'alarm',
+      ...(threadIdentifier ? { threadIdentifier } : {}),
+    } as Notifications.NotificationContentInput;
+
+    await Notifications.scheduleNotificationAsync({
+      identifier: makeId(alarm.id, `date_${ds}`),
+      content,
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: ft },
+    });
+    scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', t.hour, t.min, -1, soundOn, vibOn, volume);
+    nativeIdx++;
+  }
+}
+
 // ── 메인 트리거만 예약 (rep 슬롯 제외) ────────────────────────────────
 export async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: string) {
   if (!alarm.active) return;
+  if (alarm.rm === 'pattern') {
+    if (alarm.pattern?.length) await schedulePatternAlarmTriggers(alarm, threadIdentifier);
+    return;
+  }
 
   const type     = getType(alarm.typeId);
   const title    = `${type.icon} ${alarm.label || type.label}`;

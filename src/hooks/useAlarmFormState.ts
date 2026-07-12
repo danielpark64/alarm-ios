@@ -1,7 +1,36 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Alarm, ShiftPeriod } from '../constants';
+import { Alarm, ShiftPeriod, WorkSegment, SoundMode, VibMode } from '../constants';
 import { getType, pad, todayStr, lunarToSolarInYear, shiftPrefixFor } from '../utils';
+import { newBlockId } from '../utils/workPattern';
 import { fmtDisplayDate } from '../components/common/CalendarPicker';
+
+function defaultBlock(seed?: { shift?: ShiftPeriod; hour?: number; min?: number; days?: number }): WorkSegment {
+  return {
+    blockId: newBlockId(),
+    shift: seed?.shift ?? 'early',
+    days: seed?.days ?? 2,
+    isRest: false,
+    commuteTime: { hour: seed?.hour ?? 8, min: seed?.min ?? 0 },
+    hasOffwork: true,
+    offworkTime: { hour: ((seed?.hour ?? 8) + 9) % 24, min: seed?.min ?? 0 },
+  };
+}
+
+// 레거시 단일 시간대 알람(pattern 없이 shift만 있던 기존 alarm)을 편집할 때, 블록 빌더에
+// 그대로 이어서 편집할 수 있도록 근무+휴식 블록 2개로 변환
+function legacyToBlocks(a: Partial<Alarm>): WorkSegment[] {
+  const work: WorkSegment = {
+    blockId: newBlockId(),
+    shift: (a.shift ?? 'early') as ShiftPeriod,
+    shiftCustom: a.shiftCustom,
+    days: a.cd ?? 2,
+    isRest: false,
+    commuteTime: { hour: a.hour ?? 8, min: a.min ?? 0 },
+    hasOffwork: false,
+  };
+  if (!a.rd) return [work];
+  return [work, { blockId: newBlockId(), shift: 'none', days: a.rd, isRest: true, hasOffwork: false }];
+}
 
 // 초기 반복모드를 폼 내부 표현(wdcustom)으로 정규화
 function normalizeRm(rm?: string): string {
@@ -24,6 +53,7 @@ export function useAlarmFormState(
   onTypeChange?: (typeId: string) => void,
   onRmChange?: (rm: string) => void,
   onCalendarClose?: () => void,
+  onSubmitPattern?: (groupId: number | undefined, pattern: WorkSegment[], sd: string, snd: SoundMode, vib: VibMode) => void,
 ) {
   const [typeId,   setTypeId]  = useState(initial.typeId  ?? 'commute');
   const [hour,     setHour]    = useState(initial.hour    ?? 7);
@@ -46,6 +76,21 @@ export function useAlarmFormState(
   const [shift,    setShift]   = useState<ShiftPeriod>(initial.shift ?? 'none');
   const [shiftCustom, setShiftCustom] = useState(initial.shiftCustom ?? '');
   const [showCal,  setShowCal] = useState(false);
+  // 근무 시간대 로테이션 블록 — shift!=='none'일 때만 의미 있음(게이트 통과 시 사용)
+  const [blocks, setBlocks] = useState<WorkSegment[]>(() => {
+    if (initial.pattern?.length) return initial.pattern;
+    if (initial.shift && initial.shift !== 'none') return legacyToBlocks(initial); // 기존 단일 시간대 알람 편집 진입
+    return [defaultBlock()];
+  });
+  const initialBlocksRef = useRef(blocks); // dirty 비교 기준 — 최초 1회 값 고정(defaultBlock 등은 매번 새 blockId를 만들어서 재계산하면 안 됨)
+  const isPatternMode = shift !== 'none';
+  // 신규 알람 + 처음 패턴 진입일 때만 대화형 위저드를 띄운다. 기존 로테이션 그룹 편집은
+  // 이미 짜인 패턴을 순차 질문으로 다시 훑는 게 오히려 번거로우므로 위저드를 건너뛴다.
+  const isNewPatternEntry = initial.id == null && !initial.pattern?.length;
+  const [showWizard, setShowWizard] = useState(false);
+  // 게이트에서 이미 고른 시간대(초번 등)를 위저드 첫 블록에 그대로 넘겨서 "이번 근무는 뭐예요?"를
+  // 또 묻지 않게 한다 — 게이트 탭과 위저드 첫 질문이 같은 걸 두 번 물어보는 문제 방지
+  const [wizardInitialShift, setWizardInitialShift] = useState<ShiftPeriod>('early');
 
   useEffect(() => { onTypeChange?.(typeId); }, [typeId]);
   useEffect(() => { onRmChange?.(rm); }, [rm]);
@@ -143,10 +188,51 @@ export function useAlarmFormState(
     if (lunar   !== (initial.lunar   ?? false))           return true;
     if (shift   !== (initial.shift   ?? 'none'))          return true;
     if (shiftCustom !== (initial.shiftCustom ?? ''))      return true;
+    if (JSON.stringify(blocks) !== JSON.stringify(initialBlocksRef.current)) return true;
     return false;
   };
 
+  // 근무 시간대 게이트(해당없음 ↔ 선택함) 전환 — 확인이 필요한지는 컴포넌트가 isDirty()로 먼저
+  // 판단해서 필요시 확인창을 띄운 뒤 이 함수를 호출한다. 여기서는 필드 초기화만 담당.
+  // 유지: snd/vib/sd. 초기화: typeId/label/rm/days/cd/rd/lastDay/lunar/shiftCustom.
+  const applyShiftGate = (newShift: ShiftPeriod) => {
+    setShift(newShift);
+    if (newShift !== 'none') {
+      if (isNewPatternEntry) {
+        setWizardInitialShift(newShift);
+        setShowWizard(true); // 위저드가 완료되면 completeWizard가 blocks를 채운다
+      } else {
+        setBlocks([defaultBlock({ shift: newShift, hour, min })]);
+      }
+    } else {
+      setShowWizard(false);
+      setTypeId('commute');
+      setLabel(getType('commute').label);
+      setRm('wdcustom');
+      setDays([0, 1, 2, 3, 4]);
+      setCd(2); setRd(1);
+      setLastDay(false); setLunar(false);
+      setShiftCustom('');
+    }
+  };
+
+  // 위저드에서 "여기서 반복" 완료 → 블록 확정 후 기존 블록카드 화면으로 전환
+  const completeWizard = (result: WorkSegment[]) => {
+    setBlocks(result);
+    setShowWizard(false);
+  };
+  // 위저드 취소 → 게이트를 해당없음으로 되돌림(입력한 게 없으니 확인창 없이 바로)
+  const cancelWizard = () => {
+    setShowWizard(false);
+    applyShiftGate('none');
+  };
+
   const handleSubmit = () => {
+    if (isPatternMode) {
+      if (!blocks.some(b => !b.isRest)) return; // 근무 블록이 하나도 없으면 알람이 안 생기니 저장 막음
+      onSubmitPattern?.(initial.groupId, blocks, sd, snd, vib);
+      return;
+    }
     const effectiveDays = (rm === 'wdcustom' && days.length === 0)
       ? [(new Date().getDay() + 6) % 7]
       : days;
@@ -156,8 +242,8 @@ export function useAlarmFormState(
       rm: rm as Alarm['rm'], days: effectiveDays, cd, rd, snd, vib, sd,
       lastDay: rm === 'monthly' ? lastDay : false,
       lunar: rm === 'yearly' ? lunar : false,
-      shift,
-      shiftCustom: shift === 'custom' ? shiftCustom.trim() : undefined,
+      shift, // isPatternMode(=shift!=='none') 분기에서 이미 return했으므로 여기선 항상 'none'
+      shiftCustom: undefined,
     });
   };
 
@@ -209,5 +295,7 @@ export function useAlarmFormState(
     handleTypeChange, handleShiftChange, handleShiftCustomChange, toggleDay, handleSubmit, submit, isDirty,
     type, isToday, dateLabel, dateLocked, isLeapDay, lunarSolarPreview, repeatSummary,
     sndVibMode, setSndVibMode,
+    blocks, setBlocks, isPatternMode, applyShiftGate,
+    showWizard, completeWizard, cancelWizard, wizardInitialShift,
   };
 }

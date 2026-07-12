@@ -19,10 +19,11 @@ return StyleSheet.create({
   typeBtn:         { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 7, borderRadius: 12, borderWidth: 1.5, backgroundColor: C.bg2 },
   typeBtnIcon:     { fontSize: 14, marginBottom: 2 },
   typeBtnLabel:    { fontSize: 10, fontWeight: '700' },
-  // 근무 시간대(초번/중번/말번/기타/해당없음) — 간격(반복 주기) 선택기와 동일하게 칩마다 글자 폭만큼만 차지하는
-  // 한 줄 알약 스타일. 항목별 고정색은 SHIFTS 상수 참조, active면 그 색으로 채우고 비active는 글자만 그 색.
+  // 근무 시간대(초번/중번/말번/기타/해당없음) — TypeSelector(typeBtn)와 동일한 flex:1 균등분할 방식으로
+  // 화면 폭에 맞춰 5칸이 자동으로 늘어남(좁은 기기든 넓은 기기든 항상 꽉 채움, 오른쪽에 남는 공백 없음).
+  // 항목별 고정색은 SHIFTS 상수 참조, active면 그 색으로 채우고 비active는 글자만 그 색.
   shiftGrid:       { flexDirection: 'row', gap: 6, marginTop: 4 },
-  shiftBtn:        { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 14, borderWidth: 1.3, borderColor: C.border2, backgroundColor: C.bg2 },
+  shiftBtn:        { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, paddingVertical: 9, borderRadius: 12, borderWidth: 1.3, borderColor: C.border2, backgroundColor: C.bg2 },
   shiftBtnLabel:   { fontSize: 13, fontWeight: '700' },
   shiftCustomInput:{ minHeight: 44, borderWidth: 1, borderColor: C.border2, borderRadius: 12, paddingHorizontal: 13, fontSize: 14, fontWeight: '600', color: C.txt, backgroundColor: C.bg2, marginTop: 8 },
   // 날짜
@@ -120,5 +121,59 @@ return StyleSheet.create({
   bottomCancelText:{ fontSize: 15, fontWeight: '700', color: C.txt2 },
   bottomSaveBtn:   { flex: 1, padding: 15, borderRadius: 16, backgroundColor: C.accent2, alignItems: 'center' },
   bottomSaveText:  { fontSize: 15, fontWeight: '800', color: C.txt },
+
+  // 근무 시간대 게이트 배너 — 로테이션 모드로 들어가면 상단 ShiftSelector 대신 이걸 보여줌
+  wpGateBanner:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: C.bg3, borderRadius: 14, padding: 12, marginTop: 4, gap: 10 },
+  wpGateBannerText:  { fontSize: 12, fontWeight: '700', color: C.txt2, flex: 1 },
+  wpGateSwitchBtn:   { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: C.border2 },
+  wpGateSwitchText:  { fontSize: 12, fontWeight: '700', color: C.accent },
+
+  // 근무 패턴 블록 빌더
+  wpStartRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, marginBottom: 4 },
+  wpStartLabel:      { fontSize: 12, fontWeight: '600', color: C.txt3 },
+  wpBlockCard:       { backgroundColor: C.bg2, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 12, marginTop: 8 },
+  wpBlockHeaderRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  wpBlockIndex:      { fontSize: 11, fontWeight: '800', color: C.txt3 },
+  wpRemoveBtn:        { padding: 4 },
+  wpRemoveBtnText:    { fontSize: 15, fontWeight: '700', color: C.txt3 },
+  wpShiftRow:        { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  wpShiftChip:       { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12, borderWidth: 1.3, borderColor: C.border2, backgroundColor: C.bg3 },
+  wpShiftChipLabel:  { fontSize: 11.5, fontWeight: '700' },
+  wpCustomInput:     { minHeight: 40, borderWidth: 1, borderColor: C.border2, borderRadius: 11, paddingHorizontal: 12, fontSize: 13, fontWeight: '600', color: C.txt, backgroundColor: C.bg3, marginTop: 8 },
+  wpToggleRow:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: C.border },
+  wpToggleLabel:     { flex: 1, flexShrink: 1, fontSize: 12, fontWeight: '700', color: C.txt2 },
+  wpTimeRow:         { flexDirection: 'row', gap: 8, marginTop: 10 },
+  wpTimePill:        { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 10, borderRadius: 12, backgroundColor: C.bg3 },
+  wpTimePillDim:     { backgroundColor: 'transparent', borderWidth: 1, borderColor: C.border, borderStyle: 'dashed' },
+  wpTimePillText:    { fontSize: 14, fontWeight: '800', color: C.txt },
+  wpTimePillSub:     { fontSize: 10, fontWeight: '700', color: C.txt3 },
+  wpDayStepperRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 10 },
+  wpDayVal:          { fontSize: 15, fontWeight: '800', color: C.txt, minWidth: 54, textAlign: 'center' },
+  wpAddBlockBtn:     { alignItems: 'center', paddingVertical: 13, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.border2, marginTop: 10 },
+  wpAddBlockText:    { fontSize: 13, fontWeight: '700', color: C.accent },
+  // BlockTimeModal 확인 버튼 — bottomSaveBtn은 flex:1(가로 flex-row 안에서 쓰는 전제)이라
+  // 세로 컬럼인 모달 안에 그대로 쓰면 높이가 찌그러져 텍스트가 안 보임. flex 없는 전용 스타일.
+  wpModalConfirmBtn:  { alignSelf: 'stretch', padding: 15, borderRadius: 16, backgroundColor: C.accent2, alignItems: 'center' },
+  wpModalConfirmText: { fontSize: 15, fontWeight: '800', color: C.txt },
+
+  // RotationWizard — 한 조씩 순서대로 묻는 대화형 온보딩
+  wzProgress:      { fontSize: 12, fontWeight: '700', color: C.txt3, marginBottom: 4 },
+  wzQuestion:       { fontSize: 18, fontWeight: '900', color: C.txt, marginBottom: 16 },
+  wzOptionRow:      { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 20 },
+  wzOption:         { flex: 1, minWidth: 76, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 6, borderRadius: 14, borderWidth: 1.3, borderColor: C.border2, backgroundColor: C.bg3 },
+  wzOptionText:     { fontSize: 14, fontWeight: '700', color: C.txt2 },
+  wzSummary:        { fontSize: 13, color: C.txt3, marginBottom: 8 },
+  wzActionRow:      { flexDirection: 'row', gap: 8, marginTop: 8 },
+  wzPrimaryBtn:     { flex: 1, padding: 15, borderRadius: 16, backgroundColor: C.accent2, alignItems: 'center' },
+  wzPrimaryText:    { fontSize: 14, fontWeight: '800', color: C.txt },
+  wzSecondaryBtn:   { flex: 1, padding: 15, borderRadius: 16, borderWidth: 1, borderColor: C.border2, alignItems: 'center' },
+  wzSecondaryText:  { fontSize: 14, fontWeight: '700', color: C.txt2 },
+  wzTopRow:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  // 고령층 피드백 — 취소/이전이 작은 텍스트 링크라 안 보인다고 함. 테두리 있는 버튼 형태로
+  // 키우고 글자도 크게 해서 눈에 확실히 띄고 손가락으로 누르기 쉽게 함
+  wzCloseBtn:       { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1.3, borderColor: C.border2, backgroundColor: C.bg3 },
+  wzCloseText:      { fontSize: 15, fontWeight: '800', color: C.txt2 },
+  wzBackBtn:        { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1.3, borderColor: C.accent2, backgroundColor: C.bg3 },
+  wzBackText:       { fontSize: 15, fontWeight: '800', color: C.accent },
 });
 }

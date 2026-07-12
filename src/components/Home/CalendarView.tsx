@@ -4,7 +4,8 @@ import { Text } from '../common/AppText';
 import { Alarm, DAYS } from '../../constants';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
-import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, shiftForDate, isOffDay, shiftColorMap, shiftPeriodLabel, shiftPeriodColor, lunarDateText, lunarShortText } from '../../utils';
+import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, shiftForDate, isOffDay, shiftColorMap, shiftPeriodLabel, shiftPeriodColor, effectiveShift, effectiveTime, lunarDateText, lunarShortText } from '../../utils';
+import { roleLabel } from '../../utils/workPattern';
 import { getHoliday } from '../../constants/holidays';
 
 // 달력 화면 — 근무 알람(주기+출근/퇴근)은 배경색으로 근무조를 표시하고,
@@ -81,8 +82,10 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, colorOf, 
         const dow = (offset + d - 1) % 7;
         const info = dayMap[ds];
         const chips = info.alarms.filter(a => !isWorkAlarm(a) && !a.skips?.includes(ds));
-        // 사용자가 근무 시간대(초/중/말/기타)를 직접 지정했으면 고정색으로 눈에 띄게, 아니면 기존 시간순 자동 배색
-        const explicitShiftColor = info.shift ? shiftPeriodColor(info.shift) : null;
+        // 사용자가 근무 시간대(초/중/말/기타)를 직접 지정했으면 고정색으로 눈에 띄게, 아니면 기존 시간순 자동 배색.
+        // 로테이션(rm==='pattern') 알람은 날짜마다 시간대가 달라서 effectiveShift로 그날 세그먼트를 직접 조회.
+        const resolvedShift = info.shift ? effectiveShift(info.shift, ds) : null;
+        const explicitShiftColor = resolvedShift ? shiftPeriodColor(info.shift!, resolvedShift) : null;
         const sc = explicitShiftColor ?? (info.shift ? colorOf[info.shift.id] : null);
         const holiday = getHoliday(ds);
 
@@ -109,11 +112,11 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, colorOf, 
             {holiday && (
               <Text style={cv.holidayLabel} numberOfLines={1}>{holiday}</Text>
             )}
-            {info.shift && (
+            {info.shift && resolvedShift && (
               <View style={cv.shiftTagRow}>
                 <View style={[cv.shiftDot, { backgroundColor: sc! }]} />
                 <Text style={[cv.shiftLabel, {color: sc!}]} numberOfLines={1}>
-                  {shiftPeriodLabel(info.shift)}
+                  {shiftPeriodLabel(info.shift, resolvedShift)}
                 </Text>
               </View>
             )}
@@ -210,6 +213,15 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
 
   const selInfo = selDate ? dayMap[selDate] : null;
   const selDateObj = selDate ? new Date(selDate) : null;
+  // 로테이션 알람은 selInfo.shift.label(정적 문구, 패턴 알람은 빈 문자열)이 아니라 그날의
+  // 세그먼트를 다시 조회해야 정확한 시간대 이름/색이 나온다 — 셀 렌더링과 동일한 방식 재사용.
+  const selResolvedShift = (selInfo?.shift && selDate) ? effectiveShift(selInfo.shift, selDate) : null;
+  const selShiftLabel = selInfo?.shift
+    ? (selResolvedShift ? shiftPeriodLabel(selInfo.shift, selResolvedShift) : (selInfo.shift.label || getType(selInfo.shift.typeId).label))
+    : '';
+  const selShiftColor = selInfo?.shift
+    ? ((selResolvedShift ? shiftPeriodColor(selInfo.shift, selResolvedShift) : null) ?? colorOf[selInfo.shift.id])
+    : null;
 
   const pages = useMemo(() => Array.from({ length: RANGE * 2 + 1 }, (_, i) => i), []);
 
@@ -332,10 +344,10 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
                 <Text style={cv.modalHolidayText}>{getHoliday(selDate)}</Text>
               </View>
             )}
-            {selInfo?.shift && (
-              <View style={[cv.modalShiftRow, {backgroundColor: colorOf[selInfo.shift.id] + '22'}]}>
-                <Text style={[cv.modalShiftText, {color: colorOf[selInfo.shift.id]}]}>
-                  {selInfo.shift.label || getType(selInfo.shift.typeId).label} 근무
+            {selInfo?.shift && selShiftColor && (
+              <View style={[cv.modalShiftRow, {backgroundColor: selShiftColor + '22'}]}>
+                <Text style={[cv.modalShiftText, {color: selShiftColor}]}>
+                  {selShiftLabel} 근무
                 </Text>
               </View>
             )}
@@ -347,7 +359,11 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
             {selInfo && selInfo.alarms.length > 0 ? (
               selInfo.alarms
                 .slice()
-                .sort((a,b) => a.hour-b.hour || a.min-b.min)
+                .sort((a,b) => {
+                  const ta = (a.rm === 'pattern' && selDate ? effectiveTime(a, selDate) : null) ?? { hour: a.hour, min: a.min };
+                  const tb = (b.rm === 'pattern' && selDate ? effectiveTime(b, selDate) : null) ?? { hour: b.hour, min: b.min };
+                  return ta.hour - tb.hour || ta.min - tb.min;
+                })
                 .map((al, ai) => {
                   const alType = getType(al.typeId);
                   const skipped = !!(selDate && al.skips?.includes(selDate));
@@ -360,6 +376,16 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
                       : [...(al.skips ?? []), selDate];
                     onUpdateAlarm(al.id, { skips: next.length ? next : undefined });
                   };
+                  // 로테이션 알람은 al.hour/min/label이 첫 세그먼트 기준 레거시 값이라, 이 날짜의
+                  // 실제 시각/라벨을 다시 조회해야 한다(알림에서 실제로 뜨는 문구와 동일하게).
+                  const isPattern = al.rm === 'pattern';
+                  const patternTime = isPattern && selDate ? effectiveTime(al, selDate) : null;
+                  const patternShift = isPattern && selDate ? effectiveShift(al, selDate) : null;
+                  const dispHour = patternTime?.hour ?? al.hour;
+                  const dispMin  = patternTime?.min  ?? al.min;
+                  const dispLabel = patternShift
+                    ? roleLabel(patternShift, (al.groupRole ?? 'commute'))
+                    : (al.label || alType.label);
                   return (
                     <View key={ai} style={cv.modalAlarmRow}>
                       <TouchableOpacity
@@ -369,9 +395,9 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
                       >
                         <Text style={cv.modalAlarmIcon}>{alType.icon}</Text>
                         <View style={{flex:1, minWidth:0}}>
-                          <Text style={cv.modalAlarmTime}>{pad(al.hour)}:{pad(al.min)}</Text>
+                          <Text style={cv.modalAlarmTime}>{pad(dispHour)}:{pad(dispMin)}</Text>
                           <Text style={cv.modalAlarmLabel} numberOfLines={1}>
-                            {al.label || alType.label}{skipped ? ' · 이날 꺼짐' : ''}
+                            {dispLabel}{skipped ? ' · 이날 꺼짐' : ''}
                           </Text>
                         </View>
                       </TouchableOpacity>

@@ -36,10 +36,27 @@ export const CYCLE_PRESETS = [2,3,4,7,10,30];
 // 인앱 알람 울림 팝업의 "5분 후" 스누즈 버튼 노출 여부. false면 끄기 버튼만 표시.
 export const SNOOZE_ENABLED = false;
 export type AlarmType  = typeof TYPES[number]['id'];
-export type RepeatMode = typeof REPEAT[number]['id'] | 'weekdays' | 'weekends' | 'daily';
+// 'pattern' = 근무 시간대 로테이션 알람 전용 반복방식. REPEAT 상수엔 안 넣음 —
+// 일반 반복방식 선택기에는 안 뜨고, "근무 시간대" 게이트를 통해서만 만들어짐.
+export type RepeatMode = typeof REPEAT[number]['id'] | 'weekdays' | 'weekends' | 'daily' | 'pattern';
 export type SoundMode  = 'none' | 'default';
 export type VibMode    = 'none' | 'pulse';
 export type ShiftPeriod = typeof SHIFTS[number]['id'];
+
+// 근무 시간대 로테이션 블록 하나 — "초번 2일 → 말번 2일 → 휴식 1일"처럼 여러 개를 이어붙여
+// 하나의 반복 패턴을 구성한다. cycle('N일 주기')/rest('N일 후 휴식')는 이 블록 2개짜리
+// 특수 케이스와 동치(예: rest = [근무 cd일, 휴식 rd일]).
+export interface WorkSegment {
+  blockId: string; // 재조합(reconcile)용 안정적 키 — 블록 생성 시 한 번 부여, 편집돼도 유지
+  shift: ShiftPeriod;
+  shiftCustom?: string;
+  days: number;
+  isRest?: boolean; // true면 휴식 블록 — 알람 없음, 그냥 일수만 채움
+  commuteTime?: { hour: number; min: number }; // isRest=false면 필수
+  hasOffwork: boolean; // 이 블록에 퇴근 알람을 만들지 여부(회사마다 필요 여부가 다름)
+  offworkTime?: { hour: number; min: number }; // hasOffwork=true일 때만 존재
+}
+
 export interface Alarm {
   id: number; typeId: AlarmType; hour: number; min: number;
   label: string; rm: RepeatMode; days: number[];
@@ -49,4 +66,7 @@ export interface Alarm {
   lunar?: boolean; // 매년(yearly) 반복 전용 — true면 sd의 월/일을 음력으로 해석해 매년 그 음력 날짜(양력 환산)에 울림
   shift?: ShiftPeriod; // 근무 시간대(초번/중번/말번 등) — 미지정 시 기존 알람과 동일하게 동작
   shiftCustom?: string; // shift가 'custom'(기타)일 때 사용자가 직접 입력한 근무 시간대 이름
+  groupId?: number; // 근무 시간대 로테이션 그룹 소속 알람들이 공유하는 id(그룹 첫 알람 자신의 id를 재사용)
+  groupRole?: 'commute' | 'offwork'; // 그룹 내에서 이 알람이 출근/퇴근 중 무엇인지
+  pattern?: WorkSegment[]; // rm==='pattern'일 때 전체 블록 시퀀스 — 그룹 멤버 전원에 동일하게 복제 저장
 }

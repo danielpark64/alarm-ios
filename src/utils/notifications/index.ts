@@ -53,9 +53,21 @@ export async function rescheduleAll(alarms: Alarm[]) {
   for (const alarm of alarms) cancelNativeAlarms(alarm.id);
   const active = alarms.filter(a => a.active);
 
+  // 근무 시간대 로테이션 알람(rm==='pattern')은 날짜마다 시각이 달라 최상위 hour/min이
+  // 첫 세그먼트 기준 레거시 값일 뿐이라, 그 값으로 hour_min 그룹핑/rep 슬롯에 묶으면
+  // 실제로 무관한 알람과 잘못 묶이거나 회전 도중 반복알림이 어긋날 수 있다.
+  // v1은 pattern 알람을 그룹/rep 슬롯 대상에서 제외하고 개별 스케줄링만 한다
+  // (주 알람이 정확한 시각에 울리는 것 자체엔 영향 없음, +1/+2분 보조 알림만 없음).
+  const patternAlarms = active.filter(a => a.rm === 'pattern');
+  const regular = active.filter(a => a.rm !== 'pattern');
+
+  for (const alarm of patternAlarms) {
+    await scheduleAlarmTriggers(alarm);
+  }
+
   // 시간대별 그룹화
   const groups = new Map<string, Alarm[]>();
-  for (const a of active) {
+  for (const a of regular) {
     const key = `${a.hour}_${a.min}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(a);

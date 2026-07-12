@@ -30,13 +30,16 @@ export default function App() {
   const C = useColors();
   const { theme } = useThemeSetting();
   const s = makeStyles(C);
-  const { alarms, loaded, addAlarm, updateAlarm, deleteAlarms, toggleAlarm } = useAlarms();
+  const { alarms, loaded, addAlarm, updateAlarm, deleteAlarms, toggleAlarm, submitWorkPattern } = useAlarms();
   useHolidaySync();
   const { notifGranted, requestPermission, overlayGranted, requestOverlayPermission, tick, ringing, stopRinging, snoozeRinging } = useAlarmNotifications(alarms, updateAlarm);
   const { selectMode, selectedIds, enterSelectMode, toggleSelect, selectAll, exitSelectMode } = useSelectMode();
   // 메인 화면은 달력 — 교대근무자는 약속 잡을 때 근무표(달력)부터 본다
   const [tab, setTab] = useState<HomeTab>('calendar');
   const [editAlarm, setEditAlarm] = useState<Alarm|null>(null);
+  // 저장 후 이동할 목적지 — 하단 내비 탭을 눌러서 저장한 경우, 저장 콜백이 기본으로
+  // 가는 화면(알람 목록) 대신 사용자가 실제로 누른 탭으로 보내주기 위해 기억해둠
+  const [pendingNav, setPendingNav] = useState<HomeTab | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [editTypeId, setEditTypeId] = useState<string>('commute');
   const editFormRef = useRef<AlarmFormHandle>(null);
@@ -141,9 +144,19 @@ export default function App() {
     })();
   }, [loaded]);
 
+  // 근무 시간대 로테이션 그룹(출근+퇴근)은 항상 함께 삭제되므로(useAlarms.deleteAlarms가 자동 확장),
+  // 확인창 문구도 그룹째로 지워진다는 걸 미리 알려준다.
+  const groupDeleteNotice = (ids: Set<number>): string => {
+    const groups = new Set(
+      alarms.filter(a => ids.has(a.id) && a.groupId != null).map(a => a.groupId!)
+    );
+    if (!groups.size) return '';
+    return '\n(근무 시간대 알람은 출근·퇴근 세트로 함께 삭제됩니다)';
+  };
+
   const handleDeleteSelected = () => {
     if (!selectedIds.size) return;
-    Alert.alert('알람 삭제', `선택한 ${selectedIds.size}개를 삭제할까요?`, [
+    Alert.alert('알람 삭제', `선택한 ${selectedIds.size}개를 삭제할까요?${groupDeleteNotice(selectedIds)}`, [
       { text:'취소', style:'cancel' },
       { text:'삭제', style:'destructive', onPress: async () => {
         await deleteAlarms(selectedIds);
@@ -153,7 +166,7 @@ export default function App() {
   };
 
   const handleDeleteOne = (id: number) => {
-    Alert.alert('알람 삭제', '이 알람을 삭제할까요?', [
+    Alert.alert('알람 삭제', `이 알람을 삭제할까요?${groupDeleteNotice(new Set([id]))}`, [
       { text:'취소', style:'cancel' },
       { text:'삭제', style:'destructive', onPress: async () => {
         await deleteAlarms(new Set([id]));
@@ -175,6 +188,42 @@ export default function App() {
         { text: '계속하기', style: 'cancel' },
         { text: '저장 안 함', style: 'destructive', onPress: () => setEditAlarm(null) },
         { text: '저장', onPress: () => editFormRef.current?.submit() },
+      ],
+    );
+  };
+
+  // 하단 내비(달력/알람/설정) 탭 — 알람 추가·수정 중에 누르면 무조건 그냥 나가버려서
+  // 입력 중이던 내용이 조용히 날아가는 문제가 있었다. 폼이 열려 있고 뭔가 입력돼 있으면
+  // 저장 확인 후 눌렀던 탭으로 바로 이동시킨다.
+  const finishNav = (target: HomeTab) => {
+    setEditAlarm(null);
+    setShowHelp(false);
+    setTab(target);
+  };
+  const handleNavPress = (target: HomeTab) => {
+    if (tutorialStep !== null) { setShowHelp(false); setTab(target); return; }
+    const activeFormRef = editAlarm ? editFormRef : (tab === 'add' ? addFormRef : null);
+    if (!activeFormRef?.current?.isDirty()) { finishNav(target); return; }
+    // 위저드가 아직 진행 중이면(블록카드 화면까지 안 넘어감) 저장할 완성된 데이터가 없으므로
+    // "저장" 선택지를 주지 않는다 — 계속하거나 그냥 나가는(저장 안 함) 것만 가능
+    if (activeFormRef.current?.isWizardActive()) {
+      Alert.alert(
+        '설정을 그만둘까요?',
+        '',
+        [
+          { text: '계속하기', style: 'cancel' },
+          { text: '그만두기', style: 'destructive', onPress: () => finishNav(target) },
+        ],
+      );
+      return;
+    }
+    Alert.alert(
+      '저장하지 않을까요?',
+      '',
+      [
+        { text: '계속하기', style: 'cancel' },
+        { text: '저장 안 함', style: 'destructive', onPress: () => finishNav(target) },
+        { text: '저장', onPress: () => { setPendingNav(target); activeFormRef.current?.submit(); } },
       ],
     );
   };
@@ -235,6 +284,13 @@ export default function App() {
             await updateAlarm(editAlarm.id, data);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setEditAlarm(null);
+            if (pendingNav) { setTab(pendingNav); setPendingNav(null); }
+          }}
+          onSubmitPattern={async (groupId, pattern, sd, snd, vib) => {
+            await submitWorkPattern(groupId, pattern, sd, snd, vib);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            setEditAlarm(null);
+            if (pendingNav) { setTab(pendingNav); setPendingNav(null); }
           }}
           onCancel={tutorialStep !== null ? exitTutorial : handleEditClose}
           onDelete={() => handleDeleteOne(editAlarm.id)}
@@ -276,12 +332,19 @@ export default function App() {
               onSubmit={async data=>{
                 const created = await addAlarm(data);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                setTab('alarms');
+                setTab(pendingNav ?? 'alarms');
+                setPendingNav(null);
                 if (tutorialStep !== null) {
                   setEditAlarm(created);
                   setEditTypeId(created.typeId ?? 'commute');
                   setTutorialStep(9);
                 }
+              }}
+              onSubmitPattern={async (groupId, pattern, sd, snd, vib) => {
+                await submitWorkPattern(groupId, pattern, sd, snd, vib);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                setTab(pendingNav ?? 'alarms');
+                setPendingNav(null);
               }}
               onCancel={() => tutorialStep !== null ? exitTutorial() : setTab('alarms')}
               onRmChange={tutorialStep !== null ? handleTutorialRmChange : undefined}
@@ -311,7 +374,7 @@ export default function App() {
         />
       )}
 
-      <BottomNav tab={tab} setTab={t => { setShowHelp(false); setTab(t); }} bottomInset={insets.bottom} />
+      <BottomNav tab={tab} setTab={handleNavPress} bottomInset={insets.bottom} />
     </SafeAreaView>
 
     {tutorialStep !== null && (
