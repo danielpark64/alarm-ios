@@ -282,17 +282,22 @@ export function shiftColorMap(alarms: Alarm[]): Record<number, string> {
 }
 
 // 해당 날짜의 근무조 대표 알람. 같은 날 여러 개(출근+퇴근)면 출근 우선, 이른 시각 우선.
+// 단, 시간대(초번/말번 등) 정보가 있는 알람을 최우선으로 고른다 — 시간대 없는 일반 출근/퇴근
+// 알람(예: 기상 알람)이 로테이션 알람보다 이른 시각이라는 이유만으로 대표로 뽑히면
+// effectiveShift가 null이 돼서 달력에 시간대 라벨 자체가 안 뜨는 문제가 있었음.
 export function shiftForDate(alarms: Alarm[], dateStr: string): Alarm | null {
   const rings = alarmsForDate(alarms.filter(isWorkAlarm), dateStr);
   if (!rings.length) return null;
   // 로테이션 알람은 최상위 hour/min이 레거시 값이라 그날 실제 시각(effectiveTime)으로 정렬해야 함
   const effTime = (a: Alarm) => effectiveTime(a, dateStr) ?? { hour: a.hour, min: a.min };
-  rings.sort((a, b) => {
+  const withShift = rings.filter(a => effectiveShift(a, dateStr) != null);
+  const pool = withShift.length ? withShift : rings;
+  pool.sort((a, b) => {
     const ta = effTime(a), tb = effTime(b);
     return (a.typeId === 'commute' ? 0 : 1) - (b.typeId === 'commute' ? 0 : 1) ||
       ta.hour - tb.hour || ta.min - tb.min;
   });
-  return rings[0];
+  return pool[0];
 }
 
 // 비번: 근무 알람이 하나라도 있고 그 시작일 이후인데, 그날 아무 근무 알람도 안 울리는 날
