@@ -28,12 +28,12 @@ export function roleLabel(shiftInfo: { shift: ShiftPeriod; shiftCustom?: string 
   return `${shiftPrefixFor(shiftInfo.shift, shiftInfo.shiftCustom)}${base}`;
 }
 
-// 팝업/미리보기용 — "초번 2일(06:00) → 말번 2일(14:00, 퇴근 없음) → 휴식 1일 반복"
+// 팝업/미리보기용 — "초번 2일(06:00) → 말번 2일(14:00, 퇴근 없음) → 비번 1일 반복"
 export function workPatternPreviewLabel(pattern: WorkSegment[]): string {
   if (!pattern.length) return '';
   const pad = (n: number) => String(n).padStart(2, '0');
   const parts = pattern.map(seg => {
-    if (seg.isRest) return `휴식 ${seg.days}일`;
+    if (seg.isRest) return `비번 ${seg.days}일`;
     const label = seg.shift === 'custom' ? (seg.shiftCustom?.trim() || '기타') : SHIFTS.find(s => s.id === seg.shift)!.label;
     const time = seg.commuteTime ? `${pad(seg.commuteTime.hour)}:${pad(seg.commuteTime.min)}` : '';
     const off = seg.hasOffwork ? '' : ', 퇴근 없음';

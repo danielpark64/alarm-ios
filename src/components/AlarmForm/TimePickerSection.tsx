@@ -1,10 +1,10 @@
 import React from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View } from 'react-native';
 import { Text } from '../common/AppText';
-import { VibIcon } from '../VibIcon';
 import { ScrollPicker } from '../common/ScrollPicker';
 import { useColors } from '../../hooks/useTheme';
 import { makeStyles } from './styles';
+import { SndVibSelector } from './SndVibSelector';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINS  = Array.from({ length: 12 }, (_, i) => i * 5);
@@ -22,11 +22,6 @@ interface Props {
 export function TimePickerSection({ hour, setHour, min, setMin, sndVibMode, setSndVibMode, pickerRef }: Props) {
   const C = useColors();
   const s = makeStyles(C);
-  const SND_VIB_OPTS: { mode: 'both'|'snd'|'vib'; label: string; renderIcon: () => React.ReactNode }[] = [
-    { mode: 'both', label: '소리+진동', renderIcon: () => <><Text style={s.sndVibIconFixed}>🔔</Text><VibIcon size={16} color={sndVibMode === 'both' ? C.txt : C.txt3}/></> },
-    { mode: 'snd',  label: '소리만',   renderIcon: () => <Text style={s.sndVibIconFixed}>🔔</Text> },
-    { mode: 'vib',  label: '진동만',   renderIcon: () => <VibIcon size={16} color={sndVibMode === 'vib' ? C.txt : C.txt3}/> },
-  ];
 
   return (
     <>
@@ -42,28 +37,7 @@ export function TimePickerSection({ hour, setHour, min, setMin, sndVibMode, setS
           </View>
         </View>
         <View style={s.timeDivider} />
-        <View style={s.sndVibSide}>
-          {SND_VIB_OPTS.map(({ mode, label, renderIcon }) => (
-            <TouchableOpacity
-              key={mode}
-              style={[s.sndVibBtn, sndVibMode === mode && s.sndVibActive]}
-              onPress={() => setSndVibMode(mode)}
-            >
-              <View style={s.sndVibIconWrap}>{renderIcon()}</View>
-              {mode === 'both' ? (
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={[s.sndVibLabel, sndVibMode === mode && s.sndVibLabelActive]}>소리</Text>
-                  <Text style={[s.sndVibPlus,  sndVibMode === mode && s.sndVibLabelActive]}>+</Text>
-                  <Text style={[s.sndVibLabel, sndVibMode === mode && s.sndVibLabelActive]}>진동</Text>
-                </View>
-              ) : (
-                <Text style={[s.sndVibLabel, sndVibMode === mode && s.sndVibLabelActive]}>
-                  {label}
-                </Text>
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
+        <SndVibSelector sndVibMode={sndVibMode} setSndVibMode={setSndVibMode} />
       </View>
     </>
   );

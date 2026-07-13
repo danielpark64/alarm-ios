@@ -8,6 +8,7 @@ import { TypeSelector } from './TypeSelector';
 import { ShiftSelector } from './ShiftSelector';
 import { WorkPatternBuilder } from './WorkPatternBuilder';
 import { RotationWizard } from './RotationWizard';
+import { SndVibSelector } from './SndVibSelector';
 import { DateSection } from './DateSection';
 import { DateModal } from './DateModal';
 import { TimePickerSection } from './TimePickerSection';
@@ -150,12 +151,16 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
             )}
 
             {form.isPatternMode ? (
-              <WorkPatternBuilder
-                blocks={form.blocks}
-                setBlocks={form.setBlocks}
-                sd={form.sd}
-                setShowCal={form.setShowCal}
-              />
+              <>
+                <WorkPatternBuilder
+                  blocks={form.blocks}
+                  setBlocks={form.setBlocks}
+                  sd={form.sd}
+                  setShowCal={form.setShowCal}
+                />
+                <Text style={s.sLabel}>소리/진동</Text>
+                <SndVibSelector layout="row" sndVibMode={form.sndVibMode} setSndVibMode={form.setSndVibMode} />
+              </>
             ) : (
               <>
                 <TypeSelector typeId={form.typeId} onChange={form.handleTypeChange} gridRef={typeRef} />

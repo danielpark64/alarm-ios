@@ -163,6 +163,8 @@ return StyleSheet.create({
   wzOption:         { flex: 1, minWidth: 76, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 6, borderRadius: 14, borderWidth: 1.3, borderColor: C.border2, backgroundColor: C.bg3 },
   wzOptionText:     { fontSize: 14, fontWeight: '700', color: C.txt2 },
   wzSummary:        { fontSize: 13, color: C.txt3, marginBottom: 8 },
+  wzSeqChip:        { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.3, backgroundColor: C.bg3 },
+  wzSeqChipText:    { fontSize: 13, fontWeight: '800' },
   wzActionRow:      { flexDirection: 'row', gap: 8, marginTop: 8 },
   wzPrimaryBtn:     { flex: 1, padding: 15, borderRadius: 16, backgroundColor: C.accent2, alignItems: 'center' },
   wzPrimaryText:    { fontSize: 14, fontWeight: '800', color: C.txt },

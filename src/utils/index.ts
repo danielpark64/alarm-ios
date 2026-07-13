@@ -48,7 +48,7 @@ export const repeatLabel = (al: Alarm): string => {
   if (al.rm==='pattern') {
     const segs = al.pattern ?? [];
     if (segs.length <= 1) return '근무 로테이션';
-    return segs.map(s => `${s.days}일${s.isRest ? ' 휴식' : ''}`).join(' → ') + ' 반복';
+    return segs.map(s => `${s.days}일${s.isRest ? ' 비번' : ''}`).join(' → ') + ' 반복';
   }
   if (al.rm==='monthly') return al.lastDay ? '매월 말일' : `매월 ${new Date(al.sd||todayStr()).getDate()}일`;
   if (al.rm==='yearly')  return `매년 ${al.lunar ? '음력 ' : ''}${new Date(al.sd||todayStr()).getMonth()+1}월 ${new Date(al.sd||todayStr()).getDate()}일`;

@@ -17,7 +17,7 @@ interface Props {
   setShowCal: (v: boolean) => void;
 }
 
-// 근무 시간대 로테이션 블록 빌더 — "초번 2일 → 말번 2일 → 휴식 1일"처럼 블록을 쌓아
+// 근무 시간대 로테이션 블록 빌더 — "초번 2일 → 말번 2일 → 비번 1일"처럼 블록을 쌓아
 // 반복 패턴 하나를 구성한다. N일 주기/N일 후 휴식은 이 블록 2개짜리 특수 케이스와 동치라
 // 별도 "단일 모드"를 안 두고 이 빌더 하나로 통일한다.
 export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal }: Props) {
@@ -132,14 +132,14 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal }: Props)
             <TouchableOpacity style={s.stepBtn} onPress={() => updateBlock(i, { days: Math.max(1, b.days - 1) })}>
               <Text style={s.stepBtnText}>−</Text>
             </TouchableOpacity>
-            <Text style={s.wpDayVal}>{b.days}일{b.isRest ? ' 휴식' : ''}</Text>
+            <Text style={s.wpDayVal}>{b.days}일{b.isRest ? ' 비번' : ''}</Text>
             <TouchableOpacity style={s.stepBtn} onPress={() => updateBlock(i, { days: Math.min(365, b.days + 1) })}>
               <Text style={s.stepBtnText}>＋</Text>
             </TouchableOpacity>
           </View>
 
           <View style={[s.wpToggleRow, !b.isRest ? null : { borderTopWidth: 0, paddingTop: 0, marginTop: 10 }]}>
-            <Text style={s.wpToggleLabel}>휴식 블록</Text>
+            <Text style={s.wpToggleLabel}>비번 블록</Text>
             <Switch
               value={!!b.isRest}
               onValueChange={v => updateBlock(i, { isRest: v })}
