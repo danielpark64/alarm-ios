@@ -21,6 +21,21 @@ function firstWorkSegment(pattern: WorkSegment[]): WorkSegment | undefined {
   return pattern.find(s => !s.isRest);
 }
 
+// 두 구간이 "같은 종류"인지 — 근무 로테이션을 하루씩 탭해서 쌓을 때(RotationWizard) 연속된
+// 같은 종류를 하나의 구간으로 자동으로 합치는 데 쓰인다. 비번끼리는 항상 같은 종류로 취급.
+export function sameSegmentType(a: WorkSegment, b: { shift: ShiftPeriod; shiftCustom?: string; isRest?: boolean }): boolean {
+  return !!a.isRest === !!b.isRest && (!!a.isRest || (a.shift === b.shift && a.shiftCustom === b.shiftCustom));
+}
+
+// 마지막 구간이 새로 추가하려는 것과 같은 종류면 그 구간의 days만 늘리고, 다르면 새 구간을 뒤에 붙인다.
+export function mergeOrAppendSegment(sequence: WorkSegment[], seg: WorkSegment): WorkSegment[] {
+  const last = sequence[sequence.length - 1];
+  if (last && sameSegmentType(last, seg)) {
+    return [...sequence.slice(0, -1), { ...last, days: last.days + 1 }];
+  }
+  return [...sequence, seg];
+}
+
 // 알림 제목에 쓰일 "{시간대} 출근/퇴근" — shiftPrefixFor는 뒤에 공백을 붙여 반환하므로
 // 그대로 이어붙이면 "초번 출근"처럼 자연스럽게 조합됨
 export function roleLabel(shiftInfo: { shift: ShiftPeriod; shiftCustom?: string }, role: 'commute' | 'offwork'): string {

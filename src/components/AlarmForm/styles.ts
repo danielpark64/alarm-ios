@@ -155,6 +155,13 @@ return StyleSheet.create({
   // 세로 컬럼인 모달 안에 그대로 쓰면 높이가 찌그러져 텍스트가 안 보임. flex 없는 전용 스타일.
   wpModalConfirmBtn:  { alignSelf: 'stretch', padding: 15, borderRadius: 16, backgroundColor: C.accent2, alignItems: 'center' },
   wpModalConfirmText: { fontSize: 15, fontWeight: '800', color: C.txt },
+  // 근무 순환표 칩을 탭하면 뜨는 액션 시트 — 시각 변경/일수 조정/전환/삭제를 세로로 나열
+  wpMenuTitle:       { fontSize: 15, fontWeight: '800', color: C.txt, textAlign: 'center', marginBottom: 12 },
+  wpMenuBtn:         { paddingVertical: 14, borderRadius: 14, backgroundColor: C.bg3, alignItems: 'center', marginBottom: 8 },
+  wpMenuBtnText:     { fontSize: 14, fontWeight: '700', color: C.txt2 },
+  wpMenuBtnDangerText: { color: '#E24B4A' },
+  wpMenuCancelBtn:   { paddingVertical: 14, borderRadius: 14, alignItems: 'center', marginTop: 4 },
+  wpMenuCancelText:  { fontSize: 14, fontWeight: '700', color: C.txt3 },
 
   // RotationWizard — 한 조씩 순서대로 묻는 대화형 온보딩
   wzProgress:      { fontSize: 12, fontWeight: '700', color: C.txt3, marginBottom: 4 },

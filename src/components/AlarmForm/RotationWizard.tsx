@@ -3,7 +3,7 @@ import { View, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { Text } from '../common/AppText';
 import { SHIFTS, ShiftPeriod, WorkSegment } from '../../constants';
 import { useColors } from '../../hooks/useTheme';
-import { workPatternPreviewLabel, newBlockId } from '../../utils/workPattern';
+import { newBlockId, mergeOrAppendSegment } from '../../utils/workPattern';
 import { makeStyles } from './styles';
 import { BlockTimeModal } from './BlockTimeModal';
 
@@ -53,17 +53,8 @@ export function RotationWizard({ sd, setShowCal, initialShift, onComplete, onCan
   const [timeModal, setTimeModal] = useState<'commute' | 'offwork' | null>(null);
   const seeded = React.useRef(false);
 
-  const sameType = (a: WorkSegment, b: { shift: ShiftPeriod; shiftCustom?: string; isRest?: boolean }) =>
-    !!a.isRest === !!b.isRest && (a.isRest || (a.shift === b.shift && a.shiftCustom === b.shiftCustom));
-
   const mergeOrAppend = (seg: WorkSegment) => {
-    setSequence(prev => {
-      const last = prev[prev.length - 1];
-      if (last && sameType(last, seg)) {
-        return [...prev.slice(0, -1), { ...last, days: last.days + 1 }];
-      }
-      return [...prev, seg];
-    });
+    setSequence(prev => mergeOrAppendSegment(prev, seg));
   };
 
   const startFlowForNew = (shift: ShiftPeriod) => {
