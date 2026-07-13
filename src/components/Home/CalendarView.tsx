@@ -7,6 +7,7 @@ import { useColors } from '../../hooks/useTheme';
 import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, shiftForDate, isOffDay, shiftColorMap, shiftPeriodLabel, shiftPeriodColor, effectiveShift, effectiveTime, lunarDateText, lunarShortText } from '../../utils';
 import { roleLabel } from '../../utils/workPattern';
 import { getHoliday } from '../../constants/holidays';
+import { getSolarTerm } from '../../constants/solarTerms';
 
 // 달력 화면 — 근무 알람(주기+출근/퇴근)은 배경색으로 근무조를 표시하고,
 // 그 외 알람만 칩으로 보여준다. 날짜를 누르면 하루 상세 팝업이 뜬다.
@@ -88,6 +89,8 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, colorOf, 
         const explicitShiftColor = resolvedShift ? shiftPeriodColor(info.shift!, resolvedShift) : null;
         const sc = explicitShiftColor ?? (info.shift ? colorOf[info.shift.id] : null);
         const holiday = getHoliday(ds);
+        // 절기는 공휴일과 같은 슬롯을 재사용 — 겹치는 날엔 공휴일을 우선 보여주고 그 아래 절기를 덧붙인다.
+        const solarTerm = showLunar ? getSolarTerm(ds) : undefined;
 
         return (
           <TouchableOpacity
@@ -107,7 +110,8 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, colorOf, 
               isToday && cv.dayNumToday,
             ]}>{d}</Text>
             {showLunar && (
-              <Text style={cv.lunarLabel} numberOfLines={1}>{lunarShortText(ds)}</Text>
+              // 절기/삼복이 있는 날은 칸이 좁으니 음력 날짜 대신 그 자리에 절기를 보여준다.
+              <Text style={cv.lunarLabel} numberOfLines={1}>{solarTerm ?? lunarShortText(ds)}</Text>
             )}
             {holiday && (
               <Text style={cv.holidayLabel} numberOfLines={1}>{holiday}</Text>
@@ -342,6 +346,11 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
             {selDate && getHoliday(selDate) && (
               <View style={cv.modalHolidayRow}>
                 <Text style={cv.modalHolidayText}>{getHoliday(selDate)}</Text>
+              </View>
+            )}
+            {selDate && getSolarTerm(selDate) && (
+              <View style={cv.modalHolidayRow}>
+                <Text style={cv.modalHolidayText}>{getSolarTerm(selDate)}</Text>
               </View>
             )}
             {selInfo?.shift && selShiftColor && (
