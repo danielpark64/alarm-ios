@@ -20,7 +20,7 @@ import { BottomNav, HomeTab } from '../src/components/Home/BottomNav';
 import { AlarmForm, AlarmFormHandle } from '../src/components/AlarmForm';
 import { AlarmRinging } from '../src/components/AlarmRinging';
 import { CycleAlarmTutorial, SpotlightRect } from '../src/components/Tutorial/CycleAlarmTutorial';
-import { nextAlarmText, getRepLimitedIds } from '../src/utils';
+import { nextAlarmText, getRepLimitedIds, getNextFireDate } from '../src/utils';
 import { Alarm } from '../src/constants';
 import { Palette } from '../src/constants/colors';
 import { useColors, useThemeSetting } from '../src/hooks/useTheme';
@@ -228,7 +228,21 @@ export default function App() {
     );
   };
 
-  const sorted        = useMemo(() => [...alarms].sort((a,b) => a.hour*60+a.min-(b.hour*60+b.min)), [alarms]);
+  // 다음에 울릴 알람이 맨 위로 오도록 정렬 — 꺼진 알람이나 다음 예정이 없는 알람은
+  // 뒤로 밀리고, 그 안에서는 기존처럼 설정 시각순으로 둔다. tick마다 재계산돼 한
+  // 알람이 지나가면 다음 알람이 자동으로 맨 위로 올라온다.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const sorted = useMemo(() => {
+    const withNext = alarms.map(a => ({ a, next: a.active ? getNextFireDate(a) : null }));
+    return withNext
+      .sort((x, y) => {
+        if (x.next && y.next) return x.next.getTime() - y.next.getTime();
+        if (x.next) return -1;
+        if (y.next) return 1;
+        return x.a.hour*60+x.a.min-(y.a.hour*60+y.a.min);
+      })
+      .map(w => w.a);
+  }, [alarms, tick]);
   const repLimitedIds = useMemo(() => getRepLimitedIds(alarms), [alarms]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const nextText = useMemo(() => nextAlarmText(alarms), [alarms, tick]);
