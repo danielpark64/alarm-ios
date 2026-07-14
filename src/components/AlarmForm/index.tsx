@@ -32,6 +32,7 @@ interface Props {
   onDelete?: () => void;
   onTypeChange?: (typeId: string) => void;
   onRmChange?: (rm: string) => void;
+  editTypeId?: string; // 알람 카드에서 "수정"으로 들어올 때 그 카드의 typeId — 패턴 모드에서 어떤 블록을 고치러 왔는지 안내하는 데 사용
   onCalendarClose?: () => void;
   typeRef?: React.Ref<View>;
   timeRef?: React.Ref<View>;
@@ -46,7 +47,7 @@ interface Props {
 
 export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
   function AlarmForm(
-    { initial, onSubmit, onSubmitPattern, onCancel, onDelete, onTypeChange, onRmChange, onCalendarClose, typeRef, timeRef, labelRef, cycleRef, presetRef, dateChipRef, infoBoxRef, addBtnRef, deleteBtnRef },
+    { initial, onSubmit, onSubmitPattern, onCancel, onDelete, onTypeChange, onRmChange, onCalendarClose, editTypeId, typeRef, timeRef, labelRef, cycleRef, presetRef, dateChipRef, infoBoxRef, addBtnRef, deleteBtnRef },
     ref,
   ) {
     const form = useAlarmFormState(initial, onSubmit, onTypeChange, onRmChange, onCalendarClose, onSubmitPattern);
@@ -55,8 +56,10 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
     const isCycleRest = form.rm === 'cycle' || form.rm === 'rest';
     const isEdit = initial.id != null;
 
-    // 근무 시간대 게이트(해당없음 ↔ 선택함) 전환 — 폼이 더러워진 상태(뭔가 입력됨)일 때만 확인창을 띄우고,
-    // 아니면 바로 초기화. 확인창은 여기(컴포넌트)에서 띄우고 실제 필드 리셋은 훅의 applyShiftGate가 담당.
+    // 근무 시간대 게이트(해당없음 → 시간대 선택) 전환 — 폼이 더러워진 상태(뭔가 입력됨)일 때만
+    // 확인창을 띄우고, 아니면 바로 적용. 반대 방향(패턴 → 일반)은 UI 진입점이 없다 — 패턴 알람을
+    // 일반 알람으로 되돌리고 싶으면 삭제 후 새로 만들도록 통일(그룹 데이터 잔존 버그 소지를
+    // 원천 차단하기 위한 설계 결정, 2026-07-14).
     const requestShiftGate = (newShift: ShiftPeriod) => {
       const crossing = (form.shift === 'none') !== (newShift === 'none');
       if (crossing && form.isDirty()) {
@@ -118,7 +121,12 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
             <Text style={s.topBarCancelText}>취소</Text>
           </TouchableOpacity>
           <Text style={s.topBarTitle} numberOfLines={1}>{isEdit ? '알람 수정' : '알람 추가'}</Text>
-          <TouchableOpacity ref={addBtnRef} style={s.topBarSaveBtn} onPress={form.handleSubmit}>
+          <TouchableOpacity
+            ref={addBtnRef}
+            style={[s.topBarSaveBtn, !isEdit && !form.isDirty() && { opacity: 0.4 }]}
+            disabled={!isEdit && !form.isDirty()}
+            onPress={form.handleSubmit}
+          >
             <Text style={s.topBarSaveText}>{isEdit ? '저장' : '추가'}</Text>
           </TouchableOpacity>
         </View>
@@ -137,9 +145,6 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
             {form.isPatternMode ? (
               <View style={s.wpGateBanner}>
                 <Text style={s.wpGateBannerText}>근무 시간대 알람 · 아래 블록에서 조정</Text>
-                <TouchableOpacity style={s.wpGateSwitchBtn} onPress={() => requestShiftGate('none')}>
-                  <Text style={s.wpGateSwitchText}>일반 알람으로 전환</Text>
-                </TouchableOpacity>
               </View>
             ) : (
               <ShiftSelector
@@ -152,6 +157,12 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
 
             {form.isPatternMode ? (
               <>
+                {isEdit && (
+                  <Text style={s.wpEditHint}>
+                    {editTypeId === 'offwork' ? '퇴근' : '출근'} 알람을 수정하러 오셨어요 —
+                    아래 칩을 눌러 원하는 구간의 시각을 바꾸세요
+                  </Text>
+                )}
                 <WorkPatternBuilder
                   blocks={form.blocks}
                   setBlocks={form.setBlocks}
@@ -235,7 +246,11 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
               <TouchableOpacity style={s.bottomCancelBtn} onPress={onCancel}>
                 <Text style={s.bottomCancelText}>취소</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={s.bottomSaveBtn} onPress={form.handleSubmit}>
+              <TouchableOpacity
+                style={[s.bottomSaveBtn, !isEdit && !form.isDirty() && { opacity: 0.4 }]}
+                disabled={!isEdit && !form.isDirty()}
+                onPress={form.handleSubmit}
+              >
                 <Text style={s.bottomSaveText}>{isEdit ? '저장' : '추가'}</Text>
               </TouchableOpacity>
             </View>

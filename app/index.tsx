@@ -292,6 +292,7 @@ export default function App() {
         />
       ) : editAlarm ? (
         <AlarmForm
+          key={editAlarm.id}
           ref={editFormRef}
           initial={editAlarm}
           onSubmit={async data=>{
@@ -309,6 +310,7 @@ export default function App() {
           onCancel={tutorialStep !== null ? exitTutorial : handleEditClose}
           onDelete={() => handleDeleteOne(editAlarm.id)}
           onTypeChange={setEditTypeId}
+          editTypeId={editAlarm.typeId}
           deleteBtnRef={tutorialStep !== null ? tutorialDeleteBtnRef : undefined}
         />
       ) : (

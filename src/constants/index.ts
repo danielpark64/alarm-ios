@@ -8,13 +8,24 @@ export const TYPES = [
   { id: 'custom',   label: '기타', icon: '✏️', color: '#9C27B0' },
 ] as const;
 // 색은 종류(TYPES) 색상, 비번의 빨강과 겹치지 않도록 선정 — 달력에서 근무 시간대별로 한눈에 구분되게
+// 말번은 원래 #F2994A(채도 높은 오렌지)였으나 다크 테마에서 비번(빨강)보다 먼저 눈에 띄어 톤 다운
 export const SHIFTS = [
   { id: 'early',  label: '초번', color: '#2F80ED' },
   { id: 'mid',    label: '중번', color: '#27AE60' },
-  { id: 'late',   label: '말번', color: '#F2994A' },
+  { id: 'late',   label: '말번', color: '#D98A4A' },
   { id: 'custom', label: '기타', color: '#9B51E0' },
   { id: 'none',   label: '해당없음', color: '#9CA3AF' },
 ] as const;
+// 근무 시간대별 기본 출근/퇴근 시각 — RotationWizard 첫 사용 시, 그리고 기존 알람 편집 화면에서
+// 시간대를 새로 고를 때 동일하게 참조(값이 흩어져 있으면 한쪽만 바뀌는 불일치가 생기기 쉬움)
+export const DEFAULT_SHIFT_TIMES: Record<string, { commute: { hour: number; min: number }; offwork: { hour: number; min: number } }> = {
+  early: { commute: { hour: 5,  min: 40 }, offwork: { hour: 15, min: 0 } },
+  late:  { commute: { hour: 13, min: 40 }, offwork: { hour: 23, min: 0 } },
+};
+export const DEFAULT_SHIFT_TIME_FALLBACK = { commute: { hour: 8, min: 0 }, offwork: { hour: 17, min: 0 } };
+// 비번 색 — 달력(CalendarView)의 비번 표시 색과 동일하게 맞춰서, 위저드/블록편집기 미리보기 칩과
+// 실제 달력에서 같은 색으로 보이게 한다
+export const REST_COLOR = '#e05252';
 export const REPEAT = [
   { id: 'once',     label: '한 번' },
   { id: 'wdcustom', label: '요일' },

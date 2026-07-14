@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, TextInput, Modal } from 'react-native';
 import { Text } from '../common/AppText';
-import { SHIFTS, ShiftPeriod, WorkSegment } from '../../constants';
+import { SHIFTS, ShiftPeriod, WorkSegment, DEFAULT_SHIFT_TIMES, DEFAULT_SHIFT_TIME_FALLBACK, REST_COLOR } from '../../constants';
 import { useColors } from '../../hooks/useTheme';
-import { newBlockId, mergeOrAppendSegment } from '../../utils/workPattern';
+import { newBlockId, mergeOrAppendSegment, sameSegmentType } from '../../utils/workPattern';
 import { makeStyles } from './styles';
 import { BlockTimeModal } from './BlockTimeModal';
 
 const BLOCK_SHIFTS = SHIFTS.filter(s => s.id !== 'none');
+// RotationWizard와 동일한 순서(초·말·비·중·기타) — 대부분의 교대근무자가 이 순서로 근무하므로
+const BUTTON_ORDER: (ShiftPeriod | 'REST')[] = ['early', 'late', 'REST', 'mid', 'custom'];
 
 interface Props {
   blocks: WorkSegment[];
@@ -21,7 +23,7 @@ function segLabel(seg: WorkSegment): string {
   return seg.shift === 'custom' ? (seg.shiftCustom?.trim() || '기타') : SHIFTS.find(sh => sh.id === seg.shift)!.label;
 }
 function segColor(seg: WorkSegment, C: ReturnType<typeof useColors>): string {
-  return seg.isRest ? C.txt3 : SHIFTS.find(sh => sh.id === seg.shift)!.color;
+  return seg.isRest ? REST_COLOR : SHIFTS.find(sh => sh.id === seg.shift)!.color;
 }
 
 // 근무 시간대 로테이션을 "근무 순환표" 칩으로 보여주고 편집하는 화면 — RotationWizard(만들 때
@@ -33,23 +35,40 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal }: Props)
   const s = makeStyles(C);
   const [, m, d] = sd.split('-').map(Number);
   const [menuIndex, setMenuIndex] = useState<number | null>(null);
-  const [timeEdit, setTimeEdit] = useState<{ index: number; phase: 'commute' | 'offwork' } | null>(null);
+  const [timeEdit, setTimeEdit] = useState<{ index: number; phase: 'commute' | 'offwork'; askOffworkYN?: boolean } | null>(null);
+  const [offworkYNIndex, setOffworkYNIndex] = useState<number | null>(null);
   const [dayEditIndex, setDayEditIndex] = useState<number | null>(null);
   const [tempDays, setTempDays] = useState(1);
   const [customPrompt, setCustomPrompt] = useState(false);
   const [customText, setCustomText] = useState('');
+  const [renameIndex, setRenameIndex] = useState<number | null>(null);
 
   const updateBlock = (i: number, patch: Partial<WorkSegment>) => {
     setBlocks(prev => prev.map((b, idx) => (idx === i ? { ...b, ...patch } : b)));
+  };
+  // 기타 시간대는 저장 후엔 이름을 바꿀 방법이 없었음 — 이 근무표 안에서 같은 이름을 쓰던
+  // 블록 전부를 한 번에 새 이름으로 바꾼다(같은 종류로 취급되던 블록들이므로)
+  const openRename = (i: number) => {
+    setMenuIndex(null);
+    setCustomText(blocks[i].shiftCustom ?? '');
+    setRenameIndex(i);
+  };
+  const confirmRename = () => {
+    if (renameIndex == null) return;
+    const oldName = blocks[renameIndex].shiftCustom;
+    setBlocks(prev => prev.map(b =>
+      (!b.isRest && b.shift === 'custom' && b.shiftCustom === oldName) ? { ...b, shiftCustom: customText } : b
+    ));
+    setRenameIndex(null);
   };
   const removeBlock = (i: number) => {
     setMenuIndex(null);
     setBlocks(prev => (prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== i)));
   };
 
-  const startTimeEdit = (i: number) => {
+  const startTimeEdit = (i: number, askOffworkYN?: boolean) => {
     setMenuIndex(null);
-    setTimeEdit({ index: i, phase: 'commute' });
+    setTimeEdit({ index: i, phase: 'commute', askOffworkYN });
   };
   const openDayEdit = (i: number) => {
     setMenuIndex(null);
@@ -73,6 +92,19 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal }: Props)
       offworkTime: blocks[i].offworkTime ?? { hour: 17, min: 0 },
     });
   };
+  // 퇴근 알람 없이 만든 구간(hasOffwork:false)은 나중에 퇴근 시각을 고칠 진입점이 아예 없었음 —
+  // 이 토글로 켜면 시각 입력까지 바로 이어서 물어본다
+  const toggleOffwork = (i: number) => {
+    setMenuIndex(null);
+    const seg = blocks[i];
+    if (seg.hasOffwork) {
+      updateBlock(i, { hasOffwork: false });
+      return;
+    }
+    const defaults = DEFAULT_SHIFT_TIMES[seg.shift] ?? DEFAULT_SHIFT_TIME_FALLBACK;
+    updateBlock(i, { hasOffwork: true, offworkTime: seg.offworkTime ?? { ...defaults.offwork } });
+    setTimeEdit({ index: i, phase: 'offwork' });
+  };
 
   // 새 시간대를 뒤에 추가할 때, 이 근무표 안에 그 시간대가 이미 있었으면 마지막으로 쓴 시각을
   // 그대로 재사용한다(위저드의 "처음만 물어보고 재사용" 규칙과 동일).
@@ -83,7 +115,8 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal }: Props)
         return { commuteTime: b.commuteTime ?? { hour: 8, min: 0 }, offworkTime: b.offworkTime ?? { hour: 17, min: 0 }, hasOffwork: b.hasOffwork };
       }
     }
-    return { commuteTime: { hour: 8, min: 0 }, offworkTime: { hour: 17, min: 0 }, hasOffwork: true };
+    const defaults = DEFAULT_SHIFT_TIMES[shift] ?? DEFAULT_SHIFT_TIME_FALLBACK;
+    return { commuteTime: { ...defaults.commute }, offworkTime: { ...defaults.offwork }, hasOffwork: true };
   };
 
   const appendShift = (shift: ShiftPeriod) => {
@@ -94,15 +127,29 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal }: Props)
       setBlocks(prev => mergeOrAppendSegment(prev, { blockId: newBlockId(), shift: 'custom', shiftCustom: existing.shiftCustom, days: 1, isRest: false, ...t }));
       return;
     }
+    // 이 근무표에서 처음 쓰는 시간대면 기본값으로 조용히 넣지 않고 바로 시각을 물어본다 —
+    // 이전엔 항상 마지막값/기본값으로 조용히 추가되고 칩을 다시 눌러야만 고칠 수 있어서 혼란스러웠음
+    const isFirstUse = !blocks.some(b => !b.isRest && b.shift === shift);
     const t = lastKnownTime(shift);
+    const newIndex = blocks.length;
     setBlocks(prev => mergeOrAppendSegment(prev, { blockId: newBlockId(), shift, days: 1, isRest: false, ...t }));
+    if (isFirstUse) startTimeEdit(newIndex, true);
   };
   const confirmCustomPrompt = () => {
-    setBlocks(prev => mergeOrAppendSegment(prev, {
+    const defaults = DEFAULT_SHIFT_TIME_FALLBACK;
+    const newSeg: WorkSegment = {
       blockId: newBlockId(), shift: 'custom', shiftCustom: customText, days: 1, isRest: false,
-      commuteTime: { hour: 8, min: 0 }, hasOffwork: true, offworkTime: { hour: 17, min: 0 },
-    }));
+      commuteTime: { ...defaults.commute }, hasOffwork: true, offworkTime: { ...defaults.offwork },
+    };
+    // mergeOrAppendSegment가 실제로 새 블록을 append할지, 마지막 블록에 합칠지는 여기서 미리
+    // 알 수 있다(같은 로직 재사용) — blocks.length를 새 인덱스로 무조건 가정하면 병합되는
+    // 경우 없는 인덱스를 가리켜 방금 입력한 시각이 조용히 버려지는 버그가 생김
+    const last = blocks[blocks.length - 1];
+    const willMerge = !!last && sameSegmentType(last, newSeg);
+    const newIndex = willMerge ? blocks.length - 1 : blocks.length;
+    setBlocks(prev => mergeOrAppendSegment(prev, newSeg));
     setCustomPrompt(false);
+    startTimeEdit(newIndex, true);
   };
   const appendRest = () => {
     setBlocks(prev => mergeOrAppendSegment(prev, { blockId: newBlockId(), shift: 'none', days: 1, isRest: true, hasOffwork: false }));
@@ -135,14 +182,15 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal }: Props)
 
       <Text style={[s.sLabel, { marginTop: 4 }]}>뒤에 더 추가</Text>
       <View style={s.wzOptionRow}>
-        {BLOCK_SHIFTS.map(sh => (
-          <TouchableOpacity key={sh.id} style={s.wzOption} onPress={() => appendShift(sh.id as ShiftPeriod)}>
-            <Text style={s.wzOptionText}>{sh.label}</Text>
+        {BUTTON_ORDER.map(id => id === 'REST' ? (
+          <TouchableOpacity key="REST" style={[s.wzOption, { borderColor: REST_COLOR }]} onPress={appendRest}>
+            <Text style={[s.wzOptionText, { color: REST_COLOR }]}>비번</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity key={id} style={s.wzOption} onPress={() => appendShift(id)}>
+            <Text style={s.wzOptionText}>{BLOCK_SHIFTS.find(sh => sh.id === id)!.label}</Text>
           </TouchableOpacity>
         ))}
-        <TouchableOpacity style={s.wzOption} onPress={appendRest}>
-          <Text style={s.wzOptionText}>비번</Text>
-        </TouchableOpacity>
       </View>
 
       {/* 칩 액션 시트 — 근무 구간은 시각변경도 있고, 비번 구간은 시각이 없어서 빠진다 */}
@@ -155,6 +203,16 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal }: Props)
                 {!menuSeg.isRest && (
                   <TouchableOpacity style={s.wpMenuBtn} onPress={() => startTimeEdit(menuIndex!)}>
                     <Text style={s.wpMenuBtnText}>🕐 시각 변경</Text>
+                  </TouchableOpacity>
+                )}
+                {!menuSeg.isRest && (
+                  <TouchableOpacity style={s.wpMenuBtn} onPress={() => toggleOffwork(menuIndex!)}>
+                    <Text style={s.wpMenuBtnText}>{menuSeg.hasOffwork ? '퇴근 알람 끄기' : '🕐 퇴근 알람 켜기'}</Text>
+                  </TouchableOpacity>
+                )}
+                {!menuSeg.isRest && menuSeg.shift === 'custom' && (
+                  <TouchableOpacity style={s.wpMenuBtn} onPress={() => openRename(menuIndex!)}>
+                    <Text style={s.wpMenuBtnText}>✏️ 이름 변경</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity style={s.wpMenuBtn} onPress={() => openDayEdit(menuIndex!)}>
@@ -217,6 +275,58 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal }: Props)
         </View>
       </Modal>
 
+      {/* 기타 시간대 이름 변경 — 같은 이름을 쓰던 블록 전부에 한 번에 반영 */}
+      <Modal visible={renameIndex != null} transparent animationType="fade" onRequestClose={() => setRenameIndex(null)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalContent}>
+            <Text style={s.wpMenuTitle}>근무 이름이 뭐예요?</Text>
+            <TextInput
+              style={s.wpCustomInput}
+              value={customText}
+              onChangeText={setCustomText}
+              placeholder="예: 새벽조"
+              placeholderTextColor={C.txt3}
+              returnKeyType="done"
+              autoFocus
+            />
+            <TouchableOpacity style={[s.wpModalConfirmBtn, { marginTop: 14 }]} onPress={confirmRename}>
+              <Text style={s.wpModalConfirmText}>변경</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 처음 추가하는 시간대 — 출근 시각 입력 직후, 위저드와 동일하게 퇴근 알람 필요 여부부터 물어봄 */}
+      <Modal visible={offworkYNIndex != null} transparent animationType="fade" onRequestClose={() => setOffworkYNIndex(null)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalContent}>
+            <Text style={s.wpMenuTitle}>퇴근 알람도 필요해요?</Text>
+            <View style={[s.wzActionRow, { marginTop: 4 }]}>
+              <TouchableOpacity
+                style={s.wzSecondaryBtn}
+                onPress={() => {
+                  if (offworkYNIndex == null) return;
+                  updateBlock(offworkYNIndex, { hasOffwork: false });
+                  setOffworkYNIndex(null);
+                }}
+              >
+                <Text style={s.wzSecondaryText}>아니요</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={s.wzPrimaryBtn}
+                onPress={() => {
+                  if (offworkYNIndex == null) return;
+                  setTimeEdit({ index: offworkYNIndex, phase: 'offwork' });
+                  setOffworkYNIndex(null);
+                }}
+              >
+                <Text style={s.wzPrimaryText}>네</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <BlockTimeModal
         visible={!!timeEdit}
         title={timeEdit?.phase === 'offwork' ? '퇴근 시각' : '출근 시각'}
@@ -229,6 +339,9 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal }: Props)
         onClose={() => {
           if (!timeEdit) return;
           const seg = blocks[timeEdit.index];
+          // 처음 추가하는 시간대는 퇴근 알람 필요 여부를 먼저 물어본다(위저드와 동일) — 무조건
+          // 퇴근 시각까지 잇지 않고, 필요 없다는 선택지를 준다
+          if (timeEdit.phase === 'commute' && timeEdit.askOffworkYN) { setOffworkYNIndex(timeEdit.index); setTimeEdit(null); return; }
           if (timeEdit.phase === 'commute' && seg.hasOffwork) setTimeEdit({ index: timeEdit.index, phase: 'offwork' });
           else setTimeEdit(null);
         }}

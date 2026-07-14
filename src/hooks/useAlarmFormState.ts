@@ -179,8 +179,13 @@ export function useAlarmFormState(
     if (rm      !== initRm)                               return true;
     if (JSON.stringify([...days].sort((a,b)=>a-b)) !==
         JSON.stringify([...initDays].sort((a,b)=>a-b)))   return true;
-    if (cd      !== (initial.cd      ?? 2))               return true;
-    if (rd      !== (initial.rd      ?? 1))               return true;
+    // cd/rd는 cycle/rest 모드에서만 의미 있는 값 — 다른 모드에서는 게이트 리셋 등으로 초기값과
+    // 어긋나도(예: 2/1로 리셋 vs 화면 기본값 3/1) 무시해야 "일반 알람으로 전환" 후 영구 dirty로
+    // 남아 확인창이 반복 뜨는 문제가 생기지 않는다.
+    if (rm === 'cycle' || rm === 'rest') {
+      if (cd !== (initial.cd ?? 2)) return true;
+      if (rd !== (initial.rd ?? 1)) return true;
+    }
     if (snd     !== (initial.snd     ?? 'default'))       return true;
     if (vib     !== (initial.vib     ?? 'pulse'))         return true;
     if (sd      !== (initial.sd      ?? todayStr()))      return true;
@@ -213,6 +218,9 @@ export function useAlarmFormState(
       setCd(2); setRd(1);
       setLastDay(false); setLunar(false);
       setShiftCustom('');
+      // blocks 자체는 리셋하지 않는다 — 매번 새 blockId가 생겨 dirty 비교 기준(initialBlocksRef)과
+      // 어긋나 "추가" 버튼이 영구 활성화되는 회귀가 생김. 데이터 무결성은 handleSubmit에서
+      // pattern/groupId/groupRole을 명시적으로 undefined로 제출하는 것만으로 충분히 보장된다.
     }
   };
 
@@ -244,6 +252,8 @@ export function useAlarmFormState(
       lunar: rm === 'yearly' ? lunar : false,
       shift, // isPatternMode(=shift!=='none') 분기에서 이미 return했으므로 여기선 항상 'none'
       shiftCustom: undefined,
+      // 패턴 모드에서 전환된 경우 잔존 필드가 얕은 병합(updateAlarm)으로 되살아나지 않도록 명시적으로 제거
+      pattern: undefined, groupId: undefined, groupRole: undefined,
     });
   };
 

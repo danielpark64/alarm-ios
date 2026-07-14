@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { View, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { Text } from '../common/AppText';
-import { SHIFTS, ShiftPeriod, WorkSegment } from '../../constants';
+import { SHIFTS, ShiftPeriod, WorkSegment, DEFAULT_SHIFT_TIMES, DEFAULT_SHIFT_TIME_FALLBACK, REST_COLOR } from '../../constants';
 import { useColors } from '../../hooks/useTheme';
 import { newBlockId, mergeOrAppendSegment } from '../../utils/workPattern';
 import { makeStyles } from './styles';
 import { BlockTimeModal } from './BlockTimeModal';
 
 const BLOCK_SHIFTS = SHIFTS.filter(s => s.id !== 'none');
+// 유저 편의성 요청 — 대부분의 교대근무자가 "초·말·비" 순으로 근무하므로 버튼도 이 순서로 배치
+// (비번은 시간대가 아니라 별도 버튼이라 'REST' 자리표시자로 순서에 끼워넣는다)
+const BUTTON_ORDER: (ShiftPeriod | 'REST')[] = ['early', 'late', 'REST', 'mid', 'custom'];
 const pad = (n: number) => String(n).padStart(2, '0');
 
 interface Props {
@@ -51,6 +54,7 @@ export function RotationWizard({ sd, setShowCal, initialShift, onComplete, onCan
   const [flow, setFlow] = useState<Flow | null>(null);
   const [customText, setCustomText] = useState('');
   const [timeModal, setTimeModal] = useState<'commute' | 'offwork' | null>(null);
+  const [startDateSeen, setStartDateSeen] = useState(false);
   const seeded = React.useRef(false);
 
   const mergeOrAppend = (seg: WorkSegment) => {
@@ -59,13 +63,14 @@ export function RotationWizard({ sd, setShowCal, initialShift, onComplete, onCan
 
   const startFlowForNew = (shift: ShiftPeriod) => {
     setCustomText('');
+    const defaults = DEFAULT_SHIFT_TIMES[shift] ?? DEFAULT_SHIFT_TIME_FALLBACK;
     setFlow({
       target: 'new',
       shift,
       phase: shift === 'custom' ? 'customName' : 'commute',
-      commuteTime: { hour: 8, min: 0 },
+      commuteTime: { ...defaults.commute },
       hasOffwork: true,
-      offworkTime: { hour: 17, min: 0 },
+      offworkTime: { ...defaults.offwork },
     });
   };
 
@@ -100,8 +105,22 @@ export function RotationWizard({ sd, setShowCal, initialShift, onComplete, onCan
     setSequence(prev => {
       if (!prev.length) return prev;
       const last = prev[prev.length - 1];
-      if (last.days > 1) return [...prev.slice(0, -1), { ...last, days: last.days - 1 }];
-      return prev.slice(0, -1);
+      const next = last.days > 1
+        ? [...prev.slice(0, -1), { ...last, days: last.days - 1 }]
+        : prev.slice(0, -1);
+      // 이 시간대가 남은 구간에서 완전히 사라졌으면 기억해둔 기본 시각도 같이 지워야
+      // 다시 탭했을 때 시간설정 모달이 다시 뜬다(안 지우면 예전 값이 조용히 재사용됨)
+      if (!last.isRest) {
+        const key = defaultsKey(last.shift);
+        const stillUsed = next.some(seg => !seg.isRest && defaultsKey(seg.shift) === key);
+        if (!stillUsed) {
+          setShiftDefaults(prevDefaults => {
+            const { [key]: _removed, ...rest } = prevDefaults;
+            return rest;
+          });
+        }
+      }
+      return next;
     });
   };
 
@@ -136,7 +155,17 @@ export function RotationWizard({ sd, setShowCal, initialShift, onComplete, onCan
       });
     } else {
       const idx = f.target as number;
-      setSequence(prev => prev.map((seg, i) => (i === idx ? { ...seg, commuteTime: f.commuteTime, hasOffwork: f.hasOffwork, offworkTime: f.offworkTime } : seg)));
+      // 기타는 이름도 같이 바꿀 수 있게 열어뒀으므로(editSegment), 같은 이름을 쓰던 다른 구간도
+      // 함께 갱신 — 같은 종류로 취급되던 것들이라 이름만 따로 노는 상태가 되면 안 됨
+      const oldName = sequence[idx].shiftCustom;
+      setSequence(prev => prev.map((seg, i) => {
+        if (i === idx) return { ...seg, shiftCustom: f.shiftCustom, commuteTime: f.commuteTime, hasOffwork: f.hasOffwork, offworkTime: f.offworkTime };
+        if (f.shift === 'custom' && !seg.isRest && seg.shift === 'custom' && seg.shiftCustom === oldName) return { ...seg, shiftCustom: f.shiftCustom };
+        return seg;
+      }));
+      if (f.shift === 'custom') {
+        setShiftDefaults(prev => ({ ...prev, custom: { commuteTime: f.commuteTime, offworkTime: f.offworkTime, hasOffwork: f.hasOffwork, shiftCustom: f.shiftCustom } }));
+      }
     }
     setFlow(null);
   };
@@ -145,11 +174,13 @@ export function RotationWizard({ sd, setShowCal, initialShift, onComplete, onCan
     if (flow) return;
     const seg = sequence[i];
     if (seg.isRest) return;
+    if (seg.shift === 'custom') setCustomText(seg.shiftCustom ?? '');
     setFlow({
       target: i,
       shift: seg.shift,
       shiftCustom: seg.shiftCustom,
-      phase: 'commute',
+      // 기타는 시각 수정 전에 이름도 바꿀 수 있게 이름 단계부터 시작(이전엔 이름 수정 방법이 없었음)
+      phase: seg.shift === 'custom' ? 'customName' : 'commute',
       commuteTime: seg.commuteTime ?? { hour: 8, min: 0 },
       hasOffwork: seg.hasOffwork,
       offworkTime: seg.offworkTime ?? { hour: 17, min: 0 },
@@ -175,11 +206,16 @@ export function RotationWizard({ sd, setShowCal, initialShift, onComplete, onCan
         </TouchableOpacity>
       </View>
 
+      {!startDateSeen && <Text style={s.wzStartHint}>먼저 시작일을 확인하세요 →</Text>}
       <View style={s.wpStartRow}>
         <Text style={s.wpStartLabel}>시작일</Text>
-        <TouchableOpacity style={s.cycleDateChip} onPress={() => setShowCal(true)}>
+        <TouchableOpacity
+          style={s.cycleDateChip}
+          onPress={() => { setStartDateSeen(true); setShowCal(true); }}
+        >
           <Text>📅</Text>
           <Text style={s.cycleDateChipText}>{m}/{d} 시작</Text>
+          {!startDateSeen && <View style={s.wzStartBadge} />}
         </TouchableOpacity>
       </View>
 
@@ -191,7 +227,7 @@ export function RotationWizard({ sd, setShowCal, initialShift, onComplete, onCan
               <View style={s.wzOptionRow}>
                 {sequence.map((seg, i) => {
                   const label = seg.isRest ? '비번' : (seg.shift === 'custom' ? (seg.shiftCustom?.trim() || '기타') : SHIFTS.find(sh => sh.id === seg.shift)!.label);
-                  const color = seg.isRest ? C.txt3 : SHIFTS.find(sh => sh.id === seg.shift)!.color;
+                  const color = seg.isRest ? REST_COLOR : SHIFTS.find(sh => sh.id === seg.shift)!.color;
                   return (
                     <TouchableOpacity
                       key={i}
@@ -204,21 +240,22 @@ export function RotationWizard({ sd, setShowCal, initialShift, onComplete, onCan
                   );
                 })}
               </View>
-              <Text style={s.wzSummary}>총 {totalDays}일 · {totalDays + 1}일째부터 다시 반복</Text>
+              <Text style={s.wzSummary}>다음 근무는 무엇인가요?</Text>
             </>
           ) : (
             <Text style={s.wzSummary}>버튼을 탭해서 하루씩 쌓아보세요</Text>
           )}
 
           <View style={[s.wzOptionRow, { marginTop: 12 }]}>
-            {BLOCK_SHIFTS.map(sh => (
-              <TouchableOpacity key={sh.id} style={s.wzOption} onPress={() => tapShift(sh.id as ShiftPeriod)}>
-                <Text style={s.wzOptionText}>{sh.label}</Text>
+            {BUTTON_ORDER.map(id => id === 'REST' ? (
+              <TouchableOpacity key="REST" style={[s.wzOption, { borderColor: REST_COLOR }]} onPress={tapRest}>
+                <Text style={[s.wzOptionText, { color: REST_COLOR }]}>비번</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity key={id} style={s.wzOption} onPress={() => tapShift(id)}>
+                <Text style={s.wzOptionText}>{BLOCK_SHIFTS.find(sh => sh.id === id)!.label}</Text>
               </TouchableOpacity>
             ))}
-            <TouchableOpacity style={s.wzOption} onPress={tapRest}>
-              <Text style={s.wzOptionText}>비번</Text>
-            </TouchableOpacity>
           </View>
 
           <View style={s.wzActionRow}>

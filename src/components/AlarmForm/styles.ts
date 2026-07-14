@@ -90,7 +90,7 @@ return StyleSheet.create({
   cycleBox:        { backgroundColor: C.bg2, borderWidth: 1, borderColor: C.border, borderRadius: 18, padding: 16, marginTop: 10 },
   cycleDateRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   cycleDateLabel:  { fontSize: 12, fontWeight: '600', color: C.txt3 },
-  cycleDateChip:   { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.bg3, borderWidth: 1, borderColor: C.border2, borderRadius: 10, paddingVertical: 7, paddingHorizontal: 10 },
+  cycleDateChip:   { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.bg3, borderWidth: 1, borderColor: C.border2, borderRadius: 10, paddingVertical: 7, paddingHorizontal: 10, position: 'relative' },
   cycleDateChipText: { fontSize: 12, fontWeight: '700', color: C.accent },
   cycleLabel:      { fontSize: 11, fontWeight: '700', color: C.txt3, marginBottom: 8 },
   stepper:         { flexDirection: 'row', alignItems: 'center', gap: 14 },
@@ -125,8 +125,7 @@ return StyleSheet.create({
   // 근무 시간대 게이트 배너 — 로테이션 모드로 들어가면 상단 ShiftSelector 대신 이걸 보여줌
   wpGateBanner:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: C.bg3, borderRadius: 14, padding: 12, marginTop: 4, gap: 10 },
   wpGateBannerText:  { fontSize: 12, fontWeight: '700', color: C.txt2, flex: 1 },
-  wpGateSwitchBtn:   { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: C.border2 },
-  wpGateSwitchText:  { fontSize: 12, fontWeight: '700', color: C.accent },
+  wpEditHint:        { fontSize: 12, fontWeight: '700', color: C.accent, marginTop: 6, marginBottom: 2 },
 
   // 근무 패턴 블록 빌더
   wpStartRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, marginBottom: 4 },
@@ -184,5 +183,8 @@ return StyleSheet.create({
   wzCloseText:      { fontSize: 15, fontWeight: '800', color: C.txt2 },
   wzBackBtn:        { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1.3, borderColor: C.accent2, backgroundColor: C.bg3 },
   wzBackText:       { fontSize: 15, fontWeight: '800', color: C.accent },
+  // 시작일을 안 보고 바로 근무 버튼부터 누르는 사용자가 많아, 확인 전까지 눈에 띄는 배지로 유도
+  wzStartHint:      { fontSize: 12, fontWeight: '700', color: '#e07070', marginBottom: 6 },
+  wzStartBadge:     { position: 'absolute', top: -3, right: -3, width: 9, height: 9, borderRadius: 5, backgroundColor: '#e07070' },
 });
 }
