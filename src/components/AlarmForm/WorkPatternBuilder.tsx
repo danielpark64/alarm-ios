@@ -6,10 +6,7 @@ import { useColors } from '../../hooks/useTheme';
 import { newBlockId, mergeOrAppendSegment, sameSegmentType } from '../../utils/workPattern';
 import { makeStyles } from './styles';
 import { BlockTimeModal } from './BlockTimeModal';
-
-const BLOCK_SHIFTS = SHIFTS.filter(s => s.id !== 'none');
-// RotationWizard와 동일한 순서(초·말·비·중·기타) — 대부분의 교대근무자가 이 순서로 근무하므로
-const BUTTON_ORDER: (ShiftPeriod | 'REST')[] = ['early', 'late', 'REST', 'mid', 'custom'];
+import { AddShiftModal } from './AddShiftModal';
 
 interface Props {
   blocks: WorkSegment[];
@@ -42,6 +39,7 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal }: Props)
   const [customPrompt, setCustomPrompt] = useState(false);
   const [customText, setCustomText] = useState('');
   const [renameIndex, setRenameIndex] = useState<number | null>(null);
+  const [addModalVisible, setAddModalVisible] = useState(false);
 
   const updateBlock = (i: number, patch: Partial<WorkSegment>) => {
     setBlocks(prev => prev.map((b, idx) => (idx === i ? { ...b, ...patch } : b)));
@@ -178,19 +176,9 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal }: Props)
             <Text style={[s.wzSeqChipText, { color: segColor(seg, C) }]}>{segLabel(seg)} {seg.days}일</Text>
           </TouchableOpacity>
         ))}
-      </View>
-
-      <Text style={[s.sLabel, { marginTop: 4 }]}>뒤에 더 추가</Text>
-      <View style={s.wzOptionRow}>
-        {BUTTON_ORDER.map(id => id === 'REST' ? (
-          <TouchableOpacity key="REST" style={[s.wzOption, { borderColor: REST_COLOR }]} onPress={appendRest}>
-            <Text style={[s.wzOptionText, { color: REST_COLOR }]}>비번</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity key={id} style={s.wzOption} onPress={() => appendShift(id)}>
-            <Text style={s.wzOptionText}>{BLOCK_SHIFTS.find(sh => sh.id === id)!.label}</Text>
-          </TouchableOpacity>
-        ))}
+        <TouchableOpacity style={s.wzAddChip} onPress={() => setAddModalVisible(true)}>
+          <Text style={s.wzAddChipText}>+</Text>
+        </TouchableOpacity>
       </View>
 
       {/* 칩 액션 시트 — 근무 구간은 시각변경도 있고, 비번 구간은 시각이 없어서 빠진다 */}
@@ -326,6 +314,15 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal }: Props)
           </View>
         </View>
       </Modal>
+
+      <AddShiftModal
+        visible={addModalVisible}
+        onClose={() => setAddModalVisible(false)}
+        onPick={(id) => {
+          setAddModalVisible(false);
+          if (id === 'REST') appendRest(); else appendShift(id);
+        }}
+      />
 
       <BlockTimeModal
         visible={!!timeEdit}

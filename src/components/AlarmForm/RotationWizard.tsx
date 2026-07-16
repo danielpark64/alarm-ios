@@ -6,11 +6,8 @@ import { useColors } from '../../hooks/useTheme';
 import { newBlockId, mergeOrAppendSegment } from '../../utils/workPattern';
 import { makeStyles } from './styles';
 import { BlockTimeModal } from './BlockTimeModal';
+import { AddShiftModal } from './AddShiftModal';
 
-const BLOCK_SHIFTS = SHIFTS.filter(s => s.id !== 'none');
-// 유저 편의성 요청 — 대부분의 교대근무자가 "초·말·비" 순으로 근무하므로 버튼도 이 순서로 배치
-// (비번은 시간대가 아니라 별도 버튼이라 'REST' 자리표시자로 순서에 끼워넣는다)
-const BUTTON_ORDER: (ShiftPeriod | 'REST')[] = ['early', 'late', 'REST', 'mid', 'custom'];
 const pad = (n: number) => String(n).padStart(2, '0');
 
 interface Props {
@@ -55,6 +52,7 @@ export function RotationWizard({ sd, setShowCal, initialShift, onComplete, onCan
   const [customText, setCustomText] = useState('');
   const [timeModal, setTimeModal] = useState<'commute' | 'offwork' | null>(null);
   const [startDateSeen, setStartDateSeen] = useState(false);
+  const [addModalVisible, setAddModalVisible] = useState(false);
   const seeded = React.useRef(false);
 
   const mergeOrAppend = (seg: WorkSegment) => {
@@ -222,50 +220,37 @@ export function RotationWizard({ sd, setShowCal, initialShift, onComplete, onCan
       {!flow && (
         <>
           <Text style={s.wzQuestion}>근무 순환표</Text>
-          {sequence.length > 0 ? (
-            <>
-              <View style={s.wzOptionRow}>
-                {sequence.map((seg, i) => {
-                  const label = seg.isRest ? '비번' : (seg.shift === 'custom' ? (seg.shiftCustom?.trim() || '기타') : SHIFTS.find(sh => sh.id === seg.shift)!.label);
-                  const color = seg.isRest ? REST_COLOR : SHIFTS.find(sh => sh.id === seg.shift)!.color;
-                  return (
-                    <TouchableOpacity
-                      key={i}
-                      style={[s.wzSeqChip, { borderColor: color }]}
-                      onPress={() => editSegment(i)}
-                      disabled={seg.isRest}
-                    >
-                      <Text style={[s.wzSeqChipText, { color }]}>{label} {seg.days}일</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              <Text style={s.wzSummary}>다음 근무는 무엇인가요?</Text>
-            </>
-          ) : (
-            <Text style={s.wzSummary}>버튼을 탭해서 하루씩 쌓아보세요</Text>
+          <View style={s.wzOptionRow}>
+            {sequence.map((seg, i) => {
+              const label = seg.isRest ? '비번' : (seg.shift === 'custom' ? (seg.shiftCustom?.trim() || '기타') : SHIFTS.find(sh => sh.id === seg.shift)!.label);
+              const color = seg.isRest ? REST_COLOR : SHIFTS.find(sh => sh.id === seg.shift)!.color;
+              return (
+                <TouchableOpacity
+                  key={i}
+                  style={[s.wzSeqChip, { borderColor: color }]}
+                  onPress={() => editSegment(i)}
+                  disabled={seg.isRest}
+                >
+                  <Text style={[s.wzSeqChipText, { color }]}>{label} {seg.days}일</Text>
+                </TouchableOpacity>
+              );
+            })}
+            <TouchableOpacity style={s.wzAddChip} onPress={() => setAddModalVisible(true)}>
+              <Text style={s.wzAddChipText}>+</Text>
+            </TouchableOpacity>
+          </View>
+          {sequence.length === 0 && <Text style={s.wzSummary}>+를 눌러 하루씩 쌓아보세요</Text>}
+
+          {sequence.length > 0 && (
+            <View style={s.wzActionRow}>
+              <TouchableOpacity style={s.wzSecondaryBtn} onPress={undoLast}>
+                <Text style={s.wzSecondaryText}>↩ 마지막 취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.wzPrimaryBtn} onPress={finish}>
+                <Text style={s.wzPrimaryText}>여기서 반복</Text>
+              </TouchableOpacity>
+            </View>
           )}
-
-          <View style={[s.wzOptionRow, { marginTop: 12 }]}>
-            {BUTTON_ORDER.map(id => id === 'REST' ? (
-              <TouchableOpacity key="REST" style={[s.wzOption, { borderColor: REST_COLOR }]} onPress={tapRest}>
-                <Text style={[s.wzOptionText, { color: REST_COLOR }]}>비번</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity key={id} style={s.wzOption} onPress={() => tapShift(id)}>
-                <Text style={s.wzOptionText}>{BLOCK_SHIFTS.find(sh => sh.id === id)!.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={s.wzActionRow}>
-            <TouchableOpacity style={s.wzSecondaryBtn} onPress={undoLast} disabled={!sequence.length}>
-              <Text style={s.wzSecondaryText}>↩ 마지막 취소</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.wzPrimaryBtn} onPress={finish}>
-              <Text style={s.wzPrimaryText}>여기서 반복</Text>
-            </TouchableOpacity>
-          </View>
         </>
       )}
 
@@ -338,6 +323,15 @@ export function RotationWizard({ sd, setShowCal, initialShift, onComplete, onCan
           </View>
         </>
       )}
+
+      <AddShiftModal
+        visible={addModalVisible}
+        onClose={() => setAddModalVisible(false)}
+        onPick={(id) => {
+          setAddModalVisible(false);
+          if (id === 'REST') tapRest(); else tapShift(id);
+        }}
+      />
 
       <BlockTimeModal
         visible={!!timeModal}
