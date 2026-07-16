@@ -171,7 +171,7 @@ return StyleSheet.create({
   wzSummary:        { fontSize: 13, color: C.txt3, marginBottom: 8 },
   wzSeqChip:        { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.3, backgroundColor: C.bg3 },
   wzSeqChipText:    { fontSize: 13, fontWeight: '800' },
-  wzAddChip:        { minWidth: 60, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.3, borderStyle: 'dashed', borderColor: C.border2, alignItems: 'center', justifyContent: 'center' },
+  wzAddChip:        { minWidth: 72, paddingVertical: 8, paddingHorizontal: 20, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.txt3, alignItems: 'center', justifyContent: 'center' },
   wzAddChipText:    { fontSize: 15, fontWeight: '900', color: C.txt3 },
   wzActionRow:      { flexDirection: 'row', gap: 8, marginTop: 8 },
   wzPrimaryBtn:     { flex: 1, padding: 15, borderRadius: 16, backgroundColor: C.accent2, alignItems: 'center' },
