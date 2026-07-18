@@ -2,7 +2,9 @@ export const TYPES = [
   { id: 'commute',  label: '출근', icon: '🚇', color: '#2196F3' },
   // 빨강은 비번 전용으로 양보 — 비번이 달력에서 유일하게 빨갛게 띄도록
   { id: 'offwork',  label: '퇴근', icon: '🏠', color: '#00ACC1' },
-  { id: 'meal',     label: '식사', icon: '🍽️', color: '#4ADE80' },
+  // 원래 #4ADE80(파스텔 연두)였으나 라이트 테마 배경(밝은 회백색)과 명도가 거의 같아
+  // 텍스트/배경 둘 다 안 보이는 문제 — 다른 TYPES 색상들과 비슷한 명도의 진한 녹색으로 교체
+  { id: 'meal',     label: '식사', icon: '🍽️', color: '#16A34A' },
   // 주황은 비번 빨강과 한 계열이라 달력에서 헷갈림 → 노랑 계열로
   { id: 'exercise', label: '운동', icon: '🏃', color: '#F9A825' },
   { id: 'custom',   label: '기타', icon: '✏️', color: '#9C27B0' },
