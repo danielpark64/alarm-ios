@@ -54,8 +54,9 @@ else
 fi
 
 # ── 정적 테스트 2: cancelNativeAlarms에 bare alarmId 취소 포함 ──
+# (개별 호출 cancelAlarm(alarmId) 또는 배치 목록 ids.push(alarmId) 어느 쪽이든 인정)
 printf "  cancelNativeAlarms bare alarmId 체크 ... "
-if grep -q "cancelAlarm(alarmId)" "$ROOT/src/utils/notifications/android.ts" 2>/dev/null; then
+if grep -Eq "cancelAlarm\(alarmId\)|ids\.push\(alarmId\)" "$ROOT/src/utils/notifications/android.ts" 2>/dev/null; then
   echo -e "${GREEN}PASS${NC}"
   pass=$((pass+1))
 else
@@ -118,6 +119,10 @@ else
   echo "  기기: $DEVICE_NAME ($($ADB get-serialno))"
 
   # 공통: ADB 발화 함수
+  # ⚠️ 한계 (2026-07-18 확인): AlarmReceiver가 non-exported라 Android 12+에서 쉘
+  # 브로드캐스트가 Permission Denial로 아예 도달하지 못한다. 그 경우 "차단 PASS"는
+  # 허수(수신 자체가 없어서 0건)이므로, 도달 실패를 감지하면 SKIP 처리해야 한다.
+  # 진짜 양성/음성 검증은 실제 AlarmManager 발화(알람을 몇 분 뒤로 맞추고 관찰)로만 가능.
   fire_receiver() {
     local alarm_id="$1"
     local is_rep="${2:-false}"
@@ -126,6 +131,7 @@ else
     $ADB shell am broadcast \
       -n "$RECEIVER" \
       --ei alarmId "$alarm_id" \
+      --ei baseAlarmId "$alarm_id" \
       --es "${PKG}.EXTRA_TITLE" "테스트알람" \
       --es "${PKG}.EXTRA_BODY" "00:00 알람" \
       --ez isRep "$is_rep" \
@@ -134,13 +140,21 @@ else
       --ef volume 0.0 \
       > /dev/null 2>&1
     sleep 1.5
+    # 브로드캐스트가 리시버에 도달하지 못했으면(-1 반환) 결과를 신뢰할 수 없음
+    if $ADB logcat -d 2>/dev/null | grep -q "Permission Denial.*AlarmReceiver.*not exported"; then
+      echo "-1"
+      return
+    fi
     $ADB logcat -d 2>/dev/null | grep -c "com.danielpark.alarmapp.AlarmService\|Start proc.*AlarmService\|startForegroundService" 2>/dev/null || echo 0
   }
 
   # ── ADB 테스트 1: 비활성 알람 (메인) 차단 ──────────────────
   printf "  비활성 알람 메인 발화 차단 (alarmId=9999) ... "
   result=$(fire_receiver 9999 false)
-  if [ "$result" -eq 0 ]; then
+  if [ "$result" = "-1" ]; then
+    echo -e "${YELLOW}SKIP — 쉘 브로드캐스트가 non-exported 리시버에 미도달 (실발화 테스트로 대체 필요)${NC}"
+    skip=$((skip+1))
+  elif [ "$result" -eq 0 ]; then
     echo -e "${GREEN}PASS${NC}"
     pass=$((pass+1))
   else
@@ -151,7 +165,10 @@ else
   # ── ADB 테스트 2: 비활성 알람 rep 슬롯 차단 ────────────────
   printf "  비활성 알람 +1분 rep 슬롯 차단 (alarmId=9999, isRep=true) ... "
   result=$(fire_receiver 9999 true)
-  if [ "$result" -eq 0 ]; then
+  if [ "$result" = "-1" ]; then
+    echo -e "${YELLOW}SKIP — 쉘 브로드캐스트가 non-exported 리시버에 미도달${NC}"
+    skip=$((skip+1))
+  elif [ "$result" -eq 0 ]; then
     echo -e "${GREEN}PASS${NC}"
     pass=$((pass+1))
   else

@@ -65,15 +65,24 @@ else
   warn=$((warn+1))
 fi
 
-# cancelNativeAlarms bare alarmId 취소
+# cancelNativeAlarms bare alarmId 취소 — 개별 호출(cancelAlarm(alarmId)) 또는
+# 배치 취소 목록에 포함(ids.push(alarmId)) 어느 쪽이든 bare id가 취소 대상이면 통과
 printf "  cancelNativeAlarms bare alarmId 포함 ... "
-grep -q "cancelAlarm(alarmId)" "$ROOT/src/utils/notifications/android.ts" 2>/dev/null \
+grep -Eq "cancelAlarm\(alarmId\)|ids\.push\(alarmId\)" "$ROOT/src/utils/notifications/android.ts" 2>/dev/null \
   && ok "" || { fail "bare alarmId 취소 누락! (재발 가능성 높음)"; }
 
 # AlarmReceiver 비활성 차단
 printf "  AlarmReceiver 비활성 차단 로직 ... "
 grep -q "activeAlarmIds" "$ROOT/android/app/src/main/java/com/danielpark/alarmapp/AlarmReceiver.kt" 2>/dev/null \
   && ok "" || { fail "AlarmReceiver에 차단 로직 없음!"; }
+
+# 게이트 ID 체계 일치 (2026-07-18 BUG-1 재발 방지) — 게이트는 합성 requestCode(alarmId extra)가
+# 아니라 bare id(baseAlarmId extra)로 판정해야 활성 알람이 차단되지 않는다.
+printf "  AlarmReceiver 게이트 baseAlarmId 판정 ... "
+grep -q 'baseAlarmId !in activeIds' "$ROOT/android/app/src/main/java/com/danielpark/alarmapp/AlarmReceiver.kt" 2>/dev/null \
+  && grep -q 'putExtra("baseAlarmId"' "$ROOT/android/app/src/main/java/com/danielpark/alarmapp/AlarmModule.kt" 2>/dev/null \
+  && grep -q 'baseAlarmId' "$ROOT/src/utils/notifications/android.ts" 2>/dev/null \
+  && ok "" || { fail "게이트가 bare id(baseAlarmId) 기준이 아님 — 합성 id 비교는 활성 알람 전체 차단!"; }
 
 # fail-safe open (빈 목록 → 허용)
 printf "  AlarmReceiver fail-safe open 설정 ... "
