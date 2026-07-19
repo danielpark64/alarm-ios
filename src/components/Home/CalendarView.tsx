@@ -149,7 +149,9 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, colorOf, 
 
 export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
   const C = useColors();
-  const cv = makeStyles(C);
+  // cv는 MonthGrid(React.memo)에 prop으로 내려간다 — 렌더마다 새 객체를 만들면 memo가
+  // 절대 bail-out 못 해 스와이프/팝업마다 3개 그리드 × 42셀이 전부 재렌더된다
+  const cv = useMemo(() => makeStyles(C), [C]);
   const { width: winWidth } = useWindowDimensions();
   const today = todayStr();
   const todayDate = new Date(today);

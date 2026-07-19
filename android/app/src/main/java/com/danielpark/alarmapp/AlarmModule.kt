@@ -13,6 +13,7 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.ReadableArray
 
 class AlarmModule(private val reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
@@ -20,7 +21,7 @@ class AlarmModule(private val reactContext: ReactApplicationContext) :
     override fun getName() = "AlarmModule"
 
     /**
-     * alarmId      - 알람 고유 ID (PendingIntent requestCode)
+     * alarmId      - PendingIntent requestCode용 합성 슬롯 ID (mainNativeId/weekdaySlotId 산식)
      * triggerAtMs  - 발동 시각 (Unix ms)
      * title        - 알림 제목
      * body         - 알림 본문
@@ -30,26 +31,31 @@ class AlarmModule(private val reactContext: ReactApplicationContext) :
      * soundOn      - 알람 소리 재생 여부
      * vibOn        - 진동 여부
      * volume       - 알람 최대 볼륨 (0.0~1.0, 사용자가 설정에서 지정한 알람 기본 볼륨)
+     * baseAlarmId  - JS 알람 원본 id (합성 아님) — AlarmReceiver의 비활성 차단 게이트가
+     *                activeAlarmIds(bare id 목록)와 비교할 때 사용. 합성 requestCode와
+     *                bare id를 비교하면 항상 불일치라 게이트가 전체 차단이 되는 버그가 있었음.
      */
     @ReactMethod
     fun scheduleAlarm(
         alarmId: Int, triggerAtMs: Double,
         title: String, body: String,
         recurrence: String, hour: Int, min: Int, weekday: Int,
-        soundOn: Boolean, vibOn: Boolean, volume: Double
+        soundOn: Boolean, vibOn: Boolean, volume: Double,
+        baseAlarmId: Int
     ) {
         val ctx = reactContext
         val intent = Intent(ctx, AlarmReceiver::class.java).apply {
             putExtra(AlarmService.EXTRA_TITLE, title)
             putExtra(AlarmService.EXTRA_BODY,  body)
-            putExtra("alarmId",    alarmId)
-            putExtra("recurrence", recurrence)
-            putExtra("hour",       hour)
-            putExtra("min",        min)
-            putExtra("weekday",    weekday)
-            putExtra("soundOn",    soundOn)
-            putExtra("vibOn",      vibOn)
-            putExtra("volume",     volume.toFloat())
+            putExtra("alarmId",     alarmId)
+            putExtra("baseAlarmId", baseAlarmId)
+            putExtra("recurrence",  recurrence)
+            putExtra("hour",        hour)
+            putExtra("min",         min)
+            putExtra("weekday",     weekday)
+            putExtra("soundOn",     soundOn)
+            putExtra("vibOn",       vibOn)
+            putExtra("volume",      volume.toFloat())
         }
         val pi = PendingIntent.getBroadcast(
             ctx, alarmId, intent,
@@ -62,6 +68,19 @@ class AlarmModule(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun cancelAlarm(alarmId: Int) {
+        cancelOne(alarmId)
+    }
+
+    // 취소 대상이 알람당 수십 개라 개별 브릿지 호출 대신 배열로 한 번에 받는다 — JS
+    // cancelNativeAlarms가 이 메서드를 우선 사용(브릿지 왕복 약 70회 → 1회)
+    @ReactMethod
+    fun cancelAlarms(alarmIds: ReadableArray) {
+        for (i in 0 until alarmIds.size()) {
+            cancelOne(alarmIds.getInt(i))
+        }
+    }
+
+    private fun cancelOne(alarmId: Int) {
         val ctx = reactContext
         val intent = Intent(ctx, AlarmReceiver::class.java)
         val pi = PendingIntent.getBroadcast(

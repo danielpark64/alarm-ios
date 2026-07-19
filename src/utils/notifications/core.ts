@@ -70,7 +70,7 @@ async function schedulePatternAlarmTriggers(alarm: Alarm, threadIdentifier?: str
       content,
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: ft },
     });
-    scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', t.hour, t.min, -1, soundOn, vibOn, volume);
+    scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', t.hour, t.min, -1, soundOn, vibOn, volume, alarm.id);
     nativeIdx++;
   }
 }
@@ -115,7 +115,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: str
         content: baseContent,
         trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: iw(d), hour: alarm.hour, minute: alarm.min },
       });
-      scheduleNative(weekdaySlotId(alarm.id, d), nextJsWeekday(alarm.hour, alarm.min, appDayToJs(d)), title, bodyText, 'weekly', alarm.hour, alarm.min, appDayToCalendar(d), soundOn, vibOn, volume);
+      scheduleNative(weekdaySlotId(alarm.id, d), nextJsWeekday(alarm.hour, alarm.min, appDayToJs(d)), title, bodyText, 'weekly', alarm.hour, alarm.min, appDayToCalendar(d), soundOn, vibOn, volume, alarm.id);
     }
     return;
   }
@@ -172,7 +172,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: str
       content: baseContent,
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: ft },
     });
-    scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', alarm.hour, alarm.min, -1, soundOn, vibOn, volume);
+    scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', alarm.hour, alarm.min, -1, soundOn, vibOn, volume, alarm.id);
     nativeIdx++;
     if (alarm.rm === 'once') break;
   }

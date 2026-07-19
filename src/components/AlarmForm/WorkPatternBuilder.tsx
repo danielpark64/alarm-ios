@@ -13,6 +13,11 @@ interface Props {
   setBlocks: (updater: (prev: WorkSegment[]) => WorkSegment[]) => void;
   sd: string;
   setShowCal: (v: boolean) => void;
+  // 마지막 남은 블록의 삭제를 눌렀을 때 — 빈 근무표는 존재할 수 없으므로, 편집 모드에선 알람
+  // 세트 전체 삭제 확인으로, 추가 모드에선 근무 시간대 해당없음으로 되돌리는 동작을 부모가 준다.
+  // (이전엔 마지막 블록의 삭제 버튼을 그냥 비활성화해서, 근무 블록을 다 지운 사용자가 남은
+  // 비번 블록을 지울 방법이 없어 갇히는 문제가 있었음)
+  onDeleteLastBlock: () => void;
 }
 
 function segLabel(seg: WorkSegment): string {
@@ -27,7 +32,7 @@ function segColor(seg: WorkSegment, C: ReturnType<typeof useColors>): string {
 // 하루씩 탭해서 쌓는 화면)와 같은 칩 인터랙션을 그대로 써서, 만들 때든 나중에 고칠 때든 항상
 // 같은 방식(탭 → 시각변경/일수조정/전환/삭제)으로 조작한다. 뒤에 더 추가할 때도 위저드와
 // 똑같이 초번/중번/말번/기타/비번 버튼을 탭하기만 하면 된다.
-export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal }: Props) {
+export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal, onDeleteLastBlock }: Props) {
   const C = useColors();
   const s = makeStyles(C);
   const [, m, d] = sd.split('-').map(Number);
@@ -61,7 +66,8 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal }: Props)
   };
   const removeBlock = (i: number) => {
     setMenuIndex(null);
-    setBlocks(prev => (prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== i)));
+    if (blocks.length <= 1) { onDeleteLastBlock(); return; }
+    setBlocks(prev => prev.filter((_, idx) => idx !== i));
   };
 
   const startTimeEdit = (i: number, askOffworkYN?: boolean) => {
@@ -209,8 +215,8 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal }: Props)
                 <TouchableOpacity style={s.wpMenuBtn} onPress={() => (menuSeg.isRest ? convertToWork(menuIndex!) : convertToRest(menuIndex!))}>
                   <Text style={s.wpMenuBtnText}>{menuSeg.isRest ? '근무로 전환' : '비번으로 전환'}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.wpMenuBtn} onPress={() => removeBlock(menuIndex!)} disabled={blocks.length <= 1}>
-                  <Text style={[s.wpMenuBtnText, s.wpMenuBtnDangerText, blocks.length <= 1 && { opacity: 0.4 }]}>삭제</Text>
+                <TouchableOpacity style={s.wpMenuBtn} onPress={() => removeBlock(menuIndex!)}>
+                  <Text style={[s.wpMenuBtnText, s.wpMenuBtnDangerText]}>삭제</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.wpMenuCancelBtn} onPress={() => setMenuIndex(null)}>
                   <Text style={s.wpMenuCancelText}>취소</Text>

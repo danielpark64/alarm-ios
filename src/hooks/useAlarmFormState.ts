@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { Alert } from 'react-native';
 import { Alarm, ShiftPeriod, WorkSegment, SoundMode, VibMode } from '../constants';
 import { getType, pad, todayStr, lunarToSolarInYear, shiftPrefixFor } from '../utils';
 import { newBlockId } from '../utils/workPattern';
@@ -237,7 +238,17 @@ export function useAlarmFormState(
 
   const handleSubmit = () => {
     if (isPatternMode) {
-      if (!blocks.some(b => !b.isRest)) return; // 근무 블록이 하나도 없으면 알람이 안 생기니 저장 막음
+      if (!blocks.some(b => !b.isRest)) {
+        // 근무 블록이 하나도 없으면 알람이 안 생기니 저장 불가 — 조용히 무시하면 사용자가
+        // 저장이 왜 안 되는지 알 수 없으므로 이유와 다음 행동을 안내한다
+        Alert.alert(
+          '근무 블록이 필요해요',
+          initial.id != null
+            ? '비번만으로는 알람이 울릴 수 없어요.\n근무 블록을 추가하거나, 이 근무표를 없애려면 아래 "이 알람 삭제"를 눌러주세요.'
+            : '비번만으로는 알람이 울릴 수 없어요.\n＋ 버튼으로 근무 블록을 추가해주세요.',
+        );
+        return;
+      }
       onSubmitPattern?.(initial.groupId, blocks, sd, snd, vib);
       return;
     }

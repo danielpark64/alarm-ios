@@ -19,14 +19,19 @@ class AlarmReceiver : BroadcastReceiver() {
         val vibOn   = intent.getBooleanExtra("vibOn", true)
         val volume  = intent.getFloatExtra("volume", 1f)
 
-        // 비활성 알람 차단 — JS 측이 꺼둔 alarmId는 울리지 않음
-        // activeAlarmIds가 null/빈 문자열이면 목록 미설정(앱 미실행/재부팅 직후) → 허용(fail-safe open)
-        if (alarmId >= 0) {
+        // 비활성 알람 차단 — JS 측이 꺼둔 알람은 울리지 않음.
+        // 비교 기준은 반드시 baseAlarmId(JS 알람 원본 id)여야 한다 — alarmId extra는 합성
+        // requestCode(mainNativeId/weekdaySlotId 산식)라 activeAlarmIds(bare id 목록)와
+        // 비교하면 항상 불일치 → 활성 알람까지 전부 차단되는 버그가 있었음.
+        // baseAlarmId가 없거나(-1, 구버전 예약분) activeAlarmIds가 null/빈 문자열이면
+        // (앱 미실행/재부팅 직후) → 허용(fail-safe open)
+        val baseAlarmId = intent.getIntExtra("baseAlarmId", -1)
+        if (baseAlarmId >= 0) {
             val prefs = context.getSharedPreferences("AlarmWidgetData", Context.MODE_PRIVATE)
             val activeIdsStr = prefs.getString("activeAlarmIds", null)
             if (!activeIdsStr.isNullOrEmpty()) {
                 val activeIds = activeIdsStr.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
-                if (alarmId !in activeIds) return
+                if (baseAlarmId !in activeIds) return
             }
         }
 
@@ -54,6 +59,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 putExtra(AlarmService.EXTRA_TITLE, title)
                 putExtra(AlarmService.EXTRA_BODY, body)
                 putExtra("alarmId", alarmId)
+                putExtra("baseAlarmId", baseAlarmId) // rep 발화도 같은 게이트를 통과해야 함
                 putExtra("isRep", true)
                 putExtra("soundOn", soundOn)
                 putExtra("vibOn", vibOn)

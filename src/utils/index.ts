@@ -286,7 +286,9 @@ export function shiftColorMap(alarms: Alarm[]): Record<number, string> {
 // 알람(예: 기상 알람)이 로테이션 알람보다 이른 시각이라는 이유만으로 대표로 뽑히면
 // effectiveShift가 null이 돼서 달력에 시간대 라벨 자체가 안 뜨는 문제가 있었음.
 export function shiftForDate(alarms: Alarm[], dateStr: string): Alarm | null {
-  const rings = alarmsForDate(alarms.filter(isWorkAlarm), dateStr);
+  // includeSkipped=true — "이날 끄기"는 알람만 끈 것이지 근무가 없어진 게 아니므로,
+  // 근무표(시간대 라벨) 판정에는 skip된 날도 근무일로 포함한다
+  const rings = alarmsForDate(alarms.filter(isWorkAlarm), dateStr, true);
   if (!rings.length) return null;
   // 로테이션 알람은 최상위 hour/min이 레거시 값이라 그날 실제 시각(effectiveTime)으로 정렬해야 함
   const effTime = (a: Alarm) => effectiveTime(a, dateStr) ?? { hour: a.hour, min: a.min };
@@ -300,12 +302,14 @@ export function shiftForDate(alarms: Alarm[], dateStr: string): Alarm | null {
   return pool[0];
 }
 
-// 비번: 근무 알람이 하나라도 있고 그 시작일 이후인데, 그날 아무 근무 알람도 안 울리는 날
+// 비번: 근무 알람이 하나라도 있고 그 시작일 이후인데, 그날 아무 근무 알람도 안 울리는 날.
+// includeSkipped=true — "이날 끄기"로 알람만 하루 끈 근무일이 비번(빨간 날)으로
+// 오판정되지 않도록, 근무표 판정에는 skip된 날도 근무일로 포함한다.
 export function isOffDay(alarms: Alarm[], dateStr: string): boolean {
   const work = alarms.filter(isWorkAlarm);
   if (!work.length) return false;
   if (!work.some(a => !a.sd || dateStr >= a.sd)) return false;
-  return alarmsForDate(work, dateStr).length === 0;
+  return alarmsForDate(work, dateStr, true).length === 0;
 }
 
 // 양력 날짜(YYYY-MM-DD) → 음력 "M월 D일" 문자열. 지원 범위(1000~2050년) 밖이면 빈 문자열.
