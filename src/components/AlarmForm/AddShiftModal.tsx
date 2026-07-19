@@ -14,11 +14,13 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   onPick: (id: ShiftPeriod | 'REST') => void;
+  // 튜토리얼에서 특정 옵션(예: 말번/비번)을 스포트라이트로 가리킬 때만 채워짐 — 평소엔 undefined
+  itemRefs?: Partial<Record<ShiftPeriod | 'REST', React.Ref<View>>>;
 }
 
 // 근무 순환표 칩 줄 끝의 "+" 타일을 누르면 뜨는 팝업 — 어떤 근무를 추가할지 고른다.
 // RotationWizard(신규 생성)와 WorkPatternBuilder(수정)가 공유한다.
-export function AddShiftModal({ visible, onClose, onPick }: Props) {
+export function AddShiftModal({ visible, onClose, onPick, itemRefs }: Props) {
   const C = useColors();
   const s = makeStyles(C);
   return (
@@ -27,11 +29,11 @@ export function AddShiftModal({ visible, onClose, onPick }: Props) {
         <View style={s.modalContent}>
           <Text style={s.wpMenuTitle}>어떤 근무를 추가할까요?</Text>
           {BUTTON_ORDER.map(id => id === 'REST' ? (
-            <TouchableOpacity key="REST" style={s.wpMenuBtn} onPress={() => onPick('REST')}>
+            <TouchableOpacity key="REST" ref={itemRefs?.REST} style={s.wpMenuBtn} onPress={() => onPick('REST')}>
               <Text style={[s.wpMenuBtnText, { color: REST_COLOR }]}>비번</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity key={id} style={s.wpMenuBtn} onPress={() => onPick(id)}>
+            <TouchableOpacity key={id} ref={itemRefs?.[id]} style={s.wpMenuBtn} onPress={() => onPick(id)}>
               <Text style={s.wpMenuBtnText}>{BLOCK_SHIFTS.find(sh => sh.id === id)!.label}</Text>
             </TouchableOpacity>
           ))}

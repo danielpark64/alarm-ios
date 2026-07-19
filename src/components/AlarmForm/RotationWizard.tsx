@@ -10,12 +10,22 @@ import { AddShiftModal } from './AddShiftModal';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
+export type RotationTutorialEvent = 'commuteNext' | 'offworkYes' | 'offworkDone' | 'addOpen' | 'shiftPicked' | 'restPicked' | 'finish';
+
 interface Props {
   sd: string;
   setShowCal: (v: boolean) => void;
   initialShift: ShiftPeriod;
   onComplete: (blocks: WorkSegment[]) => void;
   onCancel: () => void;
+  // 근무표 만들기 튜토리얼 전용 — 평소엔 전부 undefined
+  nextBtnRef?: React.Ref<View>;
+  offworkYesBtnRef?: React.Ref<View>;
+  addChipRef?: React.Ref<View>;
+  finishBtnRef?: React.Ref<View>;
+  addModalLateBtnRef?: React.Ref<View>;
+  addModalRestBtnRef?: React.Ref<View>;
+  onTutorialEvent?: (event: RotationTutorialEvent) => void;
 }
 
 type FlowPhase = 'customName' | 'commute' | 'offworkYN' | 'offworkTime';
@@ -42,7 +52,10 @@ function defaultsKey(shift: ShiftPeriod): string {
 // 출근/퇴근 시각을 물어보고 그다음부턴 자동 재사용 — 이번만 다르면 방금 쌓인 칩을 탭해서
 // 그 자리에서 바로 고친다(확인 화면으로 미루지 않음). 완료되면 기존 WorkPatternBuilder
 // 블록카드 화면으로 넘어가 최종 확인/저장.
-export function RotationWizard({ sd, setShowCal, initialShift, onComplete, onCancel }: Props) {
+export function RotationWizard({
+  sd, setShowCal, initialShift, onComplete, onCancel,
+  nextBtnRef, offworkYesBtnRef, addChipRef, finishBtnRef, addModalLateBtnRef, addModalRestBtnRef, onTutorialEvent,
+}: Props) {
   const C = useColors();
   const s = makeStyles(C);
   const [, m, d] = sd.split('-').map(Number);
@@ -235,7 +248,7 @@ export function RotationWizard({ sd, setShowCal, initialShift, onComplete, onCan
                 </TouchableOpacity>
               );
             })}
-            <TouchableOpacity style={s.wzAddChip} onPress={() => setAddModalVisible(true)}>
+            <TouchableOpacity ref={addChipRef} style={s.wzAddChip} onPress={() => { setAddModalVisible(true); onTutorialEvent?.('addOpen'); }}>
               <Text style={s.wzAddChipText}>+</Text>
             </TouchableOpacity>
           </View>
@@ -246,7 +259,7 @@ export function RotationWizard({ sd, setShowCal, initialShift, onComplete, onCan
               <TouchableOpacity style={s.wzSecondaryBtn} onPress={undoLast}>
                 <Text style={s.wzSecondaryText}>↩ 마지막 취소</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={s.wzPrimaryBtn} onPress={finish}>
+              <TouchableOpacity ref={finishBtnRef} style={s.wzPrimaryBtn} onPress={() => { finish(); onTutorialEvent?.('finish'); }}>
                 <Text style={s.wzPrimaryText}>여기서 반복</Text>
               </TouchableOpacity>
             </View>
@@ -288,7 +301,7 @@ export function RotationWizard({ sd, setShowCal, initialShift, onComplete, onCan
             <TouchableOpacity style={s.wzSecondaryBtn} onPress={() => setFlow(null)}>
               <Text style={s.wzSecondaryText}>취소</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.wzPrimaryBtn} onPress={advanceFromCommute}>
+            <TouchableOpacity ref={nextBtnRef} style={s.wzPrimaryBtn} onPress={() => { advanceFromCommute(); onTutorialEvent?.('commuteNext'); }}>
               <Text style={s.wzPrimaryText}>다음</Text>
             </TouchableOpacity>
           </View>
@@ -299,7 +312,7 @@ export function RotationWizard({ sd, setShowCal, initialShift, onComplete, onCan
         <>
           <Text style={s.wzQuestion}>퇴근 알람도 필요해요?</Text>
           <View style={s.wzOptionRow}>
-            <TouchableOpacity style={s.wzOption} onPress={() => pickOffworkYN(true)}>
+            <TouchableOpacity ref={offworkYesBtnRef} style={s.wzOption} onPress={() => { pickOffworkYN(true); onTutorialEvent?.('offworkYes'); }}>
               <Text style={s.wzOptionText}>네</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.wzOption} onPress={() => pickOffworkYN(false)}>
@@ -317,7 +330,7 @@ export function RotationWizard({ sd, setShowCal, initialShift, onComplete, onCan
             <Text style={s.wpTimePillSub}>탭해서 변경</Text>
           </TouchableOpacity>
           <View style={[s.wzActionRow, { marginTop: 20 }]}>
-            <TouchableOpacity style={s.wzPrimaryBtn} onPress={() => finishFlow(flow)}>
+            <TouchableOpacity ref={nextBtnRef} style={s.wzPrimaryBtn} onPress={() => { finishFlow(flow); onTutorialEvent?.('offworkDone'); }}>
               <Text style={s.wzPrimaryText}>완료</Text>
             </TouchableOpacity>
           </View>
@@ -329,8 +342,10 @@ export function RotationWizard({ sd, setShowCal, initialShift, onComplete, onCan
         onClose={() => setAddModalVisible(false)}
         onPick={(id) => {
           setAddModalVisible(false);
-          if (id === 'REST') tapRest(); else tapShift(id);
+          if (id === 'REST') { tapRest(); onTutorialEvent?.('restPicked'); }
+          else { tapShift(id); onTutorialEvent?.('shiftPicked'); }
         }}
+        itemRefs={{ late: addModalLateBtnRef, REST: addModalRestBtnRef }}
       />
 
       <BlockTimeModal

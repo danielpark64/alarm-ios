@@ -7,7 +7,7 @@ import { useAlarmFormState } from '../../hooks/useAlarmFormState';
 import { TypeSelector } from './TypeSelector';
 import { ShiftSelector } from './ShiftSelector';
 import { WorkPatternBuilder } from './WorkPatternBuilder';
-import { RotationWizard } from './RotationWizard';
+import { RotationWizard, RotationTutorialEvent } from './RotationWizard';
 import { SndVibSelector } from './SndVibSelector';
 import { DateSection } from './DateSection';
 import { DateModal } from './DateModal';
@@ -43,11 +43,26 @@ interface Props {
   infoBoxRef?: React.Ref<View>;
   addBtnRef?: React.Ref<View>;
   deleteBtnRef?: React.Ref<View>;
+  // 근무표 만들기 튜토리얼 전용 — 평소엔 전부 undefined
+  shiftGridRef?: React.Ref<View>;
+  onShiftPick?: (shift: ShiftPeriod) => void;
+  wizardNextBtnRef?: React.Ref<View>;
+  wizardOffworkYesBtnRef?: React.Ref<View>;
+  wizardAddChipRef?: React.Ref<View>;
+  wizardFinishBtnRef?: React.Ref<View>;
+  wizardAddModalLateBtnRef?: React.Ref<View>;
+  wizardAddModalRestBtnRef?: React.Ref<View>;
+  onWizardTutorialEvent?: (event: RotationTutorialEvent) => void;
 }
 
 export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
   function AlarmForm(
-    { initial, onSubmit, onSubmitPattern, onCancel, onDelete, onTypeChange, onRmChange, onCalendarClose, editTypeId, typeRef, timeRef, labelRef, cycleRef, presetRef, dateChipRef, infoBoxRef, addBtnRef, deleteBtnRef },
+    {
+      initial, onSubmit, onSubmitPattern, onCancel, onDelete, onTypeChange, onRmChange, onCalendarClose, editTypeId,
+      typeRef, timeRef, labelRef, cycleRef, presetRef, dateChipRef, infoBoxRef, addBtnRef, deleteBtnRef,
+      shiftGridRef, onShiftPick, wizardNextBtnRef, wizardOffworkYesBtnRef, wizardAddChipRef, wizardFinishBtnRef,
+      wizardAddModalLateBtnRef, wizardAddModalRestBtnRef, onWizardTutorialEvent,
+    },
     ref,
   ) {
     const form = useAlarmFormState(initial, onSubmit, onTypeChange, onRmChange, onCalendarClose, onSubmitPattern);
@@ -101,6 +116,13 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
               initialShift={form.wizardInitialShift}
               onComplete={form.completeWizard}
               onCancel={form.cancelWizard}
+              nextBtnRef={wizardNextBtnRef}
+              offworkYesBtnRef={wizardOffworkYesBtnRef}
+              addChipRef={wizardAddChipRef}
+              finishBtnRef={wizardFinishBtnRef}
+              addModalLateBtnRef={wizardAddModalLateBtnRef}
+              addModalRestBtnRef={wizardAddModalRestBtnRef}
+              onTutorialEvent={onWizardTutorialEvent}
             />
           </ScrollView>
           <DateModal
@@ -149,9 +171,10 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
             ) : (
               <ShiftSelector
                 shift={form.shift}
-                onChange={requestShiftGate}
+                onChange={(newShift) => { requestShiftGate(newShift); onShiftPick?.(newShift); }}
                 shiftCustom={form.shiftCustom}
                 onCustomChange={form.handleShiftCustomChange}
+                gridRef={shiftGridRef}
               />
             )}
 
@@ -168,6 +191,9 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
                   setBlocks={form.setBlocks}
                   sd={form.sd}
                   setShowCal={form.setShowCal}
+                  // 마지막 블록까지 지우는 건 "근무표 자체를 없애겠다"는 뜻 — 편집 모드면 알람 세트
+                  // 삭제 확인(onDelete)으로, 추가 모드면 근무 시간대 게이트를 해당없음으로 되돌린다.
+                  onDeleteLastBlock={onDelete ?? (() => requestShiftGate('none'))}
                 />
                 <Text style={s.sLabel}>소리/진동</Text>
                 <SndVibSelector layout="row" sndVibMode={form.sndVibMode} setSndVibMode={form.setSndVibMode} />

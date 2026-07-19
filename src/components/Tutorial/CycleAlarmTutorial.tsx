@@ -5,24 +5,10 @@ import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
 
 export interface SpotlightRect { x: number; y: number; width: number; height: number }
-
-// step 0, 10은 특정 UI를 가리키지 않는 인트로/완료 화면 (rect 없음 → 화면 전체를 반투명하게 덮고 중앙에 카드)
-// step 1~7, 9는 직접 따라 입력하는 단계로 "다음" 버튼으로 넘기고, step 8(추가 버튼)은 실제로 눌러야 다음으로 진행됨
-const STEPS = [
-  { icon: '👋', text: '간단한 실습으로 알람을 처음부터 끝까지 직접 만들어볼게요.', cta: '시작하기' },
-  { icon: '🏷️', text: '먼저 알람 종류를 선택해보세요. (예: 출근)', cta: '다음' },
-  { icon: '⏰', text: '시간을 맞춰보세요.', cta: '다음' },
-  { icon: '✏️', text: '라벨에 내용을 적어보세요. (예: 기상)', cta: '다음' },
-  { icon: '🔁', text: '반복 방식에서 "N일 주기"를 눌러보세요.', cta: null },
-  { icon: '🔢', text: '며칠마다 울릴지 골라보세요. (예: 3일)', cta: '다음' },
-  { icon: '📅', text: '시작일자를 선택해보세요.', cta: null },
-  { icon: '👀', text: '다음 알람이 울릴 날짜들을 확인해보세요.', cta: '다음' },
-  { icon: '➕', text: '"추가" 버튼을 눌러 알람을 완성해보세요!', cta: null },
-  { icon: '🗑️', text: '이 알람을 삭제하시려면 이 버튼을 누르세요. 원하지 않으시면 다음을 누르세요.', cta: '다음' },
-  { icon: '🎉', text: '정말 잘하셨어요! 이제부터는 직접 자유롭게 사용해보세요.', cta: '확인' },
-] as const;
+export interface TutorialStep { icon: string; text: string; cta: string | null }
 
 interface Props {
+  steps: readonly TutorialStep[];
   step: number;
   rect: SpotlightRect | null;
   onAdvance: () => void;
@@ -32,11 +18,14 @@ interface Props {
 const PAD = 8;
 const BUBBLE_WIDTH = 260;
 
-export function CycleAlarmTutorial({ step, rect, onAdvance, onSkip }: Props) {
+// 범용 스포트라이트 튜토리얼 오버레이 — STEPS 내용만 호출부(steps prop)에서 받고, 렌더링
+// 로직(dim 4장 + 말풍선 + 화살표 + 인트로/완료 카드)은 공유. rect가 없는 단계는 특정 UI를
+// 가리키지 않는 인트로/완료 화면(화면 전체를 반투명하게 덮고 중앙에 카드).
+export function CycleAlarmTutorial({ steps, step, rect, onAdvance, onSkip }: Props) {
   const C = useColors();
   const s = makeStyles(C);
   const { width: sw, height: sh } = useWindowDimensions();
-  const current = STEPS[step];
+  const current = steps[step];
   if (!current) return null;
 
   // rect가 없는 인트로/완료 단계 — 화면 전체를 덮고 중앙에 카드
@@ -54,7 +43,7 @@ export function CycleAlarmTutorial({ step, rect, onAdvance, onSkip }: Props) {
               <Text style={s.ctaBtnT}>{current.cta}</Text>
             </TouchableOpacity>
           )}
-          <Dots step={step} s={s} />
+          <Dots steps={steps} step={step} s={s} />
         </View>
       </View>
     );
@@ -97,7 +86,7 @@ export function CycleAlarmTutorial({ step, rect, onAdvance, onSkip }: Props) {
           <Text style={s.text}>{current.text}</Text>
         </View>
         <View style={s.bubbleBottomRow}>
-          <Dots step={step} s={s} />
+          <Dots steps={steps} step={step} s={s} />
           {current.cta && (
             <TouchableOpacity style={s.ctaBtn} onPress={onAdvance}>
               <Text style={s.ctaBtnT}>{current.cta}</Text>
@@ -110,10 +99,10 @@ export function CycleAlarmTutorial({ step, rect, onAdvance, onSkip }: Props) {
   );
 }
 
-function Dots({ step, s }: { step: number; s: ReturnType<typeof makeStyles> }) {
+function Dots({ steps, step, s }: { steps: readonly TutorialStep[]; step: number; s: ReturnType<typeof makeStyles> }) {
   return (
     <View style={s.dots}>
-      {STEPS.map((_, i) => (
+      {steps.map((_, i) => (
         <View key={i} style={[s.dot, i === step && s.dotActive]} />
       ))}
     </View>

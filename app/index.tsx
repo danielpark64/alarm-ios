@@ -20,8 +20,10 @@ import { BottomNav, HomeTab } from '../src/components/Home/BottomNav';
 import { AlarmForm, AlarmFormHandle } from '../src/components/AlarmForm';
 import { AlarmRinging } from '../src/components/AlarmRinging';
 import { CycleAlarmTutorial, SpotlightRect } from '../src/components/Tutorial/CycleAlarmTutorial';
+import { RotationTutorialEvent } from '../src/components/AlarmForm/RotationWizard';
+import { cycleTutorialStepsKo, rotationTutorialStepsKo } from '../src/content/tutorialSteps.ko';
 import { nextAlarmText, getRepLimitedIds, getNextFireDate } from '../src/utils';
-import { Alarm } from '../src/constants';
+import { Alarm, ShiftPeriod } from '../src/constants';
 import { Palette } from '../src/constants/colors';
 import { useColors, useThemeSetting } from '../src/hooks/useTheme';
 
@@ -63,7 +65,7 @@ export default function App() {
     5: tutorialPresetRef, 6: tutorialDateChipRef, 7: tutorialInfoBoxRef, 8: tutorialAddBtnRef,
     9: tutorialDeleteBtnRef,
   };
-  const TUTORIAL_LAST_STEP = 10;
+  const TUTORIAL_LAST_STEP = cycleTutorialStepsKo.length - 1;
 
   const exitTutorial = () => {
     setTutorialStep(null);
@@ -104,6 +106,69 @@ export default function App() {
     const t2 = setTimeout(measure, 450);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [tutorialStep, tab]);
+
+  // ── 근무표 만들기 튜토리얼 — 기본값 그대로 "초번 1일 → 말번 1일 → 비번 1일" 3일 주기를 따라 만든다.
+  // "N일 주기" 튜토리얼과 별개 상태로 두어 서로 영향을 주지 않음(동시에 하나만 진입 가능).
+  const [rotationTutorialStep, setRotationTutorialStep] = useState<number|null>(null);
+  const [rotationSpotlightRect, setRotationSpotlightRect] = useState<SpotlightRect|null>(null);
+  const rotationShiftGridRef = useRef<View>(null);
+  const rotationNextBtnRef = useRef<View>(null);
+  const rotationOffworkYesBtnRef = useRef<View>(null);
+  const rotationAddChipRef = useRef<View>(null);
+  const rotationFinishBtnRef = useRef<View>(null);
+  const rotationLateBtnRef = useRef<View>(null);
+  const rotationRestBtnRef = useRef<View>(null);
+
+  const ROTATION_TUTORIAL_TARGETS: Record<number, React.RefObject<any>> = {
+    1: rotationShiftGridRef, 2: rotationNextBtnRef, 3: rotationOffworkYesBtnRef, 4: rotationNextBtnRef,
+    5: rotationAddChipRef, 6: rotationLateBtnRef, 7: rotationNextBtnRef, 8: rotationOffworkYesBtnRef,
+    9: rotationNextBtnRef, 10: rotationAddChipRef, 11: rotationRestBtnRef, 12: rotationFinishBtnRef,
+    13: tutorialAddBtnRef,
+  };
+  const ROTATION_TUTORIAL_LAST_STEP = rotationTutorialStepsKo.length - 1;
+
+  const exitRotationTutorial = () => {
+    setRotationTutorialStep(null);
+    setRotationSpotlightRect(null);
+    setTab('alarms');
+  };
+
+  // 인트로/완료 단계만 오버레이 자체 cta 버튼으로 넘어감 — 중간 단계는 전부 실제 조작(onShiftPick/onTutorialEvent)으로만 진행
+  const handleRotationAdvance = () => {
+    if (rotationTutorialStep === 0) { setTab('add'); setRotationTutorialStep(1); return; }
+    if (rotationTutorialStep === ROTATION_TUTORIAL_LAST_STEP) { exitRotationTutorial(); return; }
+  };
+
+  // ShiftSelector에서 "초번"을 실제로 골라야 다음 단계로 — RotationWizard 진입 트리거이므로 여기서만 감지 가능
+  const handleRotationShiftPick = (shift: ShiftPeriod) => {
+    if (rotationTutorialStep === 1 && shift === 'early') setRotationTutorialStep(2);
+  };
+
+  // RotationWizard 안에서 벌어지는 각 실제 조작(다음/네/완료/+/말번/비번/여기서 반복) 이벤트 —
+  // 지금 단계가 기대하는 이벤트와 일치할 때만 한 칸 전진(순서를 벗어난 조작은 무시)
+  const ROTATION_STEP_EVENTS: Record<number, RotationTutorialEvent> = {
+    2: 'commuteNext', 3: 'offworkYes', 4: 'offworkDone', 5: 'addOpen', 6: 'shiftPicked',
+    7: 'commuteNext', 8: 'offworkYes', 9: 'offworkDone', 10: 'addOpen', 11: 'restPicked', 12: 'finish',
+  };
+  const handleRotationWizardEvent = (event: RotationTutorialEvent) => {
+    if (rotationTutorialStep !== null && ROTATION_STEP_EVENTS[rotationTutorialStep] === event) {
+      setRotationTutorialStep(rotationTutorialStep + 1);
+    }
+  };
+
+  // 근무표 튜토리얼 화면은 짧아서(칩 줄 + 버튼 몇 개) 스크롤 없이 measureInWindow만으로 충분 —
+  // RotationWizard는 AlarmForm의 wizard 분기(contentRef가 없는 별도 ScrollView)에서 렌더링되므로
+  // scrollTargetIntoView는 여기서 쓰지 않는다(호출해도 contentRef가 없어 조용히 무시됨).
+  useEffect(() => {
+    const targetRef = rotationTutorialStep !== null ? ROTATION_TUTORIAL_TARGETS[rotationTutorialStep] : undefined;
+    if (!targetRef) { setRotationSpotlightRect(null); return; }
+    const measure = () => targetRef.current?.measureInWindow((x: number, y: number, width: number, height: number) => {
+      if (width > 0 && height > 0) setRotationSpotlightRect({ x, y, width, height });
+    });
+    const t1 = setTimeout(measure, 150);
+    const t2 = setTimeout(measure, 450);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [rotationTutorialStep, tab]);
 
   const showOverlayPrompt = () => Alert.alert(
     '표시 권한 설정 방법',
@@ -201,7 +266,7 @@ export default function App() {
     setTab(target);
   };
   const handleNavPress = (target: HomeTab) => {
-    if (tutorialStep !== null) { setShowHelp(false); setTab(target); return; }
+    if (tutorialStep !== null || rotationTutorialStep !== null) { setShowHelp(false); setTab(target); return; }
     const activeFormRef = editAlarm ? editFormRef : (tab === 'add' ? addFormRef : null);
     if (!activeFormRef?.current?.isDirty()) { finishNav(target); return; }
     // 위저드가 아직 진행 중이면(블록카드 화면까지 안 넘어감) 저장할 완성된 데이터가 없으므로
@@ -289,6 +354,7 @@ export default function App() {
         <HelpScreen
           onClose={() => setShowHelp(false)}
           onStartTutorial={() => { setShowHelp(false); setTutorialStep(0); }}
+          onStartRotationTutorial={() => { setShowHelp(false); setRotationTutorialStep(0); }}
         />
       ) : editAlarm ? (
         <AlarmForm
@@ -302,7 +368,9 @@ export default function App() {
             if (pendingNav) { setTab(pendingNav); setPendingNav(null); }
           }}
           onSubmitPattern={async (groupId, pattern, sd, snd, vib) => {
-            await submitWorkPattern(groupId, pattern, sd, snd, vib);
+            // 비그룹 알람(일반/레거시)을 근무표로 전환 저장하는 경우 — 원본을 새 세트로
+            // 대체하지 않으면 편집하던 알람이 목록에 그대로 남아 중복된다
+            await submitWorkPattern(groupId, pattern, sd, snd, vib, groupId == null ? editAlarm.id : undefined);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setEditAlarm(null);
             if (pendingNav) { setTab(pendingNav); setPendingNav(null); }
@@ -339,7 +407,13 @@ export default function App() {
               setTimeout(() => setHighlightId(null), 5000);
             }}/>}
 
-          {tab==='settings' && <SettingsView onStartTutorial={() => setTutorialStep(0)} onOpenHelp={() => setShowHelp(true)} />}
+          {tab==='settings' && (
+            <SettingsView
+              onStartTutorial={() => setTutorialStep(0)}
+              onStartRotationTutorial={() => setRotationTutorialStep(0)}
+              onOpenHelp={() => setShowHelp(true)}
+            />
+          )}
 
           {tab==='add' && (
             <AlarmForm
@@ -361,8 +435,13 @@ export default function App() {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 setTab(pendingNav ?? 'alarms');
                 setPendingNav(null);
+                if (rotationTutorialStep !== null) setRotationTutorialStep(ROTATION_TUTORIAL_LAST_STEP);
               }}
-              onCancel={() => tutorialStep !== null ? exitTutorial() : setTab('alarms')}
+              onCancel={() => {
+                if (tutorialStep !== null) { exitTutorial(); return; }
+                if (rotationTutorialStep !== null) { exitRotationTutorial(); return; }
+                setTab('alarms');
+              }}
               onRmChange={tutorialStep !== null ? handleTutorialRmChange : undefined}
               onCalendarClose={tutorialStep !== null ? handleTutorialCalendarClose : undefined}
               typeRef={tutorialTypeRef}
@@ -373,6 +452,15 @@ export default function App() {
               dateChipRef={tutorialDateChipRef}
               infoBoxRef={tutorialInfoBoxRef}
               addBtnRef={tutorialAddBtnRef}
+              shiftGridRef={rotationTutorialStep !== null ? rotationShiftGridRef : undefined}
+              onShiftPick={rotationTutorialStep !== null ? handleRotationShiftPick : undefined}
+              wizardNextBtnRef={rotationTutorialStep !== null ? rotationNextBtnRef : undefined}
+              wizardOffworkYesBtnRef={rotationTutorialStep !== null ? rotationOffworkYesBtnRef : undefined}
+              wizardAddChipRef={rotationTutorialStep !== null ? rotationAddChipRef : undefined}
+              wizardFinishBtnRef={rotationTutorialStep !== null ? rotationFinishBtnRef : undefined}
+              wizardAddModalLateBtnRef={rotationTutorialStep !== null ? rotationLateBtnRef : undefined}
+              wizardAddModalRestBtnRef={rotationTutorialStep !== null ? rotationRestBtnRef : undefined}
+              onWizardTutorialEvent={rotationTutorialStep !== null ? handleRotationWizardEvent : undefined}
             />
           )}
         </>
@@ -395,10 +483,20 @@ export default function App() {
 
     {tutorialStep !== null && (
       <CycleAlarmTutorial
+        steps={cycleTutorialStepsKo}
         step={tutorialStep}
         rect={spotlightRect}
         onAdvance={handleTutorialAdvance}
         onSkip={exitTutorial}
+      />
+    )}
+    {rotationTutorialStep !== null && (
+      <CycleAlarmTutorial
+        steps={rotationTutorialStepsKo}
+        step={rotationTutorialStep}
+        rect={rotationSpotlightRect}
+        onAdvance={handleRotationAdvance}
+        onSkip={exitRotationTutorial}
       />
     )}
     </>
