@@ -55,6 +55,7 @@ export function useAlarmFormState(
   onRmChange?: (rm: string) => void,
   onCalendarClose?: () => void,
   onSubmitPattern?: (groupId: number | undefined, pattern: WorkSegment[], sd: string, snd: SoundMode, vib: VibMode) => void,
+  onRepeatConfigClose?: () => void,
 ) {
   const [typeId,   setTypeId]  = useState(initial.typeId  ?? 'commute');
   const [hour,     setHour]    = useState(initial.hour    ?? 7);
@@ -77,6 +78,9 @@ export function useAlarmFormState(
   const [shift,    setShift]   = useState<ShiftPeriod>(initial.shift ?? 'none');
   const [shiftCustom, setShiftCustom] = useState(initial.shiftCustom ?? '');
   const [showCal,  setShowCal] = useState(false);
+  // N일 주기/N일 후 휴식 설정 팝업(진짜 <Modal>) 노출 여부 — rm 자체와는 분리된 UI 전용 상태.
+  // 반복방식 카드를 누르면 이미 그 모드여도 항상 열려야 하므로 rm 파생값으로 계산하지 않는다.
+  const [showRepeatConfig, setShowRepeatConfig] = useState(false);
   // 근무 시간대 로테이션 블록 — shift!=='none'일 때만 의미 있음(게이트 통과 시 사용)
   const [blocks, setBlocks] = useState<WorkSegment[]>(() => {
     if (initial.pattern?.length) return initial.pattern;
@@ -100,7 +104,7 @@ export function useAlarmFormState(
   const prevRm = useRef(rm);
   useEffect(() => {
     if (initial.id == null && rm !== prevRm.current) {
-      if (rm === 'rest' && prevRm.current !== 'rest') { setCd(4); setRd(2); }
+      if (rm === 'rest' && prevRm.current !== 'rest') { setCd(2); setRd(1); }
       else if (rm === 'cycle' && prevRm.current !== 'cycle') { setCd(3); setRd(1); }
     }
     prevRm.current = rm;
@@ -111,6 +115,13 @@ export function useAlarmFormState(
     if (prevShowCal.current && !showCal) onCalendarClose?.();
     prevShowCal.current = showCal;
   }, [showCal]);
+  // N일 주기/N일 후 휴식 팝업이 닫힐 때(닫기 버튼/확인/배경 탭 모두 동일하게 setShowRepeatConfig(false)로
+  // 귀결됨) 알림 — 튜토리얼이 "닫기 버튼을 눌러보세요" 단계를 다음으로 넘기는 데 사용
+  const prevShowRepeatConfig = useRef(showRepeatConfig);
+  useEffect(() => {
+    if (prevShowRepeatConfig.current && !showRepeatConfig) onRepeatConfigClose?.();
+    prevShowRepeatConfig.current = showRepeatConfig;
+  }, [showRepeatConfig]);
 
   const type = getType(typeId);
 
@@ -291,14 +302,19 @@ export function useAlarmFormState(
     ? lunarToSolarInYear(Number(sd.split('-')[0]), sdM, sdD)
     : null;
 
-  // 매월/매년 반복 요약 텍스트
+  // 매월/매년/N일 주기/N일 후 휴식 반복 요약 텍스트 — cycle/rest는 팝업이 닫혀있는 동안
+  // 폼에 아무 요약도 안 남으면 지금 설정이 뭔지 알 수 없으므로 여기서 요약 한 줄을 채워준다.
   const repeatSummary = rm === 'monthly'
     ? (lastDay
       ? `🗓️ 매월 말일 ${pad(hour)}:${pad(min)}`
       : `🗓️ 매월 ${sdD}일 ${pad(hour)}:${pad(min)}`)
     : rm === 'yearly'
       ? `🗓️ 매년 ${lunar ? '음력 ' : ''}${sdM}월 ${sdD}일 ${pad(hour)}:${pad(min)}`
-      : '';
+      : rm === 'cycle'
+        ? `🔁 ${cd}일마다 반복`
+        : rm === 'rest'
+          ? `🔁 ${cd}일 알람 → ${rd}일 휴식 반복`
+          : '';
 
   // ── 소리+진동 3-way ──
   const sndVibMode = snd === 'default' && vib === 'pulse' ? 'both'
@@ -313,6 +329,7 @@ export function useAlarmFormState(
     typeId, hour, setHour, min, setMin, label, setLabel: setLabelGuarded,
     rm, setRm, days, setDays, cd, setCd, rd, setRd,
     sd, setSd, lastDay, setLastDay, lunar, setLunar, shift, setShift, shiftCustom, showCal, setShowCal,
+    showRepeatConfig, setShowRepeatConfig,
     handleTypeChange, handleShiftChange, handleShiftCustomChange, toggleDay, handleSubmit, submit, isDirty,
     type, isToday, dateLabel, dateLocked, isLeapDay, lunarSolarPreview, repeatSummary,
     sndVibMode, setSndVibMode,

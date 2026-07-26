@@ -5,6 +5,10 @@ import { SHIFTS, ShiftPeriod } from '../../constants';
 import { useColors } from '../../hooks/useTheme';
 import { makeStyles } from './styles';
 
+// '해당없음'은 이미 선택된 기본 상태를 다시 누르는 것과 같아 눌러도 아무 동작이 없다 —
+// 실제로 고를 수 있는 시간대만 버튼으로 노출(AddShiftModal의 BLOCK_SHIFTS와 동일 패턴).
+const PICKABLE_SHIFTS = SHIFTS.filter(s => s.id !== 'none');
+
 interface Props {
   shift: ShiftPeriod;
   onChange: (shift: ShiftPeriod) => void;
@@ -18,12 +22,12 @@ export function ShiftSelector({ shift, onChange, shiftCustom, onCustomChange, gr
   const s = makeStyles(C);
   return (
     <View>
-      {/* 칩마다 flex:1이라 화면 폭에 맞춰 5등분되어 자동으로 늘어남 — 폭이 넓은 기기(폴드/플립 펼친 화면 등)에서
+      {/* 칩마다 flex:1이라 화면 폭에 맞춰 4등분되어 자동으로 늘어남 — 폭이 넓은 기기(폴드/플립 펼친 화면 등)에서
           글자 크기만큼만 차지해 오른쪽에 크게 남던 것을 없애고, 탭 영역도 화면 폭에 비례해 커짐.
           고정폭+가로스크롤 방식은 폭 좁은 기기에서 스크롤이 상위 폼과 제스처 충돌을 일으켜 폐기 —
           flex 배분은 수학적으로 화면 밖으로 넘칠 수 없어 스크롤 자체가 필요 없어짐. */}
       <View ref={gridRef} style={s.shiftGrid}>
-        {SHIFTS.map(sh => {
+        {PICKABLE_SHIFTS.map(sh => {
           const active = shift === sh.id;
           return (
             <TouchableOpacity
@@ -43,7 +47,7 @@ export function ShiftSelector({ shift, onChange, shiftCustom, onCustomChange, gr
           style={s.shiftCustomInput}
           value={shiftCustom}
           onChangeText={onCustomChange}
-          placeholder="근무 시간대 이름을 입력하세요 (예: 새벽조)"
+          placeholder="교대근무 이름을 입력하세요 (예: 새벽조)"
           placeholderTextColor={C.txt3}
           returnKeyType="done"
         />

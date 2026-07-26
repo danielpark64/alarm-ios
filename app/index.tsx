@@ -54,7 +54,7 @@ export default function App() {
   const tutorialCycleRef = useRef<View>(null);
   const tutorialPresetRef = useRef<View>(null);
   const tutorialDateChipRef = useRef<View>(null);
-  const tutorialInfoBoxRef = useRef<View>(null);
+  const tutorialCloseBtnRef = useRef<View>(null); // N일 주기/N일 후 휴식 팝업의 닫기(확인) 버튼 — 7단계 타겟
   const tutorialAddBtnRef = useRef<View>(null);
   const tutorialDeleteBtnRef = useRef<View>(null);
   const addFormRef = useRef<AlarmFormHandle>(null);
@@ -62,7 +62,7 @@ export default function App() {
   // 1~7: 추가 폼 스크롤 영역, 8: 추가 폼 상단바(스크롤 불필요), 9: 추가 직후 열리는 수정 화면의 삭제 버튼
   const TUTORIAL_TARGETS: Record<number, React.RefObject<any>> = {
     1: tutorialTypeRef, 2: tutorialTimeRef, 3: tutorialLabelRef, 4: tutorialCycleRef,
-    5: tutorialPresetRef, 6: tutorialDateChipRef, 7: tutorialInfoBoxRef, 8: tutorialAddBtnRef,
+    5: tutorialPresetRef, 6: tutorialDateChipRef, 7: tutorialCloseBtnRef, 8: tutorialAddBtnRef,
     9: tutorialDeleteBtnRef,
   };
   const TUTORIAL_LAST_STEP = cycleTutorialStepsKo.length - 1;
@@ -89,6 +89,18 @@ export default function App() {
   // 6단계(시작일자)도 "다음"으로 건너뛸 수 없게 하고, 실제로 캘린더에서 날짜를 선택/확인해야 다음 단계로 진행
   const handleTutorialCalendarClose = () => {
     if (tutorialStep === 6) setTutorialStep(7);
+  };
+
+  // 5단계(며칠마다) — N일 주기/N일 후 휴식 팝업이 진짜 <Modal>이라 튜토리얼 오버레이가 그 위로
+  // 보이지 않는다(네이티브 모달이 항상 위에 뜸). 그래서 "다음" 버튼 대신 프리셋을 실제로 눌러야
+  // 진행되게 하고(AddShiftModal의 말번/비번 버튼 선례와 동일한 패턴), 텍스트만 먼저 안내해둔다.
+  const handleTutorialPresetPick = () => {
+    if (tutorialStep === 5) setTutorialStep(6);
+  };
+
+  // 7단계(다음 알람 날짜 확인) — 같은 이유로 팝업의 닫기(확인) 버튼을 실제로 눌러야 진행됨
+  const handleTutorialRepeatConfigClose = () => {
+    if (tutorialStep === 7) setTutorialStep(8);
   };
 
   // 단계가 바뀔 때마다 가리킬 실제 버튼의 화면상 위치를 측정 — 레이아웃이 막 바뀐 직후라 한 프레임 늦춰서 측정
@@ -444,13 +456,15 @@ export default function App() {
               }}
               onRmChange={tutorialStep !== null ? handleTutorialRmChange : undefined}
               onCalendarClose={tutorialStep !== null ? handleTutorialCalendarClose : undefined}
+              onPresetPick={tutorialStep !== null ? handleTutorialPresetPick : undefined}
+              onRepeatConfigClose={tutorialStep !== null ? handleTutorialRepeatConfigClose : undefined}
               typeRef={tutorialTypeRef}
               timeRef={tutorialTimeRef}
               labelRef={tutorialLabelRef}
               cycleRef={tutorialCycleRef}
               presetRef={tutorialPresetRef}
               dateChipRef={tutorialDateChipRef}
-              infoBoxRef={tutorialInfoBoxRef}
+              closeBtnRef={tutorialCloseBtnRef}
               addBtnRef={tutorialAddBtnRef}
               shiftGridRef={rotationTutorialStep !== null ? rotationShiftGridRef : undefined}
               onShiftPick={rotationTutorialStep !== null ? handleRotationShiftPick : undefined}

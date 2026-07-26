@@ -34,13 +34,15 @@ interface Props {
   onRmChange?: (rm: string) => void;
   editTypeId?: string; // 알람 카드에서 "수정"으로 들어올 때 그 카드의 typeId — 패턴 모드에서 어떤 블록을 고치러 왔는지 안내하는 데 사용
   onCalendarClose?: () => void;
+  onRepeatConfigClose?: () => void; // N일 주기/N일 후 휴식 팝업이 닫힐 때(튜토리얼 7단계 진행에 사용)
+  onPresetPick?: () => void; // 팝업 안의 프리셋 버튼을 실제로 눌렀을 때(튜토리얼 5단계 진행에 사용)
   typeRef?: React.Ref<View>;
   timeRef?: React.Ref<View>;
   labelRef?: React.Ref<TextInput>;
   cycleRef?: React.Ref<View>;
   presetRef?: React.Ref<View>;
   dateChipRef?: React.Ref<View>;
-  infoBoxRef?: React.Ref<View>;
+  closeBtnRef?: React.Ref<View>; // N일 주기/N일 후 휴식 팝업의 닫기(확인) 버튼 — 튜토리얼 7단계 타겟
   addBtnRef?: React.Ref<View>;
   deleteBtnRef?: React.Ref<View>;
   // 근무표 만들기 튜토리얼 전용 — 평소엔 전부 undefined
@@ -58,14 +60,15 @@ interface Props {
 export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
   function AlarmForm(
     {
-      initial, onSubmit, onSubmitPattern, onCancel, onDelete, onTypeChange, onRmChange, onCalendarClose, editTypeId,
-      typeRef, timeRef, labelRef, cycleRef, presetRef, dateChipRef, infoBoxRef, addBtnRef, deleteBtnRef,
+      initial, onSubmit, onSubmitPattern, onCancel, onDelete, onTypeChange, onRmChange, onCalendarClose,
+      onRepeatConfigClose, onPresetPick, editTypeId,
+      typeRef, timeRef, labelRef, cycleRef, presetRef, dateChipRef, closeBtnRef, addBtnRef, deleteBtnRef,
       shiftGridRef, onShiftPick, wizardNextBtnRef, wizardOffworkYesBtnRef, wizardAddChipRef, wizardFinishBtnRef,
       wizardAddModalLateBtnRef, wizardAddModalRestBtnRef, onWizardTutorialEvent,
     },
     ref,
   ) {
-    const form = useAlarmFormState(initial, onSubmit, onTypeChange, onRmChange, onCalendarClose, onSubmitPattern);
+    const form = useAlarmFormState(initial, onSubmit, onTypeChange, onRmChange, onCalendarClose, onSubmitPattern, onRepeatConfigClose);
     const C = useColors();
     const s = makeStyles(C);
     const isCycleRest = form.rm === 'cycle' || form.rm === 'rest';
@@ -79,7 +82,7 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
       const crossing = (form.shift === 'none') !== (newShift === 'none');
       if (crossing && form.isDirty()) {
         Alert.alert(
-          '근무 시간대 전환',
+          '교대근무 전환',
           '입력한 반복/시간 설정이 초기화됩니다. 계속할까요?',
           [
             { text: '취소', style: 'cancel' },
@@ -161,22 +164,25 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
           contentContainerStyle={s.scrollContent}
         >
           <View ref={contentRef}>
-            {/* 근무 시간대 — 폼 전체를 가르는 게이트. 해당없음이면 아래는 기존 폼 그대로,
-                실제 시간대를 고르면 블록 빌더(로테이션)로 전체가 바뀐다. */}
-            <Text style={[s.sLabel, { marginTop: 4 }]}>근무 시간대</Text>
-            {form.isPatternMode ? (
-              <View style={s.wpGateBanner}>
-                <Text style={s.wpGateBannerText}>근무 시간대 알람 · 아래 블록에서 조정</Text>
-              </View>
-            ) : (
-              <ShiftSelector
-                shift={form.shift}
-                onChange={(newShift) => { requestShiftGate(newShift); onShiftPick?.(newShift); }}
-                shiftCustom={form.shiftCustom}
-                onCustomChange={form.handleShiftCustomChange}
-                gridRef={shiftGridRef}
-              />
-            )}
+            {/* 교대근무 — 폼 전체를 가르는 게이트. 해당없음이면 아래는 기존 폼 그대로,
+                실제 시간대를 고르면 블록 빌더(로테이션)로 전체가 바뀐다. 카드로 감싸서
+                아래 알람내용/시간/반복방식 섹션과 시각적으로 분리. */}
+            <View style={s.shiftSectionCard}>
+              <Text style={[s.sLabel, { marginTop: 0 }]}>교대근무</Text>
+              {form.isPatternMode ? (
+                <View style={s.wpGateBanner}>
+                  <Text style={s.wpGateBannerText}>교대근무 알람 · 아래 블록에서 조정</Text>
+                </View>
+              ) : (
+                <ShiftSelector
+                  shift={form.shift}
+                  onChange={(newShift) => { requestShiftGate(newShift); onShiftPick?.(newShift); }}
+                  shiftCustom={form.shiftCustom}
+                  onCustomChange={form.handleShiftCustomChange}
+                  gridRef={shiftGridRef}
+                />
+              )}
+            </View>
 
             {form.isPatternMode ? (
               <>
@@ -224,25 +230,16 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
                   pickerRef={timeRef}
                 />
 
-                <RepeatModeSelector rm={form.rm} setRm={form.setRm} cycleRef={cycleRef} />
-
-                {!isCycleRest && (
-                  <DateSection
-                    rm={form.rm}
-                    lastDay={form.lastDay}
-                    setLastDay={form.setLastDay}
-                    lunar={form.lunar}
-                    setLunar={form.setLunar}
-                    setShowCal={form.setShowCal}
-                    dateLabel={form.dateLabel}
-                    dateLocked={form.dateLocked}
-                    isLeapDay={form.isLeapDay}
-                    lunarSolarPreview={form.lunarSolarPreview}
-                  />
-                )}
+                <RepeatModeSelector
+                  rm={form.rm}
+                  setRm={form.setRm}
+                  showRepeatConfig={form.showRepeatConfig}
+                  setShowRepeatConfig={form.setShowRepeatConfig}
+                  cycleRef={cycleRef}
+                />
 
                 {form.rm === 'wdcustom' && (
-                  <DayOfWeekSelector days={form.days} setDays={form.setDays} toggleDay={form.toggleDay} />
+                  <DayOfWeekSelector days={form.days} toggleDay={form.toggleDay} />
                 )}
 
                 {isCycleRest && (
@@ -254,18 +251,41 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
                     setRd={form.setRd}
                     sd={form.sd}
                     setShowCal={form.setShowCal}
+                    visible={form.showRepeatConfig}
+                    onClose={() => form.setShowRepeatConfig(false)}
                     presetRef={presetRef}
                     dateChipRef={dateChipRef}
-                    infoBoxRef={infoBoxRef}
+                    closeBtnRef={closeBtnRef}
+                    onPresetPick={onPresetPick}
                   />
                 )}
               </>
             )}
 
-            {!form.isPatternMode && (form.rm === 'monthly' || form.rm === 'yearly') && (
+            {/* 팝업이 닫혀있는 동안엔 지금 설정된 반복 요약을 한 줄로 보여줌(매월/매년과 동일한 자리) */}
+            {!form.isPatternMode && (
+              form.rm === 'monthly' || form.rm === 'yearly' ||
+              (isCycleRest && !form.showRepeatConfig)
+            ) && (
               <View style={s.repeatInfoBox}>
                 <Text style={s.repeatInfoText}>{form.repeatSummary}</Text>
               </View>
+            )}
+
+            {/* 시작 일자 — 취소/저장 버튼 바로 위로 이동(폼 맨 마지막 입력 항목) */}
+            {!form.isPatternMode && !isCycleRest && (
+              <DateSection
+                rm={form.rm}
+                lastDay={form.lastDay}
+                setLastDay={form.setLastDay}
+                lunar={form.lunar}
+                setLunar={form.setLunar}
+                setShowCal={form.setShowCal}
+                dateLabel={form.dateLabel}
+                dateLocked={form.dateLocked}
+                isLeapDay={form.isLeapDay}
+                lunarSolarPreview={form.lunarSolarPreview}
+              />
             )}
 
             <View style={s.bottomActions}>

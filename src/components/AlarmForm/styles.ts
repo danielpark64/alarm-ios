@@ -19,8 +19,17 @@ return StyleSheet.create({
   typeBtn:         { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 7, borderRadius: 12, borderWidth: 1.5, backgroundColor: C.bg2 },
   typeBtnIcon:     { fontSize: 14, marginBottom: 2 },
   typeBtnLabel:    { fontSize: 10, fontWeight: '700' },
-  // 근무 시간대(초번/중번/말번/기타/해당없음) — TypeSelector(typeBtn)와 동일한 flex:1 균등분할 방식으로
-  // 화면 폭에 맞춰 5칸이 자동으로 늘어남(좁은 기기든 넓은 기기든 항상 꽉 채움, 오른쪽에 남는 공백 없음).
+  // 교대근무(초번/중번/말번/기타/해당없음) 섹션 전체를 감싸는 카드 — 아래 알람내용/시간/반복방식과
+  // 명확히 분리되도록 accent 테두리 + 그림자로 떠 보이게 강조하고, marginBottom으로 아래 섹션과의
+  // 간격도 넉넉히 벌림.
+  shiftSectionCard: {
+    backgroundColor: C.bg3, borderWidth: 2, borderColor: C.accent2, borderRadius: 16,
+    padding: 12, marginTop: 4, marginBottom: 22,
+    shadowColor: C.accent2, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 10,
+    elevation: 6,
+  },
+  // 근무 시간대(초번/중번/말번/기타) — TypeSelector(typeBtn)와 동일한 flex:1 균등분할 방식으로
+  // 화면 폭에 맞춰 4칸이 자동으로 늘어남(좁은 기기든 넓은 기기든 항상 꽉 채움, 오른쪽에 남는 공백 없음).
   // 항목별 고정색은 SHIFTS 상수 참조, active면 그 색으로 채우고 비active는 글자만 그 색.
   shiftGrid:       { flexDirection: 'row', gap: 6, marginTop: 4 },
   shiftBtn:        { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, paddingVertical: 9, borderRadius: 12, borderWidth: 1.3, borderColor: C.border2, backgroundColor: C.bg2 },
@@ -79,15 +88,16 @@ return StyleSheet.create({
   optDividerLine:  { flex: 1, height: 1, backgroundColor: C.border },
   optDividerLabel: { fontSize: 11, fontWeight: '800', color: C.txt3, letterSpacing: 0.8 },
   // 요일
-  quickRow:        { flexDirection: 'row', gap: 8 },
-  quickBtn:        { flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: C.border2, backgroundColor: C.bg2, alignItems: 'center' },
-  quickBtnText:    { fontSize: 12, fontWeight: '700', color: C.txt3 },
   dayRow:          { flexDirection: 'row', gap: 5 },
   dayBtn:          { flex: 1, alignItems: 'center', paddingVertical: 11, borderRadius: 12, borderWidth: 1, borderColor: C.border2, backgroundColor: C.bg2 },
   dayBtnActive:    { backgroundColor: C.accent2, borderColor: C.accent2 },
   dayText:         { fontSize: 13, fontWeight: '700' },
-  // N일 주기/휴식 카드
-  cycleBox:        { backgroundColor: C.bg2, borderWidth: 1, borderColor: C.border, borderRadius: 18, padding: 16, marginTop: 10 },
+  // N일 주기/휴식 팝업(진짜 Modal) 전용 헤더 — modalContent가 이미 카드 배경/패딩을 주므로
+  // 그 안에서 제목 + 닫기(✕) 버튼만 한 줄로 배치
+  cycleModalHeader:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  cycleModalTitle:      { fontSize: 15, fontWeight: '800', color: C.txt },
+  cycleModalCloseBtn:      { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg3 },
+  cycleModalCloseBtnText:  { fontSize: 13, fontWeight: '800', color: C.txt3 },
   cycleDateRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   cycleDateLabel:  { fontSize: 12, fontWeight: '600', color: C.txt3 },
   cycleDateChip:   { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.bg3, borderWidth: 1, borderColor: C.border2, borderRadius: 10, paddingVertical: 7, paddingHorizontal: 10, position: 'relative' },
