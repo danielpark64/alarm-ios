@@ -21,7 +21,7 @@ const SLIDES = [
   {
     key: 'coffee',
     icon: '☕',
-    title: '개발자에게 커피 한 잔',
+    title: '개발자 응원하기',
     sub: '작은 후원으로 응원해주세요',
     iconBg: 'rgba(250,199,117,0.18)',
     boxBg: 'rgba(250,199,117,0.08)',

@@ -421,7 +421,6 @@ export default function App() {
 
           {tab==='settings' && (
             <SettingsView
-              onStartTutorial={() => setTutorialStep(0)}
               onStartRotationTutorial={() => setRotationTutorialStep(0)}
               onOpenHelp={() => setShowHelp(true)}
             />

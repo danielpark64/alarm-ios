@@ -15,12 +15,11 @@ const FONT_SCALES: { id: FontScaleName; label: string }[] = [
 ];
 
 interface Props {
-  onStartTutorial?: () => void;
   onStartRotationTutorial?: () => void;
   onOpenHelp?: () => void;
 }
 
-export function SettingsView({ onStartTutorial, onStartRotationTutorial, onOpenHelp }: Props) {
+export function SettingsView({ onStartRotationTutorial, onOpenHelp }: Props) {
   const C = useColors();
   const s = makeStyles(C);
   const { theme, setTheme } = useThemeSetting();
@@ -113,19 +112,6 @@ export function SettingsView({ onStartTutorial, onStartRotationTutorial, onOpenH
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={s.tutorialTitle}>근무표 만들기 따라하기</Text>
           <Text style={s.tutorialSub}>초번·말번·비번 순환표를 직접 만들어봐요</Text>
-        </View>
-        <Text style={s.tutorialArrow}>›</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[s.tutorialBanner, { marginTop: 8 }]}
-        activeOpacity={0.8}
-        onPress={onStartTutorial}
-      >
-        <View style={s.tutorialIcon}><Text style={s.tutorialIconT}>🔁</Text></View>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={s.tutorialTitle}>N일 주기 알람 추가 따라하기</Text>
-          <Text style={s.tutorialSub}>화면을 직접 보며 따라 만들어요</Text>
         </View>
         <Text style={s.tutorialArrow}>›</Text>
       </TouchableOpacity>
