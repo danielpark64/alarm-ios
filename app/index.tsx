@@ -110,14 +110,20 @@ export default function App() {
     // 추가 버튼(8)은 스크롤 영역 밖 상단바에 고정돼 있어 스크롤이 필요 없음. 9단계는 수정 화면(editFormRef) 스크롤 영역
     const scrollFormRef = tutorialStep === 9 ? editFormRef : addFormRef;
     if (tutorialStep !== 8) scrollFormRef.current?.scrollTargetIntoView(targetRef);
+    // Android는 measureInWindow가 상태바(top inset)를 제외한 좌표를 돌려줌 — 오버레이는
+    // useWindowDimensions 기준 전체 화면 좌표계라 status bar 높이만큼 위로 어긋나서 렌더됨.
+    // (실측: insets.top=31.33dp인 기기에서 y값이 정확히 그만큼 작게 나옴, 2026-07-27 확인.
+    // 지연 시간과 무관하게 항상 고정으로 어긋나므로 타이밍 문제가 아니라 좌표계 보정이 필요한 문제.)
+    const androidTopInsetFix = Platform.OS === 'android' ? insets.top : 0;
     const measure = () => targetRef.current?.measureInWindow((x: number, y: number, width: number, height: number) => {
-      if (width > 0 && height > 0) setSpotlightRect({ x, y, width, height });
+      if (width > 0 && height > 0) setSpotlightRect({ x, y: y + androidTopInsetFix, width, height });
     });
-    // 탭 전환/모드 전환/스크롤 직후라 네이티브 레이아웃이 아직 안 끝났을 수 있어 두 번 측정 (늦은 값으로 덮어씀)
+    // 탭 전환/모드 전환/스크롤 직후라 네이티브 레이아웃이 아직 안 끝났을 수 있어 세 번 측정 (늦은 값으로 덮어씀).
     const t1 = setTimeout(measure, 150);
     const t2 = setTimeout(measure, 450);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [tutorialStep, tab]);
+    const t3 = setTimeout(measure, 900);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, [tutorialStep, tab, insets.top]);
 
   // ── 근무표 만들기 튜토리얼 — 기본값 그대로 "초번 1일 → 말번 1일 → 비번 1일" 3일 주기를 따라 만든다.
   // "N일 주기" 튜토리얼과 별개 상태로 두어 서로 영향을 주지 않음(동시에 하나만 진입 가능).
@@ -174,13 +180,18 @@ export default function App() {
   useEffect(() => {
     const targetRef = rotationTutorialStep !== null ? ROTATION_TUTORIAL_TARGETS[rotationTutorialStep] : undefined;
     if (!targetRef) { setRotationSpotlightRect(null); return; }
+    // Android는 measureInWindow가 상태바(top inset)를 제외한 좌표를 돌려줌 — 위 주기 알람
+    // 튜토리얼 쪽 주석 참고. 실측으로 원인 확정(2026-07-27): 근무표 튜토리얼 1단계에서 어긋난
+    // 것도 동일한 원인이었고, 타이밍(딜레이) 문제가 아니라 좌표계 보정이 필요한 문제였음.
+    const androidTopInsetFix = Platform.OS === 'android' ? insets.top : 0;
     const measure = () => targetRef.current?.measureInWindow((x: number, y: number, width: number, height: number) => {
-      if (width > 0 && height > 0) setRotationSpotlightRect({ x, y, width, height });
+      if (width > 0 && height > 0) setRotationSpotlightRect({ x, y: y + androidTopInsetFix, width, height });
     });
     const t1 = setTimeout(measure, 150);
     const t2 = setTimeout(measure, 450);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [rotationTutorialStep, tab]);
+    const t3 = setTimeout(measure, 900);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, [rotationTutorialStep, tab, insets.top]);
 
   const showOverlayPrompt = () => Alert.alert(
     '표시 권한 설정 방법',
