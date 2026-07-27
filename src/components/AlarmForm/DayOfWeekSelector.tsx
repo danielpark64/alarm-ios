@@ -14,7 +14,7 @@ export function DayOfWeekSelector({ days, toggleDay }: Props) {
   const C = useColors();
   const s = makeStyles(C);
   return (
-    <View style={{ marginTop: 18, gap: 8 }}>
+    <View style={{ gap: 8 }}>
       <View style={s.dayRow}>
         {DAYS.map((d, i) => (
           <TouchableOpacity

@@ -76,8 +76,7 @@ return StyleSheet.create({
   repeatPrimaryLabelActive: { color: C.txt },
   repeatPrimaryHint:   { fontSize: 10, fontWeight: '600', color: C.txt3, marginTop: 2 },
   repeatPrimaryHintActive: { color: C.accent },
-  repeatDivider:       { height: 1, backgroundColor: C.bg3, marginVertical: 12 },
-  repeatSecondaryRow:  { flexDirection: 'row', gap: 6 },
+  repeatSecondaryRow:  { flexDirection: 'row', gap: 6, marginBottom: 8 },
   // 반복 (기존 pill — 캘린더 요일 등에 재사용)
   pill:            { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 12, borderWidth: 1, borderColor: C.border2, backgroundColor: C.bg2 },
   pillActive:      { backgroundColor: C.bg3, borderColor: C.accent2, borderWidth: 1.5 },

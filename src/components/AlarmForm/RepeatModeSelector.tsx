@@ -11,6 +11,7 @@ interface Props {
   showRepeatConfig: boolean;
   setShowRepeatConfig: (v: boolean) => void;
   cycleRef?: React.Ref<View>;
+  children?: React.ReactNode; // 요일 선택기(월화수...) 등 — N일 주기 카드 줄보다 위, 구분선 아래에 끼워 넣는 슬롯
 }
 
 const PRIMARY = [
@@ -20,7 +21,7 @@ const PRIMARY = [
 
 const SECONDARY_ORDER = ['wdcustom', 'monthly', 'yearly', 'once'];
 
-export function RepeatModeSelector({ rm, setRm, showRepeatConfig, setShowRepeatConfig, cycleRef }: Props) {
+export function RepeatModeSelector({ rm, setRm, showRepeatConfig, setShowRepeatConfig, cycleRef, children }: Props) {
   const s = makeStyles(useColors());
   const secondary = SECONDARY_ORDER
     .map(id => REPEAT.find(r => r.id === id))
@@ -28,8 +29,6 @@ export function RepeatModeSelector({ rm, setRm, showRepeatConfig, setShowRepeatC
 
   return (
     <>
-      <Text style={s.sLabel}>반복 방식</Text>
-
       {/* 팝업(N일 주기/N일 후 휴식 설정)이 떠 있는 동안은 다른 반복방식으로 못 건너뛰게 숨긴다 —
           팝업을 닫아야만 다시 보이고, rm 값 자체는 팝업을 닫아도 그대로 유지된다. */}
       {!showRepeatConfig && (
@@ -49,9 +48,11 @@ export function RepeatModeSelector({ rm, setRm, showRepeatConfig, setShowRepeatC
             })}
           </View>
 
-          <View style={s.repeatDivider} />
+          {children}
         </>
       )}
+
+      <Text style={s.sLabel}>반복 방식</Text>
 
       <View style={s.repeatPrimaryRow}>
         {PRIMARY.map(p => {

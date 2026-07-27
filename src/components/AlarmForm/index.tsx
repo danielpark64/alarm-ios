@@ -236,11 +236,11 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
                   showRepeatConfig={form.showRepeatConfig}
                   setShowRepeatConfig={form.setShowRepeatConfig}
                   cycleRef={cycleRef}
-                />
-
-                {form.rm === 'wdcustom' && (
-                  <DayOfWeekSelector days={form.days} toggleDay={form.toggleDay} />
-                )}
+                >
+                  {form.rm === 'wdcustom' && (
+                    <DayOfWeekSelector days={form.days} toggleDay={form.toggleDay} />
+                  )}
+                </RepeatModeSelector>
 
                 {isCycleRest && (
                   <CycleRestControls
