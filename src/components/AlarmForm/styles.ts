@@ -139,6 +139,7 @@ return StyleSheet.create({
   // 근무 패턴 블록 빌더
   wpStartRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, marginBottom: 4 },
   wpStartLabel:      { fontSize: 12, fontWeight: '600', color: C.txt3 },
+  wpStartHintGroup:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
   wpBlockCard:       { backgroundColor: C.bg2, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 12, marginTop: 8 },
   wpBlockHeaderRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   wpBlockIndex:      { fontSize: 11, fontWeight: '800', color: C.txt3 },
@@ -195,7 +196,7 @@ return StyleSheet.create({
   wzBackBtn:        { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1.3, borderColor: C.accent2, backgroundColor: C.bg3 },
   wzBackText:       { fontSize: 15, fontWeight: '800', color: C.accent },
   // 시작일을 안 보고 바로 근무 버튼부터 누르는 사용자가 많아, 확인 전까지 눈에 띄는 배지로 유도
-  wzStartHint:      { fontSize: 12, fontWeight: '700', color: '#e07070', marginBottom: 6 },
+  wzStartHint:      { fontSize: 12, fontWeight: '700', color: '#e07070' },
   wzStartBadge:     { position: 'absolute', top: -3, right: -3, width: 9, height: 9, borderRadius: 5, backgroundColor: '#e07070' },
 });
 }

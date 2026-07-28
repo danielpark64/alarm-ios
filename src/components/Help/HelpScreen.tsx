@@ -7,11 +7,10 @@ import { helpKo as ENTRIES } from '../../content/help.ko';
 
 interface Props {
   onClose: () => void;
-  onStartTutorial: () => void;
   onStartRotationTutorial: () => void;
 }
 
-export function HelpScreen({ onClose, onStartTutorial, onStartRotationTutorial }: Props) {
+export function HelpScreen({ onClose, onStartRotationTutorial }: Props) {
   const C = useColors();
   const s = makeStyles(C);
 
@@ -30,15 +29,6 @@ export function HelpScreen({ onClose, onStartTutorial, onStartRotationTutorial }
           <View style={{ flex: 1 }}>
             <Text style={s.tutorialBannerTitle}>근무표 만들기 따라하기</Text>
             <Text style={s.tutorialBannerSub}>초번·말번·비번 순환표를 직접 만들어봐요</Text>
-          </View>
-          <Text style={s.tutorialBannerArrow}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[s.tutorialBanner, { marginTop: -4 }]} activeOpacity={0.8} onPress={onStartTutorial}>
-          <Text style={s.tutorialBannerIcon}>🔁</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={s.tutorialBannerTitle}>N일 주기 알람 추가 따라하기</Text>
-            <Text style={s.tutorialBannerSub}>화면을 직접 보며 따라 만들어요</Text>
           </View>
           <Text style={s.tutorialBannerArrow}>›</Text>
         </TouchableOpacity>

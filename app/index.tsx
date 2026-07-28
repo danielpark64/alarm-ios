@@ -46,6 +46,8 @@ export default function App() {
   const [editTypeId, setEditTypeId] = useState<string>('commute');
   const editFormRef = useRef<AlarmFormHandle>(null);
   const [highlightId, setHighlightId] = useState<number|null>(null);
+  // N일 주기 알람 따라하기 — 현재 진입점 없음(사용법 안내의 배너와 첫 실행 팝업을 근무표 따라하기로 일원화).
+  // 아래 tutorialStep 계열 로직은 그대로 살아 있어서, 배너나 팝업에서 setTutorialStep(0)만 다시 호출하면 동작한다.
   const [tutorialStep, setTutorialStep] = useState<number|null>(null);
   const [spotlightRect, setSpotlightRect] = useState<SpotlightRect|null>(null);
   const tutorialTypeRef = useRef<View>(null);
@@ -223,10 +225,10 @@ export default function App() {
       await AsyncStorage.setItem(TUTORIAL_PROMPT_KEY, '1');
       Alert.alert(
         '처음이시군요!',
-        '주기 알람 따라하기를 해볼까요?\n(설정에서 언제든 보실 수 있습니다)',
+        '근무표 만들기 따라하기를 해볼까요?\n(설정에서 언제든 보실 수 있습니다)',
         [
           { text: '나중에', style: 'cancel' },
-          { text: '네', onPress: () => setTutorialStep(0) },
+          { text: '네', onPress: () => setRotationTutorialStep(0) },
         ],
       );
     })();
@@ -376,7 +378,6 @@ export default function App() {
       {showHelp ? (
         <HelpScreen
           onClose={() => setShowHelp(false)}
-          onStartTutorial={() => { setShowHelp(false); setTutorialStep(0); }}
           onStartRotationTutorial={() => { setShowHelp(false); setRotationTutorialStep(0); }}
         />
       ) : editAlarm ? (

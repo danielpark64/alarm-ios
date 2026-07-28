@@ -217,22 +217,24 @@ export function RotationWizard({
         </TouchableOpacity>
       </View>
 
-      {!startDateSeen && <Text style={s.wzStartHint}>먼저 시작일을 확인하세요 →</Text>}
       <View style={s.wpStartRow}>
         <Text style={s.wpStartLabel}>시작일</Text>
-        <TouchableOpacity
-          style={s.cycleDateChip}
-          onPress={() => { setStartDateSeen(true); setShowCal(true); }}
-        >
-          <Text>📅</Text>
-          <Text style={s.cycleDateChipText}>{m}/{d} 시작</Text>
-          {!startDateSeen && <View style={s.wzStartBadge} />}
-        </TouchableOpacity>
+        <View style={s.wpStartHintGroup}>
+          {!startDateSeen && <Text style={s.wzStartHint}>먼저 시작일을 넣으세요 →</Text>}
+          <TouchableOpacity
+            style={s.cycleDateChip}
+            onPress={() => { setStartDateSeen(true); setShowCal(true); }}
+          >
+            <Text>📅</Text>
+            <Text style={s.cycleDateChipText}>{m}/{d} 시작</Text>
+            {!startDateSeen && <View style={s.wzStartBadge} />}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {!flow && (
         <>
-          <Text style={s.wzQuestion}>근무 순환표</Text>
+          <Text style={s.wzQuestion}>근무 순환표 <Text style={s.wzStartHint}>(비번도 넣으세요)</Text></Text>
           <View style={s.wzOptionRow}>
             {sequence.map((seg, i) => {
               const label = seg.isRest ? '비번' : (seg.shift === 'custom' ? (seg.shiftCustom?.trim() || '기타') : SHIFTS.find(sh => sh.id === seg.shift)!.label);
