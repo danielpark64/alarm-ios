@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
 import { Text } from '../common/AppText';
 import { useColors } from '../../hooks/useTheme';
 import { Palette } from '../../constants/colors';
@@ -11,12 +13,19 @@ const BANK_NAME = '카카오뱅크';
 const ACCOUNT_NUMBER = '3333166925857';
 const ACCOUNT_HOLDER = '장미향';
 
-// 한 번에 복사하는 버튼은 expo-clipboard가 필요한데, react-native-iap와 nitro-modules의
-// 기존 peer 충돌 때문에 지금 설치가 막혀 있다. 대신 계좌번호를 selectable로 두어 길게 누르면
-// OS 기본 "복사" 메뉴가 뜨게 했다 — 네이티브 의존성 추가 없이 복사가 가능하다.
 export function CoffeeTipScreen({ onClose }: { onClose: () => void }) {
   const C = useColors();
   const s = makeStyles(C);
+  const [copied, setCopied] = useState(false);
+
+  // 계좌번호는 은행 앱에 붙여넣어야 하므로 한 번에 복사되는 게 중요하다.
+  // Alert로 알리면 확인을 또 눌러야 해서, 버튼 문구를 잠깐 "복사됐어요"로 바꿔서 알린다.
+  const handleCopy = async () => {
+    await Clipboard.setStringAsync(ACCOUNT_NUMBER);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <View style={s.root}>
@@ -39,7 +48,13 @@ export function CoffeeTipScreen({ onClose }: { onClose: () => void }) {
           <Text style={s.accountBank}>{BANK_NAME}</Text>
           <Text style={s.accountNumber} selectable>{ACCOUNT_NUMBER}</Text>
           <Text style={s.accountHolder}>예금주 {ACCOUNT_HOLDER}</Text>
-          <Text style={s.copyHint}>번호를 길게 눌러 복사할 수 있어요</Text>
+          <TouchableOpacity
+            style={[s.copyBtn, copied && s.copyBtnDone]}
+            onPress={handleCopy}
+            activeOpacity={0.8}
+          >
+            <Text style={s.copyBtnText}>{copied ? '✓ 복사됐어요' : '계좌번호 복사'}</Text>
+          </TouchableOpacity>
         </View>
 
         <Text style={s.note}>자발적인 후원이며, 앱 이용에는 아무 영향이 없어요</Text>
@@ -61,8 +76,10 @@ function makeStyles(C: Palette) {
     accountCard:   { width: '100%', backgroundColor: C.bg2, borderWidth: 1, borderColor: C.border, borderRadius: 18, padding: 22, alignItems: 'center' },
     accountBank:   { fontSize: 13, fontWeight: '700', color: C.txt3, marginBottom: 6 },
     accountNumber: { fontSize: 22, fontWeight: '900', color: C.txt, letterSpacing: 0.5, marginBottom: 6 },
-    accountHolder: { fontSize: 13, fontWeight: '600', color: C.txt3, marginBottom: 14 },
-    copyHint:      { fontSize: 12, color: C.txt3 },
+    accountHolder: { fontSize: 13, fontWeight: '600', color: C.txt3, marginBottom: 18 },
+    copyBtn:       { backgroundColor: C.accent2, paddingHorizontal: 28, paddingVertical: 13, borderRadius: 14, alignSelf: 'stretch', alignItems: 'center' },
+    copyBtnDone:   { backgroundColor: C.accent },
+    copyBtnText:   { fontSize: 15, fontWeight: '800', color: C.txt },
     note:          { fontSize: 11, color: C.txt3, marginTop: 24, textAlign: 'center' },
   });
 }
