@@ -1,13 +1,15 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, TouchableOpacity, Linking, StyleSheet, Alert, ScrollView, NativeSyntheticEvent, NativeScrollEvent, LayoutChangeEvent } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, TouchableOpacity, Linking, StyleSheet, Modal, SafeAreaView, ScrollView, NativeSyntheticEvent, NativeScrollEvent, LayoutChangeEvent } from 'react-native';
 import { Text } from '../common/AppText';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
 import { useScale, rf } from '../../utils/responsive';
+import { CoffeeTipScreen } from '../Support/CoffeeTipScreen';
 
 const ROTATE_MS = 5000;
 
-const SLIDES = [
+// onPress에 openTip이 넘어오는 슬라이드는 계좌 후원 화면을 연다(아래 makeSlides 참고).
+const makeSlides = (openTip: () => void) => [
   {
     key: 'susu',
     icon: '🎵',
@@ -26,7 +28,7 @@ const SLIDES = [
     iconBg: 'rgba(250,199,117,0.18)',
     boxBg: 'rgba(250,199,117,0.08)',
     boxBorder: 'rgba(250,199,117,0.3)',
-    onPress: () => Alert.alert('준비 중', '커피 후원 기능은 곧 추가될 예정이에요.'),
+    onPress: openTip,
   },
 ] as const;
 
@@ -38,7 +40,9 @@ export function PromoBanner() {
   const scale = useScale();
   const C = useColors();
   const s = makeStyles(C);
-  const slides = SLIDES;
+  // 후원 화면은 이 배너에서만 열리므로 상태를 여기서 들고 있는다 — 상위로 prop을 끌어올릴 이유가 없다.
+  const [showTip, setShowTip] = useState(false);
+  const slides = useMemo(() => makeSlides(() => setShowTip(true)), []);
   const count = slides.length;
   const extended = count > 1 ? [slides[count - 1], ...slides, slides[0]] : slides;
   const [width, setWidth] = useState(0);
@@ -119,6 +123,12 @@ export function PromoBanner() {
           ))}
         </View>
       )}
+
+      <Modal visible={showTip} animationType="slide" onRequestClose={() => setShowTip(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+          <CoffeeTipScreen onClose={() => setShowTip(false)} />
+        </SafeAreaView>
+      </Modal>
     </View>
   );
 }

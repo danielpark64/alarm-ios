@@ -118,10 +118,17 @@ export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, sele
           </Text>
           <Text style={[s.label, { color: type.color }]} numberOfLines={1}>{displayLabel}</Text>
         </View>
-        <Text style={s.metaT} numberOfLines={1}>{fmtDisplayDate(sd) + '부터'}</Text>
+        {/* 소리·진동 아이콘은 짧은 "…부터" 줄에 붙인다. 반복 문구 줄에 두면 그 줄의 가용 폭을
+            가져가서, 글자크기 "크게"에서 "매년 음력 7월 29일 (양력 9월 10일)" 같은 긴 문구가
+            한글 9~10자마다 끊기고 결국 잘렸다(줄 수만 늘리면 "7월 / 29일"처럼 더 지저분해짐). */}
+        <View style={s.row2}>
+          <Text style={s.metaT} numberOfLines={1}>{fmtDisplayDate(sd) + '부터'}</Text>
+          <View style={s.snVibRow}>
+            {alarm.snd !== 'none' && <Text style={s.snVib}>{snd.icon}</Text>}
+            {alarm.vib !== 'none' && <VibIcon size={18} color={C.txt3} />}
+          </View>
+        </View>
         <View style={s.row3}>
-          {/* 음력 알람은 "매년 음력 7월 29일 (양력 9월 10일)"처럼 길어져 글자크기 "크게"에서
-              한 줄에 안 들어간다 — 필요할 때만 두 줄로 흘러가게 둔다(짧은 문구는 그대로 한 줄). */}
           <Text style={s.repeatT} numberOfLines={2}>{'🔄 ' + repeatLabel(alarm)}</Text>
           {/* 로테이션(pattern) 알람은 "1일→1일→1일 휴식 반복" 텍스트가 이미 순서까지 정확히
               보여주므로 점(RestDots)은 정보 중복 — 단순 "N일 후 휴식"(rest)에서만 유지 */}
@@ -129,10 +136,6 @@ export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, sele
           {repLimited && alarm.active && (
             <View style={s.badgeWarn}><Text style={s.badgeWarnT}>⚠ 1회만</Text></View>
           )}
-          <View style={s.snVibRow}>
-            {alarm.snd !== 'none' && <Text style={s.snVib}>{snd.icon}</Text>}
-            {alarm.vib !== 'none' && <VibIcon size={18} color={C.txt3} />}
-          </View>
         </View>
         {expanded && segRows.length > 0 && (
           <View style={s.segList}>
@@ -175,6 +178,7 @@ function makeStyles(C: Palette) {
   info:     { flex:1, minWidth:0 },
   infoDim:  { opacity:0.45 },
   row1:     { flexDirection:"row", alignItems:"baseline" },
+  row2:     { flexDirection:"row", alignItems:"center" },
   row3:     { flexDirection:"row", alignItems:"center", marginTop:3, gap:6 },
   time:     { fontFamily: Platform.OS === 'ios' ? 'Courier' : undefined, fontSize:24, fontWeight:"900", letterSpacing: Platform.OS === 'android' ? 0 : -1, color:C.txt, marginRight:8 },
   timeColon:{ fontFamily: Platform.OS === 'ios' ? 'Courier' : undefined, fontSize:24, fontWeight:"900", letterSpacing:0, marginHorizontal: Platform.OS === 'android' ? -2 : 0, color:C.txt },
