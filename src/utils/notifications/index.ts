@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { Alarm } from '../../constants';
-import { cancelNativeAlarms } from './android';
+import { cancelNativeAlarms, syncActiveNativeAlarms } from './android';
 import { scheduleAlarmTriggers, scheduleGroupReps } from './core';
 
 Notifications.setNotificationHandler({
@@ -81,6 +81,11 @@ export async function rescheduleAll(alarms: Alarm[]) {
     // 그룹 rep 슬롯 (시간대당 1세트)
     await scheduleGroupReps(group);
   }
+
+  // 삭제된 알람의 잔여 네이티브 예약 정리 — 위 cancelNativeAlarms 루프는 "남아 있는 알람"만
+  // 돌기 때문에 삭제분을 못 지운다. 반드시 재등록이 끝난 뒤에 호출해야 방금 건 예약이
+  // 유령으로 오인돼 취소되지 않는다.
+  syncActiveNativeAlarms(alarms.map(a => a.id));
 }
 
 // 단일 알람 재스케줄 (개별 변경 시 fallback용)

@@ -79,8 +79,12 @@ grep -q "activeAlarmIds" "$ROOT/android/app/src/main/java/com/danielpark/alarmap
 # 게이트 ID 체계 일치 (2026-07-18 BUG-1 재발 방지) — 게이트는 합성 requestCode(alarmId extra)가
 # 아니라 bare id(baseAlarmId extra)로 판정해야 활성 알람이 차단되지 않는다.
 printf "  AlarmReceiver 게이트 baseAlarmId 판정 ... "
+# 예약 intent 조립은 AlarmScheduling.buildAlarmIntent 한 곳으로 공용화돼 있다. 네이티브 전체를
+# 훑으면 AlarmReceiver의 rep 슬롯 putExtra에 걸려 조립부에서 baseAlarmId가 빠져도 통과하므로,
+# 반드시 조립부 파일만 본다.
 grep -q 'baseAlarmId !in activeIds' "$ROOT/android/app/src/main/java/com/danielpark/alarmapp/AlarmReceiver.kt" 2>/dev/null \
-  && grep -q 'putExtra("baseAlarmId"' "$ROOT/android/app/src/main/java/com/danielpark/alarmapp/AlarmModule.kt" 2>/dev/null \
+  && grep -q 'putExtra("baseAlarmId"' "$ROOT/android/app/src/main/java/com/danielpark/alarmapp/AlarmScheduling.kt" 2>/dev/null \
+  && grep -q 'baseAlarmId' "$ROOT/android/app/src/main/java/com/danielpark/alarmapp/AlarmModule.kt" 2>/dev/null \
   && grep -q 'baseAlarmId' "$ROOT/src/utils/notifications/android.ts" 2>/dev/null \
   && ok "" || { fail "게이트가 bare id(baseAlarmId) 기준이 아님 — 합성 id 비교는 활성 알람 전체 차단!"; }
 
@@ -104,6 +108,54 @@ HAS_N=$(grep -c "scheduleNative\|cancelNativeAlarms" "$ROOT/src/utils/notificati
 printf "  rescheduleAll — 비활성 알람도 cancel ... "
 grep -A5 "rescheduleAll" "$ROOT/src/utils/notifications/index.ts" 2>/dev/null | grep -q "cancelNativeAlarms" \
   && ok "" || fail "rescheduleAll에서 cancelNativeAlarms 누락"
+
+# 재부팅/앱 교체 후 네이티브 예약 복구 (2026-07-29) — Android는 부팅 시 AlarmManager를 비운다.
+# expo 쪽은 자체 리시버가 복구하지만 네이티브 예약은 BootReceiver가 없으면 앱을 다시 열기 전까지 공백.
+NATIVE_DIR="$ROOT/android/app/src/main/java/com/danielpark/alarmapp"
+MANIFEST="$ROOT/android/app/src/main/AndroidManifest.xml"
+printf "  BootReceiver 매니페스트 등록 ... "
+grep -q 'android:name=".BootReceiver"' "$MANIFEST" 2>/dev/null \
+  && grep -q 'android.intent.action.BOOT_COMPLETED' "$MANIFEST" 2>/dev/null \
+  && grep -q 'android.intent.action.MY_PACKAGE_REPLACED' "$MANIFEST" 2>/dev/null \
+  && ok "" || { fail "BootReceiver 미등록 — 재부팅 후 네이티브 알람 전부 소실"; }
+
+printf "  예약 원장(AlarmStore) 기록/정리 ... "
+grep -q "AlarmStore.put" "$NATIVE_DIR/AlarmModule.kt" 2>/dev/null \
+  && grep -q "AlarmStore.remove" "$NATIVE_DIR/AlarmModule.kt" 2>/dev/null \
+  && grep -q "AlarmStore.all" "$NATIVE_DIR/BootReceiver.kt" 2>/dev/null \
+  && ok "" || { fail "예약 원장 기록/복구 경로 누락 — 부팅 복구가 빈 목록으로 동작"; }
+
+# 삭제 경로 유령 예약 (2026-07-29 BUG-A) — rescheduleAll의 cancel 루프는 "남은 알람"만 돌아서
+# 삭제된 id는 취소되지 않는다. 원장 기준 정리(syncActiveAlarms)가 반드시 붙어 있어야 한다.
+printf "  삭제 알람 잔여 예약 정리(syncActiveAlarms) ... "
+grep -q "fun syncActiveAlarms" "$NATIVE_DIR/AlarmModule.kt" 2>/dev/null \
+  && grep -q "syncActiveNativeAlarms" "$ROOT/src/utils/notifications/android.ts" 2>/dev/null \
+  && grep -q "syncActiveNativeAlarms" "$ROOT/src/utils/notifications/index.ts" 2>/dev/null \
+  && ok "" || { fail "삭제된 알람의 네이티브 예약이 원장에 남아 부팅마다 부활함"; }
+
+# 활성 0개 fail-open (2026-07-29 BUG-B) — 빈 문자열은 '미초기화'와 구분이 안 돼 게이트가 열린다.
+printf "  활성 0개 센티널(none) 처리 ... "
+grep -q "ACTIVE_IDS_NONE" "$ROOT/src/utils/widgetSync.ts" 2>/dev/null \
+  && grep -q "ACTIVE_IDS_NONE" "$NATIVE_DIR/AlarmReceiver.kt" 2>/dev/null \
+  && ok "" || { fail "활성 알람 0개일 때 게이트가 fail-open — 꺼둔 알람이 울릴 수 있음"; }
+
+# Direct Boot (2026-07-29) — 재부팅 후 최초 잠금해제 전 구간에도 알람이 울려야 한다.
+# 발화 체인(수신→재생→커버화면)+부팅 리시버 중 하나라도 directBootAware가 빠지면 그 단계에서 끊긴다.
+printf "  Direct Boot 발화 체인 directBootAware ... "
+DB_OK=true
+for comp in AlarmReceiver AlarmService BootReceiver CoverAlarmActivity; do
+  grep -A4 "android:name=\".$comp\"" "$MANIFEST" 2>/dev/null | grep -q 'directBootAware="true"' || DB_OK=false
+done
+grep -q 'android.intent.action.LOCKED_BOOT_COMPLETED' "$MANIFEST" 2>/dev/null || DB_OK=false
+$DB_OK && ok "" || { fail "발화 체인에 directBootAware/LOCKED_BOOT_COMPLETED 누락 — 잠금해제 전 알람 불발"; }
+
+# Direct Boot 구간에 읽어야 하는 데이터는 device-protected 저장소에 있어야 한다.
+printf "  게이트·원장 device-protected 저장소 ... "
+grep -q "createDeviceProtectedStorageContext" "$NATIVE_DIR/DeviceStorage.kt" 2>/dev/null \
+  && grep -q "DeviceStorage.prefs" "$NATIVE_DIR/AlarmStore.kt" 2>/dev/null \
+  && grep -q "DeviceStorage.prefs" "$NATIVE_DIR/WidgetModule.kt" 2>/dev/null \
+  && grep -q "DeviceStorage.prefs" "$NATIVE_DIR/AlarmReceiver.kt" 2>/dev/null \
+  && ok "" || { fail "잠금해제 전 접근 불가한 저장소를 참조 — Direct Boot에서 예외/게이트 오판"; }
 
 if $STATIC_ONLY; then
   echo ""
@@ -137,10 +189,18 @@ echo ""
 echo -e "${BOLD}[3] AlarmManager 등록 상태${NC} (dumpsys alarm)"
 
 RAW=$($ADB shell dumpsys alarm 2>/dev/null)
-COUNT=$(echo "$RAW" | grep "com.danielpark.alarmapp/.AlarmReceiver" | wc -l | tr -d ' ')
-TIMES=$(echo "$RAW" | grep "type=RTC" | grep -A0 "" | \
-  sed 's/.*origWhen=\([0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]\).*/\1/' | \
-  grep -v "^.*type=" | head -5)
+
+# dumpsys alarm 전문에는 실제 대기 예약 말고도 Removal/Addition history, Top Alarms,
+# Alarm Stats가 함께 나온다. 전문을 grep하면 이미 발화했거나 취소된 항목까지 세어져서
+# "전부 끔 → 0개" 판정이 항상 실패한다. 대기 배치 구간만 잘라서 센다.
+PENDING=$(echo "$RAW" | awk '
+  /^[[:space:]]*Pending alarm batches:/ { inb=1; next }
+  /^[[:space:]]*(Pending alarms per uid|Past-due non-wakeup alarms|Pending user blocked|Recent (Wakeup|Alarm) History|Alarm Stats|Top Alarms|Removal history|Addition history|Recent problems|Idle mode state)/ { inb=0 }
+  inb { print }
+')
+COUNT=$(echo "$PENDING" | grep -c "com.danielpark.alarmapp/.AlarmReceiver" | tr -d ' ')
+TIMES=$(echo "$PENDING" | grep -A4 "com.danielpark.alarmapp/.AlarmReceiver" | \
+  grep -o "origWhen=[0-9-]* [0-9][0-9]:[0-9][0-9]" | sed 's/origWhen=//' | head -5)
 
 info "AlarmReceiver 등록 수: ${COUNT}개"
 if [ "$COUNT" -gt 0 ] && [ -n "$TIMES" ]; then

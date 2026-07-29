@@ -26,16 +26,38 @@
     <meta-data android:name="expo.modules.updates.ENABLE_BSDIFF_PATCH_SUPPORT" android:value="true"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH" android:value="ALWAYS"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS" android:value="0"/>
+    <!-- directBootAware: 알람 발화 체인(수신 → 소리 재생 → 커버 화면)은 재부팅 후 사용자가
+         아직 잠금을 풀지 않은 구간에도 동작해야 한다. 하나라도 빠지면 그 단계에서 끊긴다.
+         이들이 쓰는 데이터는 전부 device-protected 저장소(DeviceStorage)에 있다. -->
     <service
       android:name=".AlarmService"
       android:exported="false"
+      android:directBootAware="true"
       android:foregroundServiceType="mediaPlayback"/>
     <receiver
       android:name=".AlarmReceiver"
-      android:exported="false"/>
+      android:exported="false"
+      android:directBootAware="true"/>
+    <!-- 재부팅·앱 교체 후 네이티브 알람 예약 복구 (AlarmStore 원장 기준).
+         exported=true여야 시스템 브로드캐스트를 받을 수 있다.
+         LOCKED_BOOT_COMPLETED까지 받아 잠금해제 전에 예약을 되살린다. -->
+    <receiver
+      android:name=".BootReceiver"
+      android:exported="true"
+      android:enabled="true"
+      android:directBootAware="true">
+      <intent-filter>
+        <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED"/>
+        <action android:name="android.intent.action.BOOT_COMPLETED"/>
+        <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+        <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+      </intent-filter>
+    </receiver>
     <activity
       android:name=".CoverAlarmActivity"
       android:exported="false"
+      android:directBootAware="true"
       android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
       android:excludeFromRecents="true"
       android:taskAffinity=""

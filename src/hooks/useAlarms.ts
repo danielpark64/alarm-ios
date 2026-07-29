@@ -43,9 +43,12 @@ export function useAlarms() {
         await AsyncStorage.setItem(KEY, JSON.stringify({ alarms: loaded, nextId: 100 }));
       }
       setAlarms(loaded);
+      // syncWidget이 먼저 — 여기서 저장하는 activeAlarmIds가 네이티브 차단 게이트의 기준이라,
+      // 예약보다 나중에 쓰면 그 사이에 발화한 알람이 게이트 판정을 못 받는다
+      // (다른 경로도 save() → rescheduleAll 순서라 여기만 반대였다).
+      syncWidget(loaded);
       // 앱 시작 시 전체 재스케줄링 — 사운드 설정 변경 등 즉시 반영
       await rescheduleAll(loaded);
-      syncWidget(loaded);
       setLoaded(true);
     })();
   }, []);

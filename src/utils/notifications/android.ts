@@ -47,3 +47,12 @@ export function cancelNativeAlarms(alarmId: number) {
     ids.forEach(id => AlarmModule.cancelAlarm(id));
   }
 }
+
+// 삭제된 알람의 잔여 네이티브 예약 정리 — rescheduleAll 끝에서 한 번 호출한다.
+// rescheduleAll의 cancelNativeAlarms 루프는 "남아 있는 알람"만 돌기 때문에 삭제분은
+// 취소되지 않는다. 네이티브 원장(AlarmStore)에서 baseAlarmId가 살아있는 목록에 없는
+// 예약을 찾아 취소하므로, JS가 삭제 id를 따로 기억할 필요가 없다.
+export function syncActiveNativeAlarms(aliveIds: number[]) {
+  if (Platform.OS !== 'android' || !AlarmModule?.syncActiveAlarms) return;
+  AlarmModule.syncActiveAlarms(aliveIds);
+}

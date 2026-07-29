@@ -14,6 +14,10 @@ Expo만 취소하고 AlarmManager를 빠뜨리면 알람이 비활성화해도 �
 - [ ] 예약: `scheduleAlarmTriggers` + `scheduleNative` 둘 다 호출하는가?
 - [ ] 취소: `Notifications.cancel~` + `cancelNativeAlarms` 둘 다 호출하는가?
 - [ ] 재스케줄(`rescheduleAll`): 전체 알람 목록 기준으로 네이티브도 전부 초기화하는가?
+- [ ] **삭제**: 목록에서 사라진 id는 `rescheduleAll`의 cancel 루프가 못 돈다(정의상 빠짐).
+      원장 기준 정리(`syncActiveNativeAlarms`)가 재등록 **이후에** 호출되는가?
+- [ ] **부팅 복구**: 새 예약 경로를 추가했다면 `AlarmStore`에도 기록되는가?
+      (기록 안 하면 재부팅·앱 교체 후 그 예약만 조용히 사라진다)
 
 # 테스트 규칙 — 항상 적용
 

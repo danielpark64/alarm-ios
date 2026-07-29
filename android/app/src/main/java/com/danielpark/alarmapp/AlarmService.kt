@@ -11,6 +11,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.VibrationEffect
+import android.os.UserManager
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.Display
@@ -100,11 +101,18 @@ class AlarmService : Service() {
             ringingDisplayListener = null
             try {
                 val isCoverDisplay = displayId != null && displayId != Display.DEFAULT_DISPLAY
-                val intent = if (isCoverDisplay) {
+                // 잠금해제 전에는 MainActivity(RN)가 directBootAware가 아니라 실행 자체가 막힌다
+                // (ActivityNotFoundException이 아래 catch에 조용히 삼켜져서 화면도 안 켜지고
+                //  끄기 UI도 없는 상태가 됐음). 그 구간엔 네이티브 화면으로 대체한다.
+                val locked = getSystemService(UserManager::class.java)?.isUserUnlocked == false
+                val intent = if (isCoverDisplay || locked) {
                     Intent(this, CoverAlarmActivity::class.java).apply {
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
                         putExtra("alarmId", alarmId)
                         putExtra("title", title)
+                        // 기본 디스플레이에서 키가드 해제를 요청하면 보안 잠금 바운서가 떠서
+                        // 알람 화면을 가린다 — 커버 화면일 때만 해제를 요청하게 알려준다.
+                        putExtra("dismissKeyguard", isCoverDisplay)
                     }
                 } else {
                     Intent(this, MainActivity::class.java).apply {
@@ -215,6 +223,11 @@ class AlarmService : Service() {
 
     // 포그라운드 JS로 알람 울림 이벤트 전달 (인앱 끄기/스누즈 UI 표시용)
     private fun emitRingingEvent(title: String, body: String, alarmId: Int) {
+        // 잠금해제 전(Direct Boot)에는 RN이 붙을 수 없어 어차피 no-op이다. 그런데 reactHost가
+        // by lazy라 여기서 건드리는 순간 잠긴 상태에서 ReactHost 전체가 생성되면서
+        // startForeground 5초 제한을 갉아먹는다. 잠겨 있으면 아예 만지지 않는다.
+        // (이 구간에 놓친 이벤트는 잠금 해제 후 getCurrentRinging 복구 흐름이 메운다)
+        if (getSystemService(UserManager::class.java)?.isUserUnlocked == false) return
         try {
             val reactContext = (applicationContext as? ReactApplication)
                 ?.reactHost?.currentReactContext ?: return
@@ -303,6 +316,9 @@ class AlarmService : Service() {
         vibrator = null
     }
 
+    // 의도적으로 AlarmStore 원장에 기록하지 않는다 — 스누즈는 수명 5분짜리 일회성 예약이라
+    // 부팅 복구 대상이 아니고, 매 rescheduleAll이 지우는 대상이라 원장에 넣으면 정합성만 나빠진다.
+    // 절충: 스누즈 대기 중에 재부팅하면 그 스누즈는 사라진다(원래 알람 예약은 정상 복구됨).
     private fun scheduleSnooze(title: String, body: String, soundOn: Boolean, vibOn: Boolean, volume: Float) {
         val intent = Intent(this, AlarmReceiver::class.java).apply {
             putExtra(EXTRA_TITLE, title)

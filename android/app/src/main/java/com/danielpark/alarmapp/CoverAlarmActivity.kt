@@ -38,10 +38,15 @@ class CoverAlarmActivity : Activity() {
         // 메인 디스플레이에서는 requestDismissKeyguard()가 보안 잠금 인증 화면(바운서)을
         // 강제로 띄우는 부작용이 있어 MainActivity에서는 빼두었지만, 커버 디스플레이의
         // 글랜스 화면은 메인 보안 잠금과 다른 레이어라 다르게 동작할 가능성이 있어 시도해본다.
-        try {
-            (getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager)
-                ?.requestDismissKeyguard(this, null)
-        } catch (e: Exception) { e.printStackTrace() }
+        //
+        // 잠금해제 전(Direct Boot) 구간에는 이 화면이 기본 디스플레이에도 뜨는데, 그때는
+        // 해제를 요청하면 바운서가 알람 화면을 덮어버린다 — 호출부가 넘긴 값으로 구분한다.
+        if (intent.getBooleanExtra("dismissKeyguard", true)) {
+            try {
+                (getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager)
+                    ?.requestDismissKeyguard(this, null)
+            } catch (e: Exception) { e.printStackTrace() }
+        }
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL

@@ -6,6 +6,10 @@ const { WidgetModule } = NativeModules;
 
 const SHIFT_COLORS = ['#6c5ce7','#00b894','#e17055','#0984e3','#fd79a8','#fdcb6e','#55efc4'];
 
+// "활성 알람 0개"를 뜻하는 센티널 — 네이티브 AlarmReceiver의 게이트와 값을 맞춰야 한다.
+// (빈 문자열은 '미초기화'로 해석돼 fail-safe open이 되므로 쓰면 안 된다)
+export const ACTIVE_IDS_NONE = 'none';
+
 export async function syncWidget(alarms: Alarm[]) {
   if (Platform.OS !== 'android' || !WidgetModule?.updateWidgetData) return;
 
@@ -75,7 +79,11 @@ export async function syncWidget(alarms: Alarm[]) {
 
   WidgetModule.updateWidgetData(payload);
 
-  // 활성 알람 ID 목록을 네이티브에 전달 — AlarmReceiver가 비활성 알람을 차단하는 데 사용
-  const activeIds = alarms.filter(a => a.active).map(a => a.id).join(',');
-  WidgetModule.saveActiveAlarmIds?.(activeIds);
+  // 활성 알람 ID 목록을 네이티브에 전달 — AlarmReceiver가 비활성 알람을 차단하는 데 사용.
+  //
+  // 활성이 0개일 때 빈 문자열을 저장하면 AlarmReceiver가 "아직 앱이 한 번도 안 돈 상태"로
+  // 오인해 fail-safe open(전부 허용)으로 빠진다 — 알람을 전부 꺼둔 사용자에게 잔여 예약이
+  // 울리는 경로가 된다. 그래서 "활성 0개"는 센티널로 명시해 '미초기화'와 구분한다.
+  const ids = alarms.filter(a => a.active).map(a => a.id);
+  WidgetModule.saveActiveAlarmIds?.(ids.length ? ids.join(',') : ACTIVE_IDS_NONE);
 }

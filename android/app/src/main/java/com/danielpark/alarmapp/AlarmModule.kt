@@ -44,40 +44,59 @@ class AlarmModule(private val reactContext: ReactApplicationContext) :
         baseAlarmId: Int
     ) {
         val ctx = reactContext
-        val intent = Intent(ctx, AlarmReceiver::class.java).apply {
-            putExtra(AlarmService.EXTRA_TITLE, title)
-            putExtra(AlarmService.EXTRA_BODY,  body)
-            putExtra("alarmId",     alarmId)
-            putExtra("baseAlarmId", baseAlarmId)
-            putExtra("recurrence",  recurrence)
-            putExtra("hour",        hour)
-            putExtra("min",         min)
-            putExtra("weekday",     weekday)
-            putExtra("soundOn",     soundOn)
-            putExtra("vibOn",       vibOn)
-            putExtra("volume",      volume.toFloat())
-        }
-        val pi = PendingIntent.getBroadcast(
-            ctx, alarmId, intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        val entry = AlarmStore.Entry(
+            requestCode = alarmId,
+            triggerAtMs = triggerAtMs.toLong(),
+            title = title, body = body,
+            recurrence = recurrence, hour = hour, min = min, weekday = weekday,
+            soundOn = soundOn, vibOn = vibOn, volume = volume.toFloat(),
+            baseAlarmId = baseAlarmId,
         )
-        val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val triggerAt = triggerAtMs.toLong()
-        AlarmScheduling.schedule(ctx, am, triggerAt, pi)
+        AlarmScheduling.arm(ctx, entry)
+        // 재부팅·앱 교체로 AlarmManager가 비워져도 BootReceiver가 되살릴 수 있게 원장에 남긴다.
+        AlarmStore.put(ctx, entry)
     }
 
     @ReactMethod
     fun cancelAlarm(alarmId: Int) {
         cancelOne(alarmId)
+        AlarmStore.remove(reactContext, listOf(alarmId))
     }
 
     // 취소 대상이 알람당 수십 개라 개별 브릿지 호출 대신 배열로 한 번에 받는다 — JS
     // cancelNativeAlarms가 이 메서드를 우선 사용(브릿지 왕복 약 70회 → 1회)
     @ReactMethod
     fun cancelAlarms(alarmIds: ReadableArray) {
+        val ids = ArrayList<Int>(alarmIds.size())
         for (i in 0 until alarmIds.size()) {
-            cancelOne(alarmIds.getInt(i))
+            val id = alarmIds.getInt(i)
+            cancelOne(id)
+            ids.add(id)
         }
+        // 원장 정리는 반드시 한 번에 — id마다 지우면 rescheduleAll 한 번에 디스크 쓰기가 수십 번 발생한다.
+        AlarmStore.remove(reactContext, ids)
+    }
+
+    /**
+     * 원장에 남아 있는데 더 이상 존재하지 않는 알람(=삭제분)의 예약을 싹 정리한다.
+     *
+     * JS의 rescheduleAll은 "현재 알람 목록"만 순회하며 cancelNativeAlarms를 부르므로,
+     * 목록에서 이미 빠진 삭제 알람은 취소 호출을 한 번도 못 받는다(useAlarms.deleteAlarm이
+     * 필터링된 목록을 넘기기 때문). 원장이 생기기 전에는 그 잔여 예약이 게이트에 막히다가
+     * 14일 뒤 자연 소멸했지만, 이제는 원장에 남아 부팅마다 되살아나므로 반드시 걷어내야 한다.
+     *
+     * baseAlarmId 기준으로 판정하므로 JS는 "살아있는 알람 id 목록"만 넘기면 되고,
+     * 앞으로 어떤 삭제 경로가 추가돼도 유령 예약이 생기지 않는다.
+     */
+    @ReactMethod
+    fun syncActiveAlarms(baseIds: ReadableArray) {
+        val alive = HashSet<Int>(baseIds.size())
+        for (i in 0 until baseIds.size()) alive.add(baseIds.getInt(i))
+
+        val stale = AlarmStore.all(reactContext).filter { it.baseAlarmId >= 0 && it.baseAlarmId !in alive }
+        if (stale.isEmpty()) return
+        for (e in stale) cancelOne(e.requestCode)
+        AlarmStore.remove(reactContext, stale.map { it.requestCode })
     }
 
     private fun cancelOne(alarmId: Int) {
