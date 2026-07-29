@@ -120,7 +120,9 @@ export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, sele
         </View>
         <Text style={s.metaT} numberOfLines={1}>{fmtDisplayDate(sd) + '부터'}</Text>
         <View style={s.row3}>
-          <Text style={s.repeatT} numberOfLines={1}>{'🔄 ' + repeatLabel(alarm)}</Text>
+          {/* 음력 알람은 "매년 음력 7월 29일 (양력 9월 10일)"처럼 길어져 글자크기 "크게"에서
+              한 줄에 안 들어간다 — 필요할 때만 두 줄로 흘러가게 둔다(짧은 문구는 그대로 한 줄). */}
+          <Text style={s.repeatT} numberOfLines={2}>{'🔄 ' + repeatLabel(alarm)}</Text>
           {/* 로테이션(pattern) 알람은 "1일→1일→1일 휴식 반복" 텍스트가 이미 순서까지 정확히
               보여주므로 점(RestDots)은 정보 중복 — 단순 "N일 후 휴식"(rest)에서만 유지 */}
           {alarm.rm === 'rest' && <RestDots cd={alarm.cd ?? 2} rd={alarm.rd ?? 1} s={s} />}

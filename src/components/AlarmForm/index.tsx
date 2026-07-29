@@ -237,8 +237,31 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
                   setShowRepeatConfig={form.setShowRepeatConfig}
                   cycleRef={cycleRef}
                 >
+                  {/* 알약(요일/매월/매년/한 번)을 고르면 그 설정의 후속 입력이 바로 아래 이어지도록
+                      이 슬롯에 모아둔다 — 요일 버튼, 시작 일자, 그리고 매월/매년 요약까지. */}
                   {form.rm === 'wdcustom' && (
                     <DayOfWeekSelector days={form.days} toggleDay={form.toggleDay} />
+                  )}
+
+                  {!isCycleRest && (
+                    <DateSection
+                      rm={form.rm}
+                      lastDay={form.lastDay}
+                      setLastDay={form.setLastDay}
+                      lunar={form.lunar}
+                      setLunar={form.setLunar}
+                      setShowCal={form.setShowCal}
+                      dateLabel={form.dateLabel}
+                      dateLocked={form.dateLocked}
+                      isLeapDay={form.isLeapDay}
+                      lunarSolarPreview={form.lunarSolarPreview}
+                    />
+                  )}
+
+                  {(form.rm === 'monthly' || form.rm === 'yearly') && (
+                    <View style={s.repeatInfoBox}>
+                      <Text style={s.repeatInfoText}>{form.repeatSummary}</Text>
+                    </View>
                   )}
                 </RepeatModeSelector>
 
@@ -262,30 +285,12 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
               </>
             )}
 
-            {/* 팝업이 닫혀있는 동안엔 지금 설정된 반복 요약을 한 줄로 보여줌(매월/매년과 동일한 자리) */}
-            {!form.isPatternMode && (
-              form.rm === 'monthly' || form.rm === 'yearly' ||
-              (isCycleRest && !form.showRepeatConfig)
-            ) && (
+            {/* N일 주기/휴식은 시작일을 팝업 안에서 정하므로 요약도 여기(카드 아래) 그대로 둔다.
+                요일/매월/매년/한 번의 시작 일자·요약은 알약행 바로 아래 슬롯으로 옮겼다. */}
+            {!form.isPatternMode && isCycleRest && !form.showRepeatConfig && (
               <View style={s.repeatInfoBox}>
                 <Text style={s.repeatInfoText}>{form.repeatSummary}</Text>
               </View>
-            )}
-
-            {/* 시작 일자 — 취소/저장 버튼 바로 위로 이동(폼 맨 마지막 입력 항목) */}
-            {!form.isPatternMode && !isCycleRest && (
-              <DateSection
-                rm={form.rm}
-                lastDay={form.lastDay}
-                setLastDay={form.setLastDay}
-                lunar={form.lunar}
-                setLunar={form.setLunar}
-                setShowCal={form.setShowCal}
-                dateLabel={form.dateLabel}
-                dateLocked={form.dateLocked}
-                isLeapDay={form.isLeapDay}
-                lunarSolarPreview={form.lunarSolarPreview}
-              />
             )}
 
             <View style={s.bottomActions}>

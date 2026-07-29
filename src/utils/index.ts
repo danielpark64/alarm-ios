@@ -50,8 +50,23 @@ export const repeatLabel = (al: Alarm): string => {
     if (segs.length <= 1) return '근무 로테이션';
     return segs.map(s => `${s.days}일${s.isRest ? ' 비번' : ''}`).join(' → ') + ' 반복';
   }
-  if (al.rm==='monthly') return al.lastDay ? '매월 말일' : `매월 ${new Date(al.sd||todayStr()).getDate()}일`;
-  if (al.rm==='yearly')  return `매년 ${al.lunar ? '음력 ' : ''}${new Date(al.sd||todayStr()).getMonth()+1}월 ${new Date(al.sd||todayStr()).getDate()}일`;
+  // sd는 반드시 문자열로 쪼개 쓴다 — new Date('2026-07-29')는 UTC 자정으로 파싱돼서
+  // UTC 음수 오프셋 지역에서 하루 밀린다. 스케줄러(getNextFireDate/core.ts)가 sd.split('-')
+  // 기준이라, 여기서 Date로 파싱하면 카드에 적힌 날짜와 실제 울리는 날이 어긋난다.
+  const [, sdM, sdD] = (al.sd || todayStr()).split('-').map(Number);
+  if (al.rm==='monthly') return al.lastDay ? '매월 말일' : `매월 ${sdD}일`;
+  if (al.rm==='yearly') {
+    const M = sdM, D = sdD;
+    if (!al.lunar) return `매년 ${M}월 ${D}일`;
+    // 음력은 해마다 양력 날짜가 달라져서 음력 표기만으로는 언제 울리는지 알 수 없다.
+    // 다음에 울릴 양력 날짜를 병기한다 — 올해분이 이미 지났으면 내년 기준으로 환산.
+    const y = new Date().getFullYear();
+    const thisYear = lunarToSolarInYear(y, M, D);
+    const solar = (thisYear && thisYear >= todayStr()) ? thisYear : lunarToSolarInYear(y + 1, M, D);
+    // 변환 지원 범위(1000~2050) 밖이면 조용히 음력 표기만 남긴다
+    const suffix = solar ? ` (양력 ${Number(solar.split('-')[1])}월 ${Number(solar.split('-')[2])}일)` : '';
+    return `매년 음력 ${M}월 ${D}일${suffix}`;
+  }
   return '한 번';
 };
 
