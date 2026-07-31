@@ -94,17 +94,23 @@ export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, sele
 
   return (
     <Animated.View style={highlighted ? { opacity: blink } : undefined}>
-    <TouchableOpacity
+    {/* 켜고 끄기 스위치를 카드 전체 Touchable 안에 두면, 살짝 빗나간 탭이 부모로 떨어져
+        수정 화면이 열렸다("잘못 눌러 수정 갔다가 다시 와서 재시도"). 카드는 일반 View로 두고
+        본문만 Touchable로 감싸서, 스위치 주변을 빗나가면 아무 일도 일어나지 않게 한다. */}
+    <View
       style={[
         s.card,
         { borderColor: type.color, borderWidth: alarm.active ? 2 : 1 },
         !alarm.active && s.cardOff,
         highlighted && s.cardHL,
       ]}
-      onPress={selectMode ? onSelect : onEdit}
-      onLongPress={selectMode ? undefined : onLongPressSelect}
-      activeOpacity={0.85}
     >
+      <TouchableOpacity
+        style={s.cardMain}
+        onPress={selectMode ? onSelect : onEdit}
+        onLongPress={selectMode ? undefined : onLongPressSelect}
+        activeOpacity={0.85}
+      >
       {selectMode && (
         <View style={[s.cb, selected && s.cbSel]}>
           {selected && <Text style={s.ck}>✓</Text>}
@@ -148,19 +154,24 @@ export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, sele
           </View>
         )}
       </View>
+      </TouchableOpacity>
       {!selectMode && (
         <View style={s.actions}>
           {segRows.length > 0 && (
-            <TouchableOpacity style={s.expandBtn} onPress={() => setExpanded(v => !v)} hitSlop={{top:8,bottom:8,left:8,right:8}}>
+            <TouchableOpacity style={s.expandBtn} onPress={() => setExpanded(v => !v)} hitSlop={{top:8,bottom:4,left:8,right:8}}>
               <Text style={s.expandBtnText}>{expanded ? '▲' : '▼'}</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={[s.toggle, alarm.active ? s.toggleOn : s.toggleOff]} onPress={onToggle} activeOpacity={0.8}>
-            <View style={[s.thumb, alarm.active ? s.thumbOn : s.thumbOff]}/>
+          {/* 알약(46×28)은 그대로 두고 감싸는 Touchable에 실제 여백을 줘서 62×50을 확보한다.
+              hitSlop은 Android에서 부모 경계에 클리핑되는 경우가 있어 레이아웃 패딩이 더 확실하다. */}
+          <TouchableOpacity style={s.toggleHit} onPress={onToggle} activeOpacity={0.8}>
+            <View style={[s.toggle, alarm.active ? s.toggleOn : s.toggleOff]}>
+              <View style={[s.thumb, alarm.active ? s.thumbOn : s.thumbOff]}/>
+            </View>
           </TouchableOpacity>
         </View>
       )}
-    </TouchableOpacity>
+    </View>
     </Animated.View>
   );
 });
@@ -168,6 +179,7 @@ export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, sele
 function makeStyles(C: Palette) {
   return StyleSheet.create({
   card: { flexDirection:"row", alignItems:"center", paddingVertical:10, paddingHorizontal:14, borderRadius:14, marginBottom:8, backgroundColor:C.bg2, borderWidth:1 },
+  cardMain: { flex:1, flexDirection:"row", alignItems:"center", minWidth:0 },
   cardOff:  { opacity: 0.5 },
   cardHL:   { borderColor: C.accent, borderWidth: 2.5 },
   cb:       { width:26, height:26, borderRadius:13, borderWidth:2, borderColor:C.border2, alignItems:"center", justifyContent:"center", marginRight:10 },
@@ -193,7 +205,7 @@ function makeStyles(C: Palette) {
   snVib:    { fontSize:13 },
   badgeWarn: { paddingHorizontal:8, paddingVertical:2, borderRadius:99, borderWidth:1, borderColor:"#854f0b", backgroundColor:"#412402" },
   badgeWarnT:{ fontSize:11, fontWeight:"700", color:"#fac775" },
-  actions:  { alignItems:"center", gap:5, marginLeft:8 },
+  actions:  { alignItems:"center", gap:8, marginLeft:8 },
   // 고령층 사용성 피드백 — 화살표가 너무 작고 흐려서 안 보인다고 함. 배경 있는
   // 버튼 형태로 키우고 색도 진하게 바꿔 탭할 수 있는 요소라는 게 분명히 보이도록 함
   expandBtn: { width:32, height:32, borderRadius:16, backgroundColor:C.bg3, borderWidth:1, borderColor:C.border2, alignItems:"center", justifyContent:"center" },
@@ -202,6 +214,7 @@ function makeStyles(C: Palette) {
   segRow:   { flexDirection:"row", justifyContent:"space-between", paddingVertical:2 },
   segLabel: { fontSize:12, fontWeight:"700", color:C.txt2 },
   segTime:  { fontSize:12, fontWeight:"700", color:C.txt3 },
+  toggleHit:{ paddingVertical:11, paddingHorizontal:8 },
   toggle:   { width:46, height:28, borderRadius:14, justifyContent:"center", paddingHorizontal:2 },
   toggleOn: { backgroundColor:C.accent2 },
   toggleOff:{ backgroundColor:C.bg3, borderWidth:1.5, borderColor:C.border2 },

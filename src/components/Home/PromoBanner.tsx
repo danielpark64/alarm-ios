@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, TouchableOpacity, Linking, StyleSheet, Modal, SafeAreaView, ScrollView, NativeSyntheticEvent, NativeScrollEvent, LayoutChangeEvent } from 'react-native';
+import { View, TouchableOpacity, Linking, StyleSheet, Modal, ScrollView, NativeSyntheticEvent, NativeScrollEvent, LayoutChangeEvent } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../common/AppText';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
@@ -40,6 +41,7 @@ export function PromoBanner() {
   const scale = useScale();
   const C = useColors();
   const s = makeStyles(C);
+  const insets = useSafeAreaInsets();
   // 후원 화면은 이 배너에서만 열리므로 상태를 여기서 들고 있는다 — 상위로 prop을 끌어올릴 이유가 없다.
   const [showTip, setShowTip] = useState(false);
   const slides = useMemo(() => makeSlides(() => setShowTip(true)), []);
@@ -125,9 +127,12 @@ export function PromoBanner() {
       )}
 
       <Modal visible={showTip} animationType="slide" onRequestClose={() => setShowTip(false)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+        {/* react-native 코어의 SafeAreaView는 iOS 전용이라 Android에선 여백을 주지 않아
+            "닫기" 버튼이 상태바를 파고들었다. insets는 Modal 바깥(메인 윈도우)에서 읽어야
+            정확하다 — Modal은 별도 네이티브 윈도우라 안쪽에서 재측정하면 0이 나올 수 있다. */}
+        <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
           <CoffeeTipScreen onClose={() => setShowTip(false)} />
-        </SafeAreaView>
+        </View>
       </Modal>
     </View>
   );
