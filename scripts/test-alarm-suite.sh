@@ -149,6 +149,25 @@ done
 grep -q 'android.intent.action.LOCKED_BOOT_COMPLETED' "$MANIFEST" 2>/dev/null || DB_OK=false
 $DB_OK && ok "" || { fail "발화 체인에 directBootAware/LOCKED_BOOT_COMPLETED 누락 — 잠금해제 전 알람 불발"; }
 
+# 중첩 모달 (2026-08-03) — RN <Modal> 안에서 또 다른 모달을 열 때, 그 모달이 자기 트리 밖
+# (형제 위치)에 렌더돼 있으면 iOS는 이미 present된 VC 위로 두 번째 present를 조용히 무시한다.
+# Android는 Dialog로 쌓여서 멀쩡히 뜨기 때문에 Android만 테스트하면 절대 안 걸린다(실제로 놓쳤음:
+# N일 주기/휴식 팝업의 시작일 달력이 iOS에서만 안 떴다). 여는 쪽이 {children} 슬롯으로 품어야 한다.
+printf "  모달 안에서 여는 모달이 형제로 새지 않는지 ... "
+NEST_BAD=""
+for f in $(grep -rl '<Modal' "$ROOT/src" "$ROOT/app" 2>/dev/null); do
+  case "$f" in *.tsx) ;; *) continue ;; esac
+  # 주석({/* ... <Modal> ... */}, // ...)은 빼고 실제 JSX <Modal>이 처음 열리는 줄
+  ML=$(grep -nE '<Modal[ >]' "$f" | grep -vE ':[[:space:]]*(\{?/\*|//|\*)' | head -1 | cut -d: -f1)
+  [ -z "$ML" ] && continue
+  # 그 <Modal> 안쪽에서 다른 모달을 여는 호출. 모달 바깥(폼 본문)에서 여는 건 정상이라 제외된다
+  SL=$(awk -v s="$ML" 'NR>s && /set(Show|Open)[A-Za-z]*\(true\)|set[A-Za-z]*(Visible|Open)\(true\)/ {print NR; exit}' "$f")
+  [ -z "$SL" ] && continue
+  grep -q '{children}' "$f" || NEST_BAD="$NEST_BAD ${f##*/}:$SL"
+done
+[ -z "$NEST_BAD" ] && ok "" \
+  || fail "모달 내부에서 형제 모달을 엶 —$NEST_BAD ({children}로 품지 않으면 iOS에서 안 뜸)"
+
 # Direct Boot 구간에 읽어야 하는 데이터는 device-protected 저장소에 있어야 한다.
 printf "  게이트·원장 device-protected 저장소 ... "
 grep -q "createDeviceProtectedStorageContext" "$NATIVE_DIR/DeviceStorage.kt" 2>/dev/null \
