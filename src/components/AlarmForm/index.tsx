@@ -275,12 +275,23 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
                     sd={form.sd}
                     setShowCal={form.setShowCal}
                     visible={form.showRepeatConfig}
-                    onClose={() => form.setShowRepeatConfig(false)}
+                    // 달력이 떠 있는 동안엔 이 팝업을 닫을 방법이 없어 실제로는 showCal이 남지 않지만,
+                    // 나중에 팝업을 프로그램적으로 닫는 경로가 생겨도 달력 상태가 stale로 남지 않게 함께 내린다
+                    onClose={() => { form.setShowCal(false); form.setShowRepeatConfig(false); }}
                     presetRef={presetRef}
                     dateChipRef={dateChipRef}
                     closeBtnRef={closeBtnRef}
                     onPresetPick={onPresetPick}
-                  />
+                  >
+                    {/* 시작일 달력은 반드시 이 팝업 <Modal>의 자식이어야 한다 —
+                        형제로 두면 모달 두 개가 동시에 present되어 달력이 안 뜬다 */}
+                    <DateModal
+                      sd={form.sd}
+                      setSd={form.setSd}
+                      visible={form.showCal}
+                      onClose={() => form.setShowCal(false)}
+                    />
+                  </CycleRestControls>
                 )}
               </>
             )}
@@ -312,12 +323,16 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
               </TouchableOpacity>
             )}
 
-            <DateModal
-              sd={form.sd}
-              setSd={form.setSd}
-              visible={form.showCal}
-              onClose={() => form.setShowCal(false)}
-            />
+            {/* N일 주기/휴식은 시작일을 팝업 안에서만 고르므로 달력도 그 팝업 안에서 렌더한다(위 참고).
+                여기 것은 그 외 경로(요일/매월/매년/한 번, 근무표 빌더)용 — 인스턴스가 겹치지 않게 배타적으로 마운트. */}
+            {(form.isPatternMode || !isCycleRest) && (
+              <DateModal
+                sd={form.sd}
+                setSd={form.setSd}
+                visible={form.showCal}
+                onClose={() => form.setShowCal(false)}
+              />
+            )}
           </View>
         </ScrollView>
       </View>

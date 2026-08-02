@@ -19,6 +19,9 @@ interface Props {
   dateChipRef?: React.Ref<View>;
   closeBtnRef?: React.Ref<View>;
   onPresetPick?: () => void;
+  // 이 팝업 위에 겹쳐 띄울 모달(시작일 달력) — 반드시 이 <Modal>의 자식 트리 안에 있어야 한다.
+  // 형제로 두면 RN이 두 모달을 동시에 present하려다 iOS에서 조용히 무시되어 달력이 안 뜬다(재현됨).
+  children?: React.ReactNode;
 }
 
 function addDaysMD(sd: string, n: number): string {
@@ -31,7 +34,7 @@ function addDaysMD(sd: string, n: number): string {
 // N일 주기/N일 후 휴식 설정 팝업 — 예전엔 반복방식 카드 바로 아래 폼에 항상 펼쳐져 있었지만,
 // 진짜 RN <Modal>로 바꿔서 다른 반복방식(요일/매월 등)과 섞여 보이지 않는 전용 화면처럼 만들었다
 // (absolute+zIndex 오버레이 방식은 기각됨). DateModal/AddShiftModal과 동일한 모달 컨벤션을 따름.
-export function CycleRestControls({ rm, cd, setCd, rd, setRd, sd, setShowCal, visible, onClose, presetRef, dateChipRef, closeBtnRef, onPresetPick }: Props) {
+export function CycleRestControls({ rm, cd, setCd, rd, setRd, sd, setShowCal, visible, onClose, presetRef, dateChipRef, closeBtnRef, onPresetPick, children }: Props) {
   const s = makeStyles(useColors());
   const [, m, d] = sd.split('-').map(Number);
 
@@ -117,6 +120,8 @@ export function CycleRestControls({ rm, cd, setCd, rd, setRd, sd, setShowCal, vi
           </TouchableOpacity>
         </TouchableOpacity>
       </TouchableOpacity>
+      {/* 오버레이 TouchableOpacity 바깥(형제)에 둔다 — 안에 넣으면 배경 탭 닫기와 터치가 얽힌다 */}
+      {children}
     </Modal>
   );
 }
