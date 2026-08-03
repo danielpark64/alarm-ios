@@ -211,14 +211,20 @@ RAW=$($ADB shell dumpsys alarm 2>/dev/null)
 
 # dumpsys alarm 전문에는 실제 대기 예약 말고도 Removal/Addition history, Top Alarms,
 # Alarm Stats가 함께 나온다. 전문을 grep하면 이미 발화했거나 취소된 항목까지 세어져서
-# "전부 끔 → 0개" 판정이 항상 실패한다. 대기 배치 구간만 잘라서 센다.
+# "전부 끔 → 0개" 판정이 무의미해진다. 대기 예약 구간만 잘라서 센다.
+#
+# ⚠️ 2026-08-03 수정 — 예전엔 "Pending alarm batches:" 헤더를 만나야 구간에 진입했는데,
+# 그 헤더가 없는 기기가 있다(32 = SM-A325N / Android 13에는 아예 없고 RTC_WAKEUP #N 항목이
+# 바로 나열된다). 그 결과 COUNT가 **항상 0**이 되어, 이 스위트에서 가장 중요한 검사인
+# "알람 전부 끔 → 등록 0개"가 실제 상태와 무관하게 늘 통과했다(vacuous pass).
+# 이제 헤더 진입 대신 "이력/통계 섹션이 시작되기 전까지"를 대기 구간으로 본다.
+# 또 이력 항목은 `[tag=...`처럼 대괄호로 시작하므로, 대괄호 없는 tag= 줄만 실제 예약으로 센다.
 PENDING=$(echo "$RAW" | awk '
-  /^[[:space:]]*Pending alarm batches:/ { inb=1; next }
-  /^[[:space:]]*(Pending alarms per uid|Past-due non-wakeup alarms|Pending user blocked|Recent (Wakeup|Alarm) History|Alarm Stats|Top Alarms|Removal history|Addition history|Recent problems|Idle mode state)/ { inb=0 }
-  inb { print }
+  /^[[:space:]]*(App Alarm history|LazyAlarmStore stats|Temporary Quota Reserves|Allow while idle|Top Alarms|Alarm Stats|Alarm manager stats|Recent problems|Removal history|Addition history|Recent (Wakeup|Alarm) History|Pending alarms per uid|Past-due non-wakeup alarms|Pending user blocked|Idle mode state)/ { stop=1 }
+  !stop { print }
 ')
-COUNT=$(echo "$PENDING" | grep -c "com.danielpark.alarmapp/.AlarmReceiver" | tr -d ' ')
-TIMES=$(echo "$PENDING" | grep -A4 "com.danielpark.alarmapp/.AlarmReceiver" | \
+COUNT=$(echo "$PENDING" | grep -c "^[[:space:]]*tag=\*walarm\*:com\.danielpark\.alarmapp/\.AlarmReceiver" | tr -d ' ')
+TIMES=$(echo "$PENDING" | grep -A2 "^[[:space:]]*tag=\*walarm\*:com\.danielpark\.alarmapp/\.AlarmReceiver" | \
   grep -o "origWhen=[0-9-]* [0-9][0-9]:[0-9][0-9]" | sed 's/origWhen=//' | head -5)
 
 info "AlarmReceiver 등록 수: ${COUNT}개"
