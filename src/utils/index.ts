@@ -373,5 +373,8 @@ export const nextAlarmText = (alarms: Alarm[]): string => {
   const isToday = date.getDate()===now.getDate() && date.getMonth()===now.getMonth() && date.getFullYear()===now.getFullYear();
   const dowLabel = DAYS[(date.getDay()+6)%7];
   const dateStr  = isToday ? `오늘` : `${date.getMonth()+1}/${date.getDate()} ${dowLabel}`;
-  return `다음 ${type.icon} ${dateStr} ${pad(alarm.hour)}:${pad(alarm.min)}`;
+  // 시각은 반드시 getNextFireDate가 돌려준 date에서 뽑는다 — 로테이션(pattern) 알람의
+  // alarm.hour/min은 첫 블록 시각으로 고정된 레거시 폴백값이라, 그날 실제 울릴 시각과 다르다.
+  // (AlarmCard는 patternTime으로 이미 고쳤지만 이 헤더 문구가 빠져 있었음)
+  return `다음 ${type.icon} ${dateStr} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };

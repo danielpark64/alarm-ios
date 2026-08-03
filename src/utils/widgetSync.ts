@@ -23,8 +23,9 @@ export async function syncWidget(alarms: Alarm[]) {
     .filter(x => x.date != null)
     .sort((a, b) => a.date!.getTime() - b.date!.getTime())[0];
 
-  const nextAlarm = nextFire
-    ? `${pad(nextFire.alarm.hour)}:${pad(nextFire.alarm.min)}`
+  // 로테이션 알람의 alarm.hour/min은 레거시 폴백값이라 실제 발화 시각과 다르다 — date에서 뽑는다
+  const nextAlarm = nextFire?.date
+    ? `${pad(nextFire.date.getHours())}:${pad(nextFire.date.getMinutes())}`
     : '--:--';
 
   // 오늘 근무조
