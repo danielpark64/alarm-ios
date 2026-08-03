@@ -1,6 +1,7 @@
 import { Platform, NativeModules } from 'react-native';
 import { Alarm } from '../constants';
-import { pad, todayStr, getType, getNextFireDate, shiftForDate, isOffDay, shiftColorMap, alarmsForDate, isWorkAlarm } from './index';
+import { pad, todayStr, getType, getNextFireDate, shiftForDate, isOffDay, shiftColorMap, alarmsForDate, isWorkAlarm, effectiveShift } from './index';
+import { roleLabel } from './workPattern';
 
 const { WidgetModule } = NativeModules;
 
@@ -28,10 +29,17 @@ export async function syncWidget(alarms: Alarm[]) {
     ? `${pad(nextFire.date.getHours())}:${pad(nextFire.date.getMinutes())}`
     : '--:--';
 
+  // 근무조 표시 라벨 — 로테이션 알람이면 그날 세그먼트 기준 "초번 출근"처럼 시간대를 앞에 붙인다.
+  // (AlarmCard의 displayLabel과 같은 규칙. 시간대 정보가 없으면 기존처럼 "출근"/"퇴근"만)
+  const shiftLabelFor = (a: Alarm, ds: string): string => {
+    const info = effectiveShift(a, ds);
+    return info ? roleLabel(info, a.groupRole ?? 'commute') : getType(a.typeId).label;
+  };
+
   // 오늘 근무조
   const todayShift = shiftForDate(alarms, today);
   const isOffToday = isOffDay(alarms, today);
-  const shiftName  = todayShift ? (getType(todayShift.typeId).label) : '--';
+  const shiftName  = todayShift ? shiftLabelFor(todayShift, today) : '--';
   const shiftColor = todayShift ? (colorOf[todayShift.id] ?? '#a29bfe') : '#a29bfe';
 
   // 다음 비번까지 D-day
@@ -61,7 +69,7 @@ export async function syncWidget(alarms: Alarm[]) {
       .slice(0, 2); // 최대 2개
     return {
       date:    ds,
-      shift:   shift ? getType(shift.typeId).label : '',
+      shift:   shift ? shiftLabelFor(shift, ds) : '',
       color:   shift ? (colorOf[shift.id] ?? '#a29bfe') : '',
       isOff:   off,
       isToday: ds === today,
