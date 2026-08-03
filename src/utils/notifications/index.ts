@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { Alarm } from '../../constants';
+import { Alarm, SNOOZE_ENABLED } from '../../constants';
 import { cancelNativeAlarms, syncActiveNativeAlarms } from './android';
 import { scheduleAlarmTriggers, scheduleGroupReps } from './core';
 
@@ -96,18 +96,32 @@ export async function scheduleAlarm(alarm: Alarm) {
   await scheduleGroupReps([alarm]);
 }
 
-// iOS: 스누즈 없음 / Android: 스누즈 있음
+// 알림(폰 배너/잠금화면 + 워치로 브릿지되는 것)의 액션 버튼 구성.
+//
+// ⚠️ 워치를 직접 테스트할 수단이 없으므로(보유 기기 없음) 여기 구성이 곧 워치 동작을 결정한다.
+// 폰-워치 표준 Bluetooth 알림 브릿지는 이 알림을 그대로 워치에 띄우고, 워치에서 누른 액션이
+// 그대로 이 앱의 응답 리스너로 돌아온다. 즉 아래 버튼 목록 = 워치에서 사용자가 보게 될 버튼.
 export async function registerNotificationCategories() {
+  // 인앱 울림 화면과 알림/워치의 버튼 구성은 반드시 일치해야 한다 — 앱에선 스누즈를 없앴는데
+  // 알림에만 '5분 후'가 남아 있으면, 특히 액션 버튼이 크게 보이는 워치에서 사용자가 그 버튼을
+  // 누르게 된다. 그 경로는 Expo 예약만 걸고 네이티브 AlarmManager는 안 걸어서 Doze 구간에
+  // 들어가면 스누즈가 안 울린다 — 앱에서 제거한 기능이 워치에서만 살아나 가장 약한 경로로
+  // 동작하는 셈이라, SNOOZE_ENABLED와 묶어둔다.
+  const actions = [
+    { identifier: 'stop', buttonTitle: '알람 끄기', options: { isDestructive: false, isAuthenticationRequired: false } },
+    ...(SNOOZE_ENABLED
+      ? [{ identifier: 'snooze', buttonTitle: '5분 후', options: { isDestructive: false, isAuthenticationRequired: false } }]
+      : []),
+  ];
+
   if (Platform.OS === 'ios') {
     // customDismissAction: 워치/배너에서 그냥 닫기(스와이프 등)만 해도 응답 리스너가 호출되도록 함.
-    // 꺼져 있으면(기본값) 단순 닫기는 이벤트가 안 와서 +1분/+2분 재알림 취소가 누락됨.
-    await Notifications.setNotificationCategoryAsync('alarm', [
-      { identifier: 'stop', buttonTitle: '알람 끄기', options: { isDestructive: false, isAuthenticationRequired: false } },
-    ], { customDismissAction: true });
+    // 꺼져 있으면(기본값) 단순 닫기는 이벤트가 안 와서 +1분/+2분 재알림 취소가 누락된다.
+    // 워치에서의 "닫기"는 커스텀 액션이 아니라 시스템 기본 닫기인 경우가 많아 이 옵션이 필수.
+    await Notifications.setNotificationCategoryAsync('alarm', actions, { customDismissAction: true });
   } else {
-    await Notifications.setNotificationCategoryAsync('alarm', [
-      { identifier: 'stop',   buttonTitle: '알람 끄기', options: { isDestructive: false, isAuthenticationRequired: false } },
-      { identifier: 'snooze', buttonTitle: '5분 후',    options: { isDestructive: false, isAuthenticationRequired: false } },
-    ]);
+    // Android는 customDismissAction 옵션이 없다. 대신 네이티브 알림이 setOngoing(true)이라
+    // 스와이프로 지워지지 않아, 끄기를 누르지 않고 알림만 치우는 경로 자체가 막혀 있다.
+    await Notifications.setNotificationCategoryAsync('alarm', actions);
   }
 }
