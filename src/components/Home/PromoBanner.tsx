@@ -19,7 +19,7 @@ const makeSlides = (openTip: () => void) => [
     iconBg: 'rgba(162,155,254,0.18)',
     boxBg: 'rgba(162,155,254,0.08)',
     boxBorder: 'rgba(162,155,254,0.25)',
-    onPress: () => Linking.openURL('https://www.youtube.com/@susumusic_ai'),
+    onPress: () => Linking.openURL('https://www.youtube.com/@music_susu'),
   },
   {
     key: 'coffee',
