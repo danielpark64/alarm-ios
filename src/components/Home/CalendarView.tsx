@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { View, FlatList, TouchableOpacity, Modal, StyleSheet, useWindowDimensions, NativeSyntheticEvent, NativeScrollEvent, LayoutChangeEvent } from 'react-native';
 import { Text } from '../common/AppText';
-import { Alarm, DAYS } from '../../constants';
+import { Alarm, DAYS, DAYS_DISPLAY } from '../../constants';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
 import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, shiftForDate, isOffDay, shiftColorMap, shiftPeriodLabel, shiftPeriodColor, effectiveShift, effectiveTime, lunarDateText, lunarShortText } from '../../utils';
@@ -51,8 +51,8 @@ function buildDayMap(alarms: Alarm[], year: number, month: number): Record<strin
 }
 
 function buildCells(year: number, month: number): (number|null)[] {
-  const firstDow = new Date(year, month, 1).getDay();
-  const offset = (firstDow + 6) % 7;
+  // getDay()가 이미 0=일이라 그대로 offset으로 쓴다 — 일요일이 첫 칸.
+  const offset = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month+1, 0).getDate();
   const cells: (number|null)[] = [];
   for (let i=0; i<offset; i++) cells.push(null);
@@ -80,7 +80,7 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, colorOf, 
         if (!d) return <View key={i} style={[cv.cell, { height: cellH }]}/>;
         const ds = `${year}-${pad(month+1)}-${pad(d)}`;
         const isToday = ds === today;
-        const dow = (offset + d - 1) % 7;
+        const dow = (offset + d - 1) % 7; // 0=일 … 6=토 (표시 체계)
         const info = dayMap[ds];
         const chips = info.alarms.filter(a => !isWorkAlarm(a) && !a.skips?.includes(ds));
         // 사용자가 근무 시간대(초/중/말/기타)를 직접 지정했으면 고정색으로 눈에 띄게, 아니면 기존 시간순 자동 배색.
@@ -106,7 +106,7 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, colorOf, 
           >
             <Text style={[
               cv.dayNum,
-              (dow >= 5 || holiday) && {color:'#e07070'},
+              (dow === 0 || dow === 6 || holiday) && {color:'#e07070'},
               isToday && cv.dayNumToday,
             ]}>{d}</Text>
             {showLunar && (
@@ -259,9 +259,9 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
 
         {/* 요일 헤더 — 달이 바뀌어도 고정 */}
         <View style={cv.grid}>
-          {DAYS.map((d,i) => (
+          {DAYS_DISPLAY.map((d,i) => (
             <View key={i} style={cv.headCell}>
-              <Text style={[cv.headText, i>=5 && {color:'#e07070'}]}>{d}</Text>
+              <Text style={[cv.headText, (i === 0 || i === 6) && {color:'#e07070'}]}>{d}</Text>
             </View>
           ))}
         </View>

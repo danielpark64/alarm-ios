@@ -36,7 +36,17 @@ export const REPEAT = [
   { id: 'monthly',  label: '매월' },
   { id: 'yearly',   label: '매년' },
 ] as const;
+// ⚠️ DAYS의 배열 인덱스가 곧 저장 포맷이다(Alarm.days, 0=월 … 6=일).
+// 이 값이 AsyncStorage에 그대로 남고 Expo weekday·네이티브 Calendar 변환과
+// 슬롯 ID 계산(weekdaySlotId)까지 쓰므로, 순서를 바꾸면 기존 사용자의 요일 알람이
+// 하루씩 밀린다. 화면에 일요일을 먼저 보여주고 싶으면 아래 DAYS_DISPLAY를 쓸 것.
 export const DAYS = ['월','화','수','목','금','토','일'];
+
+// 화면 표시 전용 — 한국 일반 달력처럼 일요일이 첫 칸(0=일 … 6=토).
+// 저장값과 섞이지 않도록 반드시 아래 변환 함수를 거쳐서 쓴다.
+export const DAYS_DISPLAY = ['일','월','화','수','목','금','토'];
+export const displayToStore = (i: number) => (i + 6) % 7; // 일0→6, 월1→0
+export const storeToDisplay = (d: number) => (d + 1) % 7; // 월0→1, 일6→0
 export const SOUNDS = [
   { id: 'none',    label: '없음', icon: '🔇' },
   { id: 'default', label: '소리', icon: '🔔' },

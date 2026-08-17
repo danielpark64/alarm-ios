@@ -53,9 +53,11 @@ export async function syncWidget(alarms: Alarm[]) {
     }
   }
 
-  // 이번 주 일정 (월~일, 이번 주 기준)
+  // 이번 주 일정 (일~토, 이번 주 기준)
+  // ⚠️ 이 배열의 순서는 WidgetListService.kt의 dayNames와 위치로만 맞춰진다.
+  //    한쪽만 바꾸면 위젯 요일 라벨이 전부 어긋나므로 반드시 같은 빌드로 배포할 것.
   const todayDate = new Date(today);
-  const dow = (todayDate.getDay() + 6) % 7; // 0=월 6=일
+  const dow = todayDate.getDay(); // 0=일 6=토
   const weekSchedule = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(todayDate);
     d.setDate(d.getDate() - dow + i);

@@ -26,7 +26,8 @@ class WidgetListFactory(private val ctx: Context) : RemoteViewsService.RemoteVie
         val json = prefs.getString("widgetData", null) ?: return
         val parsed = runCatching { JSONObject(json) }.getOrNull() ?: return
         val weekData = parsed.optJSONArray("weekSchedule") ?: return
-        val dayNames = listOf("월", "화", "수", "목", "금", "토", "일")
+        // widgetSync.ts의 weekSchedule 배열과 위치로만 맞춰지는 계약 — 순서를 바꾸려면 양쪽 동시에.
+        val dayNames = listOf("일", "월", "화", "수", "목", "금", "토")
         for (i in 0 until minOf(weekData.length(), 7)) {
             val day = weekData.optJSONObject(i) ?: continue
             val isOff   = day.optBoolean("isOff", false)
