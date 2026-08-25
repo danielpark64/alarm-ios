@@ -23,6 +23,15 @@ export const shiftPeriodColor = (a: Alarm, resolved?: { shift: ShiftPeriod; shif
   if (r && r.shift !== 'none') return SHIFTS.find(s => s.id === r.shift)!.color;
   return null;
 };
+
+// 달력 배지용 — 색(hex) 대신 **시간대 id**를 돌려준다.
+// 색을 여기서 정하면 테마별 분기를 할 수 없어서(라이트에서 대비 2.2:1까지 떨어졌던 원인),
+// 화면단이 C.shift[id]에서 배지 배경/글자 한 쌍을 꺼내 쓰도록 id만 넘긴다.
+export const shiftPeriodId = (a: Alarm, resolved?: { shift: ShiftPeriod; shiftCustom?: string } | null): ShiftPeriod | null => {
+  const r = resolved !== undefined ? resolved : (a.shift && a.shift !== 'none' ? { shift: a.shift, shiftCustom: a.shiftCustom } : null);
+  if (r && r.shift !== 'none') return r.shift;
+  return null;
+};
 // 라벨 입력칸 맨 앞에 붙는 근무 시간대 접두어. 해당사항없음이면 빈 문자열(기존과 동일).
 // 기타는 shiftCustom 텍스트(비어있으면 접두어 없음 — 사용자가 아직 입력 전이므로 라벨을 건드리지 않음)
 export const shiftPrefixFor = (shift: ShiftPeriod, shiftCustom?: string): string => {
@@ -293,6 +302,16 @@ export function shiftColorMap(alarms: Alarm[]): Record<number, string> {
   const work = alarms.filter(isWorkAlarm).sort((a,b) => a.hour-b.hour || a.min-b.min || a.id-b.id);
   const map: Record<number, string> = {};
   work.forEach((a, i) => { map[a.id] = SHIFT_PALETTE[i % SHIFT_PALETTE.length]; });
+  return map;
+}
+
+// 달력 배지용 자동 배색 — 위와 같은 이유로 색이 아니라 **팔레트 인덱스**를 돌려준다.
+// 화면단이 C.shiftAuto[idx]에서 테마에 맞는 배지 톤을 꺼낸다.
+// (shiftColorMap은 위젯이 hex를 그대로 네이티브로 넘기므로 건드리지 않는다)
+export function shiftToneIndexMap(alarms: Alarm[]): Record<number, number> {
+  const work = alarms.filter(isWorkAlarm).sort((a,b) => a.hour-b.hour || a.min-b.min || a.id-b.id);
+  const map: Record<number, number> = {};
+  work.forEach((a, i) => { map[a.id] = i; });
   return map;
 }
 

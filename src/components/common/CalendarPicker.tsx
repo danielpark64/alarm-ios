@@ -117,7 +117,7 @@ export function CalendarPicker({
       <View style={cal.grid}>
         {DAYS_DISPLAY.map((d, i) => (
           <View key={i} style={cal.headCell}>
-            <Text style={[cal.headText, (i === 0 || i === 6) && { color: '#e07070' }]}>{d}</Text>
+            <Text style={[cal.headText, (i === 0 || i === 6) && { color: C.weekendFg }]}>{d}</Text>
           </View>
         ))}
         {cells.map((d, i) => {
@@ -136,7 +136,7 @@ export function CalendarPicker({
             >
               <Text style={[
                 cal.cellText,
-                (dow === 0 || dow === 6) && { color: '#e07070' },
+                (dow === 0 || dow === 6) && { color: C.weekendFg },
                 isPast && { color: C.border2 },
                 isSel && { color: C.txt, fontWeight: '900' },
                 isToday && !isSel && { fontWeight: '900', color: C.accent },

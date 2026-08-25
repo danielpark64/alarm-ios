@@ -4,9 +4,10 @@ import { Text } from '../common/AppText';
 import { Alarm, DAYS, DAYS_DISPLAY } from '../../constants';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
-import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, shiftForDate, isOffDay, shiftColorMap, shiftPeriodLabel, shiftPeriodColor, effectiveShift, effectiveTime, lunarDateText, lunarShortText } from '../../utils';
+import { useFontScale } from '../../hooks/useFontScale';
+import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, shiftForDate, isOffDay, shiftToneIndexMap, shiftPeriodLabel, shiftPeriodId, effectiveShift, effectiveTime, lunarDateText, lunarShortText } from '../../utils';
 import { roleLabel } from '../../utils/workPattern';
-import { getHoliday } from '../../constants/holidays';
+import { getHoliday, getHolidayShort } from '../../constants/holidays';
 import { getSolarTerm } from '../../constants/solarTerms';
 
 // 달력 화면 — 근무 알람(주기+출근/퇴근)은 배경색으로 근무조를 표시하고,
@@ -63,13 +64,16 @@ function buildCells(year: number, month: number): (number|null)[] {
 
 interface MonthGridProps {
   year: number; month: number; alarms: Alarm[];
-  colorOf: Record<number, string>; today: string; showLunar: boolean; width: number;
+  // 배지 톤을 고르는 데 필요 — 색을 스타일시트에 못 박으면 테마 분기가 안 되기 때문에
+  // 팔레트와 자동배색 인덱스를 그대로 내려받아 셀에서 고른다.
+  C: Palette; toneIdxOf: Record<number, number>; density: number; cellScale: number;
+  today: string; showLunar: boolean; width: number;
   cv: ReturnType<typeof makeStyles>;
   cellH: number; itemHeight: number;
   onSelectDate: (ds: string) => void;
 }
 
-const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, colorOf, today, showLunar, width, cv, cellH, itemHeight, onSelectDate }: MonthGridProps) {
+const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneIdxOf, density, cellScale, today, showLunar, width, cv, cellH, itemHeight, onSelectDate }: MonthGridProps) {
   const cells = useMemo(() => buildCells(year, month), [year, month]);
   const dayMap = useMemo(() => buildDayMap(alarms, year, month), [alarms, year, month]);
   const offset = cells.findIndex(c => c !== null);
@@ -86,9 +90,25 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, colorOf, 
         // 사용자가 근무 시간대(초/중/말/기타)를 직접 지정했으면 고정색으로 눈에 띄게, 아니면 기존 시간순 자동 배색.
         // 로테이션(rm==='pattern') 알람은 날짜마다 시간대가 달라서 effectiveShift로 그날 세그먼트를 직접 조회.
         const resolvedShift = info.shift ? effectiveShift(info.shift, ds) : null;
-        const explicitShiftColor = resolvedShift ? shiftPeriodColor(info.shift!, resolvedShift) : null;
-        const sc = explicitShiftColor ?? (info.shift ? colorOf[info.shift.id] : null);
+        // 색 하나가 아니라 배지 톤(배경+글자) 한 쌍을 고른다 — 명시 시간대가 있으면 고정 톤,
+        // 없으면 시각순 자동 배색 톤. 둘 다 테마별 값이라 라이트에서도 대비가 유지된다.
+        const explicitId = resolvedShift ? shiftPeriodId(info.shift!, resolvedShift) : null;
+        const tone = explicitId
+          ? C.shift[explicitId]
+          : (info.shift ? C.shiftAuto[(toneIdxOf[info.shift.id] ?? 0) % C.shiftAuto.length] : null);
         const holiday = getHoliday(ds);
+        // 칸마다 들어가는 줄 수가 다르다(공휴일은 한 달에 한두 날뿐). 전체를 일괄로 줄이면
+        // 대부분의 여유 있는 칸까지 손해를 보므로, **그 칸에 실제로 그려질 요소만** 세서
+        // 날짜 아래 남는 높이에 맞춘다. 날짜 숫자는 칸마다 크기가 달라지면 어색하므로 제외.
+        const nChips = Math.min(chips.length, 2) + (chips.length > 2 ? 1 : 0);
+        // ⚠️ AppText가 style.fontSize에 설정 배율(작게 0.88 / 크게 1.30)을 한 번 더 곱한다.
+        //    여기서 그걸 빼먹으면 "크게"에서 실제 글자가 30% 크게 렌더돼 칸을 넘긴다.
+        const eff = density * cellScale;
+        const subNeed = ((showLunar ? 9.5 : 0) + (holiday ? 9.5 : 0)
+                         + (info.shift && resolvedShift ? 11.5 : 0)
+                         + (info.off ? 14 : 0) + nChips * 9.5) * 1.7 * eff;
+        const availH = cellH - 8 - 15.5 * eff * 1.55;
+        const sd = subNeed > 0 ? Math.max(0.55, Math.min(1, availH / subNeed)) : 1;
         // 절기는 공휴일과 같은 슬롯을 재사용 — 겹치는 날엔 공휴일을 우선 보여주고 그 아래 절기를 덧붙인다.
         const solarTerm = showLunar ? getSolarTerm(ds) : undefined;
 
@@ -100,40 +120,56 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, colorOf, 
             style={[
               cv.cell,
               { height: cellH },
-              info.off          && cv.cellOff,
-              isToday           && cv.cellToday,
+              // 비번 점선과 "오늘" 표시가 서로 덮지 않도록, 오늘은 셀 테두리가 아니라
+              // 날짜 숫자의 원형 배지로 표시한다(아래 dayNumToday).
+              info.off && cv.cellOff,
             ]}
           >
             <Text style={[
               cv.dayNum,
-              (dow === 0 || dow === 6 || holiday) && {color:'#e07070'},
+              { fontSize: 15.5 * density },
+              (dow === 0 || dow === 6 || holiday) && { color: C.weekendFg },
+              // 비번은 파란 라인 박스 — 주말·공휴일이면 그쪽 색(빨강/골드)이 우선한다.
+              info.off && !(dow === 0 || dow === 6 || holiday) && { color: C.offFg },
               isToday && cv.dayNumToday,
             ]}>{d}</Text>
             {showLunar && (
               // 절기/삼복이 있는 날은 칸이 좁으니 음력 날짜 대신 그 자리에 절기를 보여준다.
-              <Text style={cv.lunarLabel} numberOfLines={1}>{solarTerm ?? lunarShortText(ds)}</Text>
+              <Text style={[cv.lunarLabel, { fontSize: 9.5 * density * sd }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{solarTerm ?? lunarShortText(ds)}</Text>
             )}
             {holiday && (
-              <Text style={cv.holidayLabel} numberOfLines={1}>{holiday}</Text>
+              <Text style={[cv.holidayLabel, { fontSize: 9.5 * density * sd }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>{getHolidayShort(ds)}</Text>
             )}
-            {info.shift && resolvedShift && (
-              <View style={cv.shiftTagRow}>
-                <View style={[cv.shiftDot, { backgroundColor: sc! }]} />
-                <Text style={[cv.shiftLabel, {color: sc!}]} numberOfLines={1}>
-                  {shiftPeriodLabel(info.shift, resolvedShift)}
-                </Text>
-              </View>
+            {info.shift && resolvedShift && tone && (
+              // 7px 점 + 컬러 글자였던 것을 배지로 바꿨다. "면"이 생기면 같은 글자 크기라도
+              // 노안에서 인지가 훨씬 쉽고, 배지 안에서 7:1 대비를 확보할 수 있다.
+              <Text
+                style={[cv.shiftLabel, { color: tone.fg, backgroundColor: tone.bg, fontSize: 11.5 * density * sd }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
+                {shiftPeriodLabel(info.shift, resolvedShift)}
+              </Text>
             )}
             {info.off && (
-              <Text style={cv.offLabel}>비번</Text>
+              // numberOfLines가 없으면 "크게" 설정에서 "비/번"으로 쪼개져 셀 밖으로 넘친다.
+              // 세로 스크롤을 넣지 않는 이상 칸은 화면 높이에 묶이므로, 넘칠 때는 글자가
+              // 스스로 줄어들게 해서 레이아웃이 깨지지 않도록 한다.
+              <Text style={[cv.offLabel, { fontSize: 14 * density * sd }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>비번</Text>
             )}
             {chips.slice(0,2).map((al, ai) => {
               const alType = getType(al.typeId);
+              const chipTone = C.chip[al.typeId] ?? C.chip.custom;
               return (
                 <Text
                   key={ai}
-                  style={[cv.alarmChip, { color: alType.color, backgroundColor: alType.color + '22', borderColor: alType.color + '55', borderWidth: 0.5 }]}
+                  style={[cv.alarmChip, { fontSize: 9.5 * density * sd },
+                          // 비교대 사용자에게는 칩이 달력의 유일한 정보라 종류별로 구분돼야 한다
+                          chipTone && { color: chipTone.fg, backgroundColor: chipTone.bg }]}
                   numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
                 >{al.label}</Text>
               );
             })}
@@ -163,6 +199,9 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
   const [showLunar, setShowLunar] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
   const listRef = useRef<FlatList>(null);
+  // AppText와 같은 배율표 — 칸 높이를 글자 배율에 맞춰 키우기 위해 읽는다
+  const { fontScale } = useFontScale();
+  const cellScale = fontScale === 'large' ? 1.30 : fontScale === 'small' ? 0.9 : 1;
 
   // 달력 칸 영역에 실제로 할당된 높이를 측정해서 칸 크기를 역산 — 폰/태블릿 등 화면비가 달라도
   // 한 달(6주)이 항상 한 화면 안에 들어오게 한다. 측정 전에는 대체값으로 렌더링.
@@ -171,9 +210,21 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
     const h = e.nativeEvent.layout.height;
     setGridAreaH(prev => (Math.abs(prev - h) > 1 ? h : prev));
   }, []);
+  // 글자크기 설정을 칸 높이에도 반영한다. 예전엔 상한이 90으로 고정이라 "크게"로 바꿔도
+  // 칸은 1px도 안 커져서 내용이 칸 밖으로 넘쳐 잘렸다(Android는 removeClippedSubviews 때문에
+  // 아예 안 그려짐). 상한만 배율만큼 풀어 "화면에 남는 여백을 먼저 쓰게" 한다 — 세로 스크롤은
+  // 넣지 않으므로 gridAreaH를 넘지는 않는다.
   const cellH = gridAreaH > 0
-    ? Math.max(40, Math.min(90, Math.floor(gridAreaH / ROWS) - CELL_MB))
+    ? Math.max(40, Math.min(Math.round(90 * cellScale), Math.floor(gridAreaH / ROWS) - CELL_MB))
     : FALLBACK_CELL_H;
+  // 칸에 실제로 들어가야 하는 높이를 추정해 넘치면 그 비율만큼 글자를 줄인다.
+  // 음력을 켜면 줄이 하나 더 늘어 바로 넘치는데, 스크롤도 정보 삭제도 못 하므로
+  // "들어갈 만큼만 키운다"가 유일한 해법이다. 여유가 있으면 1(=설정한 크기 그대로).
+  const density = useMemo(() => {
+    const lineH = 1.7;                     // 폰트 대비 실제 차지하는 줄 높이 비율(여백 포함)
+    const need = (15.5 + 14 + (showLunar ? 9.5 : 0)) * lineH * cellScale + 8; // +패딩
+    return Math.max(0.62, Math.min(1, cellH / need));
+  }, [cellH, showLunar, cellScale]);
   const itemHeight = gridAreaH > 0 ? gridAreaH : ROWS * (FALLBACK_CELL_H + CELL_MB);
 
   const indexToYearMonth = useCallback((idx: number) => {
@@ -215,7 +266,8 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
   };
 
   const dayMap = useMemo(() => buildDayMap(alarms, year, month), [alarms, year, month]);
-  const colorOf = useMemo(() => shiftColorMap(alarms), [alarms]);
+  // 자동 배색은 색이 아니라 인덱스로 받아, 셀에서 테마별 배지 톤(C.shiftAuto)을 꺼내 쓴다
+  const toneIdxOf = useMemo(() => shiftToneIndexMap(alarms), [alarms]);
 
   const selInfo = selDate ? dayMap[selDate] : null;
   const selDateObj = selDate ? new Date(selDate) : null;
@@ -225,8 +277,12 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
   const selShiftLabel = selInfo?.shift
     ? (selResolvedShift ? shiftPeriodLabel(selInfo.shift, selResolvedShift) : (selInfo.shift.label || getType(selInfo.shift.typeId).label))
     : '';
-  const selShiftColor = selInfo?.shift
-    ? ((selResolvedShift ? shiftPeriodColor(selInfo.shift, selResolvedShift) : null) ?? colorOf[selInfo.shift.id])
+  // 팝업도 셀과 같은 배지 톤을 쓴다 — 달력에서 보던 색과 팝업 색이 다르면 같은 근무조로 안 읽힌다
+  const selShiftTone = selInfo?.shift
+    ? (() => {
+        const id = selResolvedShift ? shiftPeriodId(selInfo.shift, selResolvedShift) : null;
+        return id ? C.shift[id] : C.shiftAuto[(toneIdxOf[selInfo.shift.id] ?? 0) % C.shiftAuto.length];
+      })()
     : null;
 
   const pages = useMemo(() => Array.from({ length: RANGE * 2 + 1 }, (_, i) => i), []);
@@ -261,7 +317,7 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
         <View style={cv.grid}>
           {DAYS_DISPLAY.map((d,i) => (
             <View key={i} style={cv.headCell}>
-              <Text style={[cv.headText, (i === 0 || i === 6) && {color:'#e07070'}]}>{d}</Text>
+              <Text style={[cv.headText, (i === 0 || i === 6) && { color: C.weekendFg }]}>{d}</Text>
             </View>
           ))}
         </View>
@@ -277,7 +333,7 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
           keyExtractor={(i) => String(i)}
           renderItem={({ item }) => {
             const { year: y, month: m } = indexToYearMonth(item);
-            return <MonthGrid year={y} month={m} alarms={alarms} colorOf={colorOf} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} itemHeight={itemHeight} onSelectDate={setSelDate} />;
+            return <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} itemHeight={itemHeight} onSelectDate={setSelDate} />;
           }}
           getItemLayout={(_, index) => ({ length: winWidth, offset: winWidth * index, index })}
           initialScrollIndex={RANGE}
@@ -355,9 +411,9 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
                 <Text style={cv.modalHolidayText}>{getSolarTerm(selDate)}</Text>
               </View>
             )}
-            {selInfo?.shift && selShiftColor && (
-              <View style={[cv.modalShiftRow, {backgroundColor: selShiftColor + '22'}]}>
-                <Text style={[cv.modalShiftText, {color: selShiftColor}]}>
+            {selInfo?.shift && selShiftTone && (
+              <View style={[cv.modalShiftRow, {backgroundColor: selShiftTone.bg}]}>
+                <Text style={[cv.modalShiftText, {color: selShiftTone.fg}]}>
                   {selShiftLabel} 근무
                 </Text>
               </View>
@@ -470,39 +526,55 @@ function makeStyles(C: Palette) {
     yearBtnTextActive:{ color:'#fff', fontWeight:'900' },
     grid:        { flexDirection:'row', flexWrap:'wrap' },
     headCell:    { width:'14.28%', alignItems:'center', paddingVertical:3 },
-    headText:    { fontSize:11, fontWeight:'700', color:C.txt3 },
-    cell:        { width:'14.28%', marginBottom:CELL_MB, padding:2, borderRadius:8 },
-    // 비번 = "달력의 빨간 날" — 다른 셀은 전부 테두리가 없으니, 비번만 유일한 점선 테두리 패턴으로 색 없이도 눈에 띔.
-    // 배경은 아주 옅게(5%)만 남겨서 색으로 훑어볼 때도 살짝 도움이 되게.
-    cellOff:     { borderWidth:2.5, borderStyle:'dashed', borderColor:'#e05252', backgroundColor:'rgba(224,82,82,0.05)' },
-    cellToday:   { borderWidth:1.5, borderStyle:'solid', borderColor:C.accent },
-    dayNum:      { fontSize:12, fontWeight:'700', color:C.txt, marginBottom:1, textAlign:'center' },
-    dayNumToday: { color:C.accent, fontWeight:'900' },
-    lunarLabel:  { fontSize:9, fontWeight:'600', color:C.txt3, textAlign:'center', marginTop:-2, marginBottom:1 },
-    // 공휴일 이름표 — 비번(빨강)과 헷갈리지 않게 골드 계열로 구분
-    holidayLabel:{ fontSize:9, fontWeight:'800', color:'#e0a44d', textAlign:'center', marginBottom:1 },
-    // 근무 시간대는 셀 전체가 아니라 작은 점+글자 태그로만 — 비번과 시각적으로 경쟁하지 않도록 낮춰서 위계를 분리
-    shiftTagRow: { flexDirection:'row', alignItems:'center', justifyContent:'center', gap:3, marginBottom:1 },
-    shiftDot:    { width:7, height:7, borderRadius:3.5 },
-    shiftLabel:  { fontSize:11.5, fontWeight:'800', textAlign:'center' },
-    // 비번은 유일하게 점선 테두리인 패턴 자체로 눈에 띄게 — 배경은 아주 옅게(5%)만 남기고 글자를 굵고 진하게
-    offLabel:    { fontSize:12, fontWeight:'900', color:'#e05252', textAlign:'center', marginBottom:1 },
-    alarmChip:   { fontSize:9, fontWeight:'700', color:C.accent2, backgroundColor:'rgba(108,92,231,0.18)', borderRadius:4, paddingHorizontal:3, paddingVertical:1, marginBottom:1 },
-    moreChip:    { fontSize:9, color:C.txt3, fontWeight:'700', textAlign:'center' },
+    headText:    { fontSize:12.5, fontWeight:'800', color:C.txt2 },
+    // overflow:hidden이 없으면 칸 내용이 아래 행 날짜 위로 올라탄다(음력 켜면 바로 재현됨).
+    // 세로 스크롤을 넣지 않는 이상 칸 높이는 화면에 묶이므로, 넘치는 경우를 구조적으로 막아둔다.
+    cell:        { width:'14.28%', marginBottom:CELL_MB, padding:2, borderRadius:8, overflow:'hidden' },
+    // 비번 = 파란 2px 라인 박스(시안 4b/4d). 다른 셀은 전부 테두리가 없으니 이 테두리 하나로
+    // "쉬는 날"이 한눈에 구분된다. 배경은 옅은 파란 틴트로 면도 살짝 보이게.
+    cellOff:     { backgroundColor:C.offCellBg, borderWidth:2, borderColor:C.offBorder },
+    dayNum:      { fontSize:15.5, fontWeight:'800', color:C.txt, marginBottom:1, textAlign:'center' },
+    // 오늘 = 날짜 숫자만 원형으로 채운다. 셀 테두리로 표시하면 비번 점선을 덮어버려
+    // "오늘이면서 비번인 날"에 비번 표시가 사라지는 문제가 있었다.
+    dayNumToday: { color:C.todayFg, fontWeight:'900', backgroundColor:C.todayBg,
+                   borderRadius:11, overflow:'hidden', paddingHorizontal:5 },
+    lunarLabel:  { fontSize:10, fontWeight:'600', color:C.txt3, textAlign:'center', marginTop:-1, marginBottom:1 },
+    // 공휴일 이름표 — 비번(빨강)과 헷갈리지 않게 골드 계열. 라이트에서 1.78:1까지 떨어지던 것을
+    // 배지로 바꿔 6.4:1 확보.
+    // 공휴일은 위계상 가장 낮다 — 배지를 빼고 작은 글자로. 셀 폭을 채우지 않아 "글자 벽" 느낌이 줄어든다.
+    holidayLabel:{ fontSize:9.5, fontWeight:'700', color:C.holidayFg,
+                   textAlign:'center', marginBottom:0 },
+    // 근무 시간대 — 색 글자에서 배지로. 색만이 유일한 단서였던 것을 "면 + 글자"로 바꿔
+    // 노안·색약에서도 훑어보기가 가능해졌다. 배경/글자색은 셀에서 테마별 톤을 인라인으로 주입.
+    // 세로 공간이 늘지 않도록 paddingVertical은 0으로 두고 marginBottom만 유지한다.
+    // 근무조는 셀 폭을 다 채우는 띠가 아니라 **글자 폭에 맞는 알약**. 셀마다 폭이 달라지면서
+    // 리듬이 생겨, 전부 같은 크기 배지가 늘어서던 "글자 벽"이 풀린다.
+    shiftLabel:  { fontSize:11.5, fontWeight:'700', textAlign:'center', borderRadius:99,
+                   overflow:'hidden', paddingHorizontal:6, marginBottom:1, alignSelf:'center' },
+    // 비번 라벨은 셀 테두리와 같은 파란색(C.offFg) — 별도 배경 없이 글자만.
+    offLabel:    { fontSize:14, fontWeight:'900', color:C.offFg,
+                   textAlign:'center', marginBottom:1, letterSpacing:1 },
+    // 알람 칩 — 알람 종류별 원색 + 13% 알파 배경이었으나, 그 알파가 양 극단 배경에서
+    // 렌더되지 않아 9px 글자만 남았다. 테마 토큰(중성 회색)으로 바꿔 대비를 8:1대로 올림.
+    // 알람 칩은 위계 최하단 — 근무조 알약보다 작고 옅게, 폭도 글자에 맞춰서
+    alarmChip:   { fontSize:9.5, fontWeight:'600', color:C.chipFg, backgroundColor:C.chipBg,
+                   borderRadius:99, paddingHorizontal:5, marginBottom:1,
+                   overflow:'hidden', textAlign:'center', alignSelf:'center' },
+    moreChip:    { fontSize:9.5, color:C.txt3, fontWeight:'700', textAlign:'center' },
     modalBack:   { flex:1, backgroundColor:'rgba(0,0,0,0.55)', justifyContent:'center', padding:28 },
     modalCard:   { backgroundColor:C.bg2, borderRadius:20, padding:20, borderWidth:1, borderColor:C.border },
     modalTitle:  { fontSize:19, fontWeight:'800', color:C.txt, textAlign:'center' },
     modalLunar:  { fontSize:12, fontWeight:'600', color:C.txt3, textAlign:'center', marginBottom:12 },
-    modalHolidayRow:{ borderRadius:12, paddingVertical:6, paddingHorizontal:12, marginBottom:8, alignItems:'center', backgroundColor:'rgba(224,164,77,0.14)' },
-    modalHolidayText:{ fontSize:13, fontWeight:'800', color:'#e0a44d' },
+    modalHolidayRow:{ borderRadius:12, paddingVertical:6, paddingHorizontal:12, marginBottom:8, alignItems:'center', backgroundColor:C.holidayBg },
+    modalHolidayText:{ fontSize:13.5, fontWeight:'800', color:C.holidayFg },
     modalShiftRow:{ borderRadius:12, paddingVertical:8, paddingHorizontal:12, marginBottom:10, alignItems:'center' },
     modalShiftText:{ fontSize:15, fontWeight:'800' },
-    modalOffRow: { borderRadius:12, paddingVertical:8, paddingHorizontal:12, marginBottom:10, alignItems:'center', borderWidth:1.8, borderStyle:'dashed', borderColor:'#e05252', backgroundColor:'rgba(224,82,82,0.26)' },
-    modalOffText:{ fontSize:15, fontWeight:'800', color:'#e05252' },
+    modalOffRow: { borderRadius:12, paddingVertical:8, paddingHorizontal:12, marginBottom:10, alignItems:'center', borderWidth:2, borderColor:C.offBorder, backgroundColor:C.offBg },
+    modalOffText:{ fontSize:15.5, fontWeight:'800', color:C.offFg },
     modalAlarmRow:{ flexDirection:'row', alignItems:'center', gap:10, paddingVertical:12, borderBottomWidth:1, borderBottomColor:C.border },
     modalAlarmMain:{ flex:1, minWidth:0, flexDirection:'row', alignItems:'center', gap:12 },
-    skipBtn:     { paddingHorizontal:12, paddingVertical:10, borderRadius:12, borderWidth:1.3, borderColor:'#e05252' },
-    skipBtnText: { fontSize:13, fontWeight:'700', color:'#f06565' },
+    skipBtn:     { paddingHorizontal:12, paddingVertical:10, borderRadius:12, borderWidth:1.3, borderColor:C.offBorder },
+    skipBtnText: { fontSize:13.5, fontWeight:'700', color:C.offFg },
     skipBtnOn:   { paddingHorizontal:12, paddingVertical:10, borderRadius:12, borderWidth:1.3, borderColor:C.accent, backgroundColor:'rgba(162,155,254,0.12)' },
     skipBtnOnText:{ fontSize:13, fontWeight:'700', color:C.accent },
     modalAlarmIcon:{ fontSize:22 },

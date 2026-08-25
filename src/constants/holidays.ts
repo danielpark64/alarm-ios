@@ -78,3 +78,25 @@ let apiHolidays: Record<string, string> = {};
 export function setApiHolidays(map: Record<string, string>) { apiHolidays = map; }
 
 export const getHoliday = (dateStr: string): string | undefined => apiHolidays[dateStr] ?? HOLIDAYS[dateStr];
+
+// 달력 칸 표시용 축약 이름.
+// 칸 하나의 글자 영역이 45px 안팎이라 4자를 넘으면 읽을 수 없을 만큼 축소돼 버린다
+// (실제로 API가 주는 "대체공휴일(광복절)"이 뭉개져서 안 보였다).
+// 팝업에서는 원래 이름을 그대로 쓰므로 정보가 사라지지는 않는다.
+const HOLIDAY_SHORT: Record<string, string> = {
+  '대체공휴일': '대체휴일',
+  '임시공휴일': '임시휴일',
+  '부처님오신날': '부처님',
+  '근로자의날': '근로자',
+  '어린이날·부처님오신날': '어린이날',
+  '지방선거일': '선거일',
+  '크리스마스': '성탄절',
+};
+
+export const getHolidayShort = (dateStr: string): string | undefined => {
+  const full = getHoliday(dateStr);
+  if (!full) return undefined;
+  // API 이름은 "대체공휴일(광복절)"처럼 괄호로 원인 공휴일을 덧붙여 온다 — 칸에서는 괄호를 뗀다
+  const base = full.replace(/\s*\([^)]*\)\s*/g, '').trim();
+  return HOLIDAY_SHORT[base] ?? base;
+};
