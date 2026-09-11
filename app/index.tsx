@@ -12,6 +12,7 @@ import { useAlarmNotifications } from '../src/hooks/useAlarmNotifications';
 import { useSelectMode } from '../src/hooks/useSelectMode';
 import { useHolidaySync } from '../src/hooks/useHolidaySync';
 import { ClockHeader } from '../src/components/Home/ClockHeader';
+import { TodayShiftRow } from '../src/components/Home/TodayShiftRow';
 import { CalendarView } from '../src/components/Home/CalendarView';
 import { AlarmsTab } from '../src/components/Home/AlarmsTab';
 import { SettingsView } from '../src/components/Home/SettingsView';
@@ -349,6 +350,7 @@ export default function App() {
       <View style={s.header}>
         <View style={{flex:1}}>
           <ClockHeader />
+          <TodayShiftRow alarms={alarms} tick={tick} />
           <Text style={s.nextT} numberOfLines={1}>
             {nextText || '예정된 알람 없음'}
           </Text>
