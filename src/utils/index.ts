@@ -1,5 +1,5 @@
 import KoreanLunarCalendar from 'korean-lunar-calendar';
-import { Alarm, TYPES, SOUNDS, VIBS, DAYS, SHIFTS, ShiftPeriod, WorkSegment } from '../constants';
+import { Alarm, TYPES, SOUNDS, VIBS, DAYS, SHIFTS, ShiftPeriod, WorkSegment, DayOverride, DayOverrides, OverrideKind, OVERRIDE_KINDS } from '../constants';
 export const pad = (n: number) => String(n).padStart(2, '0');
 export const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
 export const fmtDate = (s: string) => { if (!s) return ''; const [y,m,d] = s.split('-'); return `${y}.${m}.${d}`; };
@@ -126,7 +126,7 @@ export function effectiveTime(a: Alarm, dateStr: string): { hour: number; min: n
   return { hour: a.hour, min: a.min };
 }
 
-export function getNextFireDate(alarm: Alarm): Date | null {
+export function getNextFireDate(alarm: Alarm, overrides: DayOverrides = {}): Date | null {
   const now  = new Date();
   const today = todayStr();
   const startDate = alarm.sd || today;
@@ -138,6 +138,18 @@ export function getNextFireDate(alarm: Alarm): Date | null {
     cand.setDate(cand.getDate() + ahead);
     const cs = `${cand.getFullYear()}-${pad(cand.getMonth()+1)}-${pad(cand.getDate())}`;
     if (cs < startDate) continue;
+
+    // 하루 근무 변경 — override가 skips보다 우선한다(core.ts 예약 루프와 같은 순서를 반드시
+    // 유지해야 한다 — 안 그러면 "다음 알람" 문구가 실제 예약과 다른 날짜를 가리킬 수 있다).
+    // 이 알람이 근무 알람이 아니면(dw===null) 기존 판정을 그대로 탄다.
+    const dw = dayWorkFor(alarm, overrides[cs]);
+    if (dw) {
+      if (!dw.fires) continue;
+      if (!dw.time) continue;
+      cand.setHours(dw.time.hour, dw.time.min, 0, 0);
+      if (cand <= now) continue;
+      return cand;
+    }
     if (alarm.skips?.includes(cs)) continue;
 
     // 로테이션 알람은 날짜마다 시각이 달라서(세그먼트별 출근/퇴근 시각) 일반 알람처럼
@@ -291,6 +303,20 @@ export function alarmsForDate(alarms: Alarm[], dateStr: string, includeSkipped =
 export const isWorkAlarm = (a: Alarm) =>
   a.active && (a.rm === 'cycle' || a.rm === 'rest' || a.rm === 'pattern') && (a.typeId === 'commute' || a.typeId === 'offwork');
 
+// 하루 근무 변경(dayOverride) 대상 판정 — isWorkAlarm보다 넓다. isWorkAlarm은 달력의
+// 근무조 배지·비번 표시 대상을 "교대근무 로테이션(cycle/rest/pattern)"으로 일부러 좁혀둔
+// 기존 정의라, 교대근무 마법사 없이 "출근"/"퇴근" 버튼만으로 요일 반복(wdcustom) 알람을
+// 만든 일반 사용자는 여기 안 걸린다. wdcustom까지 포함해 "규칙적으로 반복되는 출퇴근
+// 알람"이면 다 된다.
+// ⚠️ once(한 번)/monthly/yearly는 일부러 뺀다 — 이건 "매일 반복되는 내 출퇴근 스케줄"이
+// 아니라 하루짜리 약속이나 연례 행사에 가까워서, 전혀 무관한 날짜의 override가 이 알람을
+// 건드릴 이유가 없다. dayWorkFor는 그 알람이 어떤 날짜(ds)에 불려도 rm/sd를 안 보고 override
+// 유무만으로 fires를 통째로 대체하므로, once를 포함시키면 그 알람의 원래 예정일과 전혀
+// 다른 날짜에 유령처럼 다시 울릴 수 있다.
+export const isOverridableAlarm = (a: Alarm) =>
+  (a.typeId === 'commute' || a.typeId === 'offwork')
+  && (a.rm === 'cycle' || a.rm === 'rest' || a.rm === 'pattern' || a.rm === 'wdcustom');
+
 // 근무조 색 팔레트 — 시간대가 아니라 알람별로 배정한다.
 // 같은 시간대 안에서 갈리는 교대(예: 04:20 초번 / 05:20 말번)도 색으로 구분되도록,
 // 근무 알람을 시각순으로 정렬해 순서대로 색을 준다.
@@ -346,6 +372,56 @@ export function isOffDay(alarms: Alarm[], dateStr: string): boolean {
   return alarmsForDate(work, dateStr, true).length === 0;
 }
 
+// ─── 하루 근무 변경(day override) ───────────────────────────────────────
+// 이 파일의 기존 함수(effectiveShift/effectiveTime/shiftForDate/isOffDay/alarmsForDate)는
+// 전혀 건드리지 않는다 — override가 없는 날짜는 지금까지와 100% 동일하게 동작해야 하므로,
+// override는 "기존 판정에 없던 새 갈래"가 아니라 "호출부가 먼저 확인하고 있으면 그걸로
+// 확정, 없으면 기존 로직 그대로 진행"하는 짧은 우회로로만 추가한다.
+
+// kind가 지금 OVERRIDE_KINDS에 실제로 있는 값인지 — 예전 버전에서 저장된 뒤 나중에 목록에서
+// 빠진 kind(예: 한때 있던 "기타")가 그대로 남아있으면 라벨을 못 찾아 빈 문자열로 표시되거나
+// (달력에 텅 빈 배지) 최악의 경우 여전히 근무 상태를 바꾸는 것처럼 오판정될 수 있다.
+// kind 종류가 바뀔 때마다 매번 마이그레이션 코드를 짜는 대신, "지금 목록에 없으면 kind
+// 없는 것과 동일하게 취급"으로 자동 방어한다.
+const isKnownKind = (kind: OverrideKind | undefined): kind is OverrideKind =>
+  !!kind && OVERRIDE_KINDS.some(k => k.id === kind);
+
+export function overrideLabel(ov: DayOverride): string {
+  return OVERRIDE_KINDS.find(k => k.id === ov.kind)?.label ?? '';
+}
+
+// 달력 셀·홈 헤더·위젯이 그날을 그릴 때 먼저 확인하는 표시 정보. override에 kind가 없으면
+// (family 메모만 있거나 override 자체가 없으면) null — 이 경우 호출부는 shiftForDate/isOffDay/
+// effectiveShift 등 기존 경로를 그대로 쓴다. family는 근무 상태와 무관한 별도 메모라 여기
+// 판정에 관여하지 않는다(경조사가 있어도 근무일 표시는 그대로 유지).
+// isOff는 "근무 알람이 꺼진 날"이라는 뜻으로, 대근·특근(work 있음)은 false다.
+export function dayOverrideDisplay(ov: DayOverride | undefined): { label: string; isOff: boolean; shift?: ShiftPeriod } | null {
+  if (!ov || !isKnownKind(ov.kind)) return null;
+  return { label: overrideLabel(ov), isOff: !ov.work, shift: ov.work?.shift };
+}
+
+// 이 알람이 override가 걸린 날 실제로 울리는지/몇 시에 울리는지 — 예약 경로(core.ts) 전용 게이트.
+// override에 kind가 없으면(family 메모만 있는 날 포함) null을 반환해 호출부가 기존 발화
+// 판정(effectiveShift/effectiveTime, rm별 fires 계산)을 그대로 쓰게 한다 — 경조사 메모만으로는
+// 알람이 꺼지거나 시각이 바뀌면 안 된다. kind가 있으면 그 판정을 완전히 대체한다:
+//   - work 없음(연차 등)  → fires:false, 이 알람은 그날 절대 안 울림
+//   - work 있음(대근 등)  → typeId가 commute/offwork 중 무엇인지로 해당 역할의 시각을 골라
+//                          fires:true — 원래 그날 안 울리던 알람(비번)도 이 경로로 새로 울릴 수 있다
+export function dayWorkFor(
+  alarm: Alarm, ov: DayOverride | undefined
+): { fires: boolean; time?: { hour: number; min: number }; shift?: ShiftPeriod } | null {
+  if (!ov || !isKnownKind(ov.kind)) return null;
+  // 출근/퇴근 알람이 아니면 override는 이 알람에 아무 영향을 주지 않는다 — 연차를 걸어도
+  // 운동·식사·생일 같은 알람은 그대로 둔다. isWorkAlarm이 아니라 더 넓은 isOverridableAlarm을
+  // 쓰는 이유: 교대근무 마법사(cycle/rest/pattern) 없이 "출근"/"퇴근" 버튼만으로 요일 반복
+  // 등을 만든 일반 사용자의 알람도 하루 근무 변경 대상이어야 한다.
+  if (!isOverridableAlarm(alarm)) return null;
+  if (!ov.work) return { fires: false };
+  const time = alarm.typeId === 'offwork' ? ov.work.end : ov.work.start;
+  if (!time) return { fires: false };
+  return { fires: true, time, shift: ov.work.shift };
+}
+
 // 양력 날짜(YYYY-MM-DD) → 음력 "M월 D일" 문자열. 지원 범위(1000~2050년) 밖이면 빈 문자열.
 export function lunarDateText(dateStr: string): string {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -378,11 +454,11 @@ export function lunarToSolarInYear(solarYear: number, lunarMonth: number, lunarD
   return null;
 }
 
-export const nextAlarmText = (alarms: Alarm[]): string => {
+export const nextAlarmText = (alarms: Alarm[], overrides: DayOverrides = {}): string => {
   const active = alarms.filter(a => a.active);
   if (!active.length) return '';
   const candidates = active
-    .map(a => ({ alarm: a, date: getNextFireDate(a) }))
+    .map(a => ({ alarm: a, date: getNextFireDate(a, overrides) }))
     .filter((x): x is { alarm: Alarm; date: Date } => x.date !== null)
     .sort((a, b) => a.date.getTime() - b.date.getTime());
   if (!candidates.length) return '';

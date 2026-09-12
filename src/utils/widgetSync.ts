@@ -1,6 +1,6 @@
 import { Platform, NativeModules } from 'react-native';
-import { Alarm } from '../constants';
-import { pad, todayStr, getType, getNextFireDate, shiftForDate, isOffDay, shiftColorMap, alarmsForDate, isWorkAlarm, effectiveShift } from './index';
+import { Alarm, DayOverrides, SHIFTS } from '../constants';
+import { pad, todayStr, getType, getNextFireDate, shiftForDate, isOffDay, shiftColorMap, alarmsForDate, isWorkAlarm, effectiveShift, dayOverrideDisplay } from './index';
 import { roleLabel } from './workPattern';
 
 const { WidgetModule } = NativeModules;
@@ -11,7 +11,7 @@ const SHIFT_COLORS = ['#6c5ce7','#00b894','#e17055','#0984e3','#fd79a8','#fdcb6e
 // (빈 문자열은 '미초기화'로 해석돼 fail-safe open이 되므로 쓰면 안 된다)
 export const ACTIVE_IDS_NONE = 'none';
 
-export async function syncWidget(alarms: Alarm[]) {
+export async function syncWidget(alarms: Alarm[], overrides: DayOverrides = {}) {
   if (Platform.OS !== 'android' || !WidgetModule?.updateWidgetData) return;
 
   const today = todayStr();
@@ -20,7 +20,7 @@ export async function syncWidget(alarms: Alarm[]) {
   // 다음 알람
   const nextFire = alarms
     .filter(a => a.active)
-    .map(a => ({ alarm: a, date: getNextFireDate(a) }))
+    .map(a => ({ alarm: a, date: getNextFireDate(a, overrides) }))
     .filter(x => x.date != null)
     .sort((a, b) => a.date!.getTime() - b.date!.getTime())[0];
 
@@ -36,20 +36,31 @@ export async function syncWidget(alarms: Alarm[]) {
     return info ? roleLabel(info, a.groupRole ?? 'commute') : getType(a.typeId).label;
   };
 
-  // 오늘 근무조
-  const todayShift = shiftForDate(alarms, today);
-  const isOffToday = isOffDay(alarms, today);
-  const shiftName  = todayShift ? shiftLabelFor(todayShift, today) : '--';
-  const shiftColor = todayShift ? (colorOf[todayShift.id] ?? '#a29bfe') : '#a29bfe';
+  // 오늘 근무조 — override가 있으면 그걸로 확정(연차 등은 비번 취급, 대근 등은 그 이름으로).
+  // 없으면(ovToday===null) 기존 shiftForDate/isOffDay 경로 그대로.
+  const ovToday = dayOverrideDisplay(overrides[today]);
+  const todayShift = ovToday ? null : shiftForDate(alarms, today);
+  const isOffToday = ovToday ? ovToday.isOff : isOffDay(alarms, today);
+  const shiftName  = ovToday ? ovToday.label : (todayShift ? shiftLabelFor(todayShift, today) : '--');
+  // override로 대근·특근 등 근무조가 정해진 날은 그 근무조 고유색(SHIFTS.color)을 쓴다 —
+  // colorOf는 알람 id 기준 팔레트라 override(가상의 근무)에는 매칭되는 항목이 없다.
+  const shiftColor = ovToday?.shift
+    ? (SHIFTS.find(s => s.id === ovToday.shift)?.color ?? '#a29bfe')
+    : (todayShift ? (colorOf[todayShift.id] ?? '#a29bfe') : '#a29bfe');
 
-  // 다음 비번까지 D-day
+  // 다음 비번까지 D-day — override로 근무가 켜진 날(대근 등)은 비번이 아니고,
+  // override로 꺼진 날(연차 등)은 비번으로 센다.
+  const isOffOn = (ds: string) => {
+    const ov = dayOverrideDisplay(overrides[ds]);
+    return ov ? ov.isOff : isOffDay(alarms, ds);
+  };
   let daysUntilOff = -1;
   if (!isOffToday) {
     for (let i = 1; i <= 90; i++) {
       const d = new Date(today);
       d.setDate(d.getDate() + i);
       const ds = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-      if (isOffDay(alarms, ds)) { daysUntilOff = i; break; }
+      if (isOffOn(ds)) { daysUntilOff = i; break; }
     }
   }
 
@@ -62,8 +73,9 @@ export async function syncWidget(alarms: Alarm[]) {
     const d = new Date(todayDate);
     d.setDate(d.getDate() - dow + i);
     const ds = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-    const shift = shiftForDate(alarms, ds);
-    const off   = isOffDay(alarms, ds);
+    const ov = dayOverrideDisplay(overrides[ds]);
+    const shift = ov ? null : shiftForDate(alarms, ds);
+    const off   = ov ? ov.isOff : isOffDay(alarms, ds);
     const events = alarmsForDate(alarms, ds)
       .filter(a => !isWorkAlarm(a))
       .map(a => a.label || getType(a.typeId).label)
@@ -71,8 +83,9 @@ export async function syncWidget(alarms: Alarm[]) {
       .slice(0, 2); // 최대 2개
     return {
       date:    ds,
-      shift:   shift ? shiftLabelFor(shift, ds) : '',
-      color:   shift ? (colorOf[shift.id] ?? '#a29bfe') : '',
+      shift:   ov ? ov.label : (shift ? shiftLabelFor(shift, ds) : ''),
+      color:   ov?.shift ? (SHIFTS.find(s => s.id === ov.shift)?.color ?? '#a29bfe')
+                          : (shift ? (colorOf[shift.id] ?? '#a29bfe') : ''),
       isOff:   off,
       isToday: ds === today,
       events,

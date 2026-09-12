@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
-import { Alarm } from '../../constants';
-import { getType, pad, getNextFireDate, lunarToSolarInYear, effectiveShift, effectiveTime } from '../index';
+import { Alarm, DayOverrides, ShiftPeriod } from '../../constants';
+import { getType, pad, getNextFireDate, lunarToSolarInYear, effectiveShift, effectiveTime, dayWorkFor, isOverridableAlarm } from '../index';
 import { roleLabel } from '../workPattern';
 import { scheduleNative } from './android';
 import { weekdaySlotId, mainNativeId } from './alarmIds';
@@ -30,7 +30,7 @@ function appDayToJs(d: number): number       { return d === 6 ? 0 : d + 1; }
 // 일반 알람처럼 title/bodyText를 루프 밖에서 한 번만 계산할 수 없다. 세그먼트가 바뀌지
 // 않는 일반 알람 경로(아래 scheduleAlarmTriggers 본문)는 이 분기와 완전히 분리해서
 // 한 글자도 건드리지 않는다 — 가장 많이 테스트된 영역이라 회귀 위험을 최소화하기 위함.
-async function schedulePatternAlarmTriggers(alarm: Alarm, threadIdentifier?: string) {
+async function schedulePatternAlarmTriggers(alarm: Alarm, overrides: DayOverrides, threadIdentifier?: string) {
   const type    = getType(alarm.typeId);
   const soundOn = alarm.snd === 'default';
   const vibOn   = alarm.vib === 'pulse';
@@ -44,17 +44,32 @@ async function schedulePatternAlarmTriggers(alarm: Alarm, threadIdentifier?: str
     const date = new Date(today); date.setDate(today.getDate() + i);
     const ds = `${date.getFullYear()}-${p2(date.getMonth()+1)}-${p2(date.getDate())}`;
     if (alarm.sd && ds < alarm.sd) continue;
-    if (alarm.skips?.includes(ds)) continue; // 이날만 끄기
 
-    const shiftInfo = effectiveShift(alarm, ds); // 휴식일이면 null
-    if (!shiftInfo) continue;
-    const t = effectiveTime(alarm, ds); // 이 역할(퇴근 등)이 이 세그먼트에 없으면 null
-    if (!t) continue;
+    // 하루 근무 변경(dayOverride)이 있으면 그날의 기존 판정(세그먼트/휴식/skips)을 전부 대체한다.
+    // 없으면(dw===null) 지금까지와 똑같이 skips→effectiveShift/effectiveTime 순으로 판정한다.
+    // ⚠️ "이날만 끄기(skips)"는 override가 없을 때만 확인한다 — 날짜기반 루프(아래
+    // scheduleAlarmTriggers 본문)도 반드시 같은 우선순위(override > skips)를 따라야 한다.
+    // 한쪽만 순서가 다르면 "달력엔 대근인데 이 알람만 안 울린다" 같은 불일치가 생긴다.
+    const dw = dayWorkFor(alarm, overrides[ds]);
+    let shiftInfo: { shift: ShiftPeriod; shiftCustom?: string } | null;
+    let t: { hour: number; min: number } | null;
+    if (dw) {
+      if (!dw.fires) continue;
+      t = dw.time ?? null;
+      if (!t) continue;
+      shiftInfo = dw.shift ? { shift: dw.shift } : effectiveShift(alarm, ds);
+    } else {
+      if (alarm.skips?.includes(ds)) continue; // 이날만 끄기
+      shiftInfo = effectiveShift(alarm, ds); // 휴식일이면 null
+      if (!shiftInfo) continue;
+      t = effectiveTime(alarm, ds); // 이 역할(퇴근 등)이 이 세그먼트에 없으면 null
+      if (!t) continue;
+    }
 
     const ft = new Date(date); ft.setHours(t.hour, t.min, 0, 0);
     if (ft <= new Date()) continue;
 
-    const title    = `${type.icon} ${roleLabel(shiftInfo, role)}`;
+    const title    = `${type.icon} ${shiftInfo ? roleLabel(shiftInfo, role) : type.label}`;
     const bodyText = `${pad(t.hour)}:${pad(t.min)} 알람`;
     const content = {
       title, body: bodyText,
@@ -76,10 +91,10 @@ async function schedulePatternAlarmTriggers(alarm: Alarm, threadIdentifier?: str
 }
 
 // ── 메인 트리거만 예약 (rep 슬롯 제외) ────────────────────────────────
-export async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: string) {
+export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverrides = {}, threadIdentifier?: string) {
   if (!alarm.active) return;
   if (alarm.rm === 'pattern') {
-    if (alarm.pattern?.length) await schedulePatternAlarmTriggers(alarm, threadIdentifier);
+    if (alarm.pattern?.length) await schedulePatternAlarmTriggers(alarm, overrides, threadIdentifier);
     return;
   }
 
@@ -105,9 +120,16 @@ export async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: str
   const now0 = new Date();
   const todayDs = `${now0.getFullYear()}-${p2d(now0.getMonth()+1)}-${p2d(now0.getDate())}`;
   const hasUpcomingSkips = (alarm.skips ?? []).some(s => s >= todayDs);
+  // 하루 근무 변경도 같은 이유로 요일 알람을 날짜 기반으로 전환시켜야 한다 — WEEKLY 트리거는
+  // 특정 날짜 하나만 골라 시각을 바꾸거나 끌 수 없다. isOverridableAlarm이 아니면(운동·식사 등)
+  // override가 있어도 이 알람과 무관하므로 전환하지 않는다.
+  const end13 = new Date(now0); end13.setDate(end13.getDate() + 13);
+  const end13Ds = `${end13.getFullYear()}-${p2d(end13.getMonth()+1)}-${p2d(end13.getDate())}`;
+  const hasUpcomingOverride = isOverridableAlarm(alarm)
+    && Object.keys(overrides).some(ds => ds >= todayDs && ds <= end13Ds);
 
   // ── wdcustom (요일 선택) ──────────────────────────────────────────
-  if (alarm.rm === 'wdcustom' && alarm.days.length > 0 && !hasUpcomingSkips) {
+  if (alarm.rm === 'wdcustom' && alarm.days.length > 0 && !hasUpcomingSkips && !hasUpcomingOverride) {
     const iw = (d: number) => (d + 2) % 7 || 7;
     for (const d of alarm.days) {
       await Notifications.scheduleNotificationAsync({
@@ -128,8 +150,6 @@ export async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: str
     const date = new Date(today); date.setDate(today.getDate() + i);
     const ds = `${date.getFullYear()}-${p2(date.getMonth()+1)}-${p2(date.getDate())}`;
     if (alarm.sd && ds < alarm.sd) continue;
-    const ft = new Date(date); ft.setHours(alarm.hour, alarm.min, 0, 0);
-    if (ft <= new Date()) continue;
     let fires = false;
     if (alarm.rm === 'once') fires = ds === alarm.sd;
     else if (alarm.rm === 'wdcustom') {
@@ -166,20 +186,43 @@ export async function scheduleAlarmTriggers(alarm: Alarm, threadIdentifier?: str
       }
     }
     if (fires && alarm.skips?.includes(ds)) fires = false; // 이날만 끄기
+
+    // 하루 근무 변경 — dayWorkFor는 출근/퇴근 타입이 아닌 알람이면 항상 null이라
+    // 운동·식사·생일 등 나머지 알람 종류는 이 블록의 영향을 전혀 받지 않는다.
+    // 있으면 위에서 계산한 fires/시각을 통째로 대체한다(연차=강제 미발화, 대근=시각 지정).
+    let hh = alarm.hour, mm = alarm.min;
+    const dw = dayWorkFor(alarm, overrides[ds]);
+    if (dw) {
+      fires = dw.fires;
+      if (dw.time) { hh = dw.time.hour; mm = dw.time.min; }
+    }
     if (!fires) continue;
+
+    const ft = new Date(date); ft.setHours(hh, mm, 0, 0);
+    if (ft <= new Date()) continue;
+
     await Notifications.scheduleNotificationAsync({
       identifier: makeId(alarm.id, `date_${ds}`),
-      content: baseContent,
+      // override로 시각이 바뀐 날만 알림 배너 문구도 그 시각으로 — 아니면 알림엔 원래 시각이
+      // 뜨는데 실제로는 다른 시각에 울리는 불일치가 생긴다.
+      content: dw?.time ? { ...baseContent, body: `${pad(hh)}:${pad(mm)} 알람` } : baseContent,
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: ft },
     });
-    scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', alarm.hour, alarm.min, -1, soundOn, vibOn, volume, alarm.id);
+    // ⚠️ 네이티브는 override여도 bodyText를 원래 시각 그대로 넘긴다(고쳤다가 되돌림) —
+    // 이 문자열이 실제 발화 시 cancelExpoGroupReps(ringing.body)의 정규식 파싱으로 rep
+    // 슬롯 gkey(`${first.hour}_${first.min}`, scheduleGroupReps는 override를 모르는 고정값)를
+    // 재구성하는 유일한 통로다. 여기서 override 시각을 넣으면 gkey가 어긋나 rep 취소가
+    // 실패해서(+1분/+2분 보조 알림이 안 지워짐) 알람을 꺼도 잠시 뒤 다시 울린다.
+    // 대가로 override 날엔 네이티브 알림 문구(화면 텍스트)가 원래 시각으로 보일 수 있으나,
+    // 실제 발화 시각(ft/hh/mm)은 정확하다 — 문구 정확도보다 rep 취소 정확도가 우선이다.
+    scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', hh, mm, -1, soundOn, vibOn, volume, alarm.id);
     nativeIdx++;
     if (alarm.rm === 'once') break;
   }
 }
 
 // ── 같은 시간대 알람 묶음 rep 슬롯 예약 (+1분/+2분) ───────────────────
-export async function scheduleGroupReps(group: Alarm[]) {
+export async function scheduleGroupReps(group: Alarm[], overrides: DayOverrides = {}) {
   const active = group.filter(a => a.active);
   if (!active.length) return;
 
@@ -190,7 +233,7 @@ export async function scheduleGroupReps(group: Alarm[]) {
   const [first] = active;
   const gkey = `${first.hour}_${first.min}`;
 
-  const nextDates = active.map(a => getNextFireDate(a)).filter(Boolean) as Date[];
+  const nextDates = active.map(a => getNextFireDate(a, overrides)).filter(Boolean) as Date[];
   if (!nextDates.length) return;
   const next = new Date(Math.min(...nextDates.map(d => d.getTime())));
 

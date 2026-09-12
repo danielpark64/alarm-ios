@@ -176,6 +176,77 @@ grep -q "createDeviceProtectedStorageContext" "$NATIVE_DIR/DeviceStorage.kt" 2>/
   && grep -q "DeviceStorage.prefs" "$NATIVE_DIR/AlarmReceiver.kt" 2>/dev/null \
   && ok "" || { fail "잠금해제 전 접근 불가한 저장소를 참조 — Direct Boot에서 예외/게이트 오판"; }
 
+# 2026-09-12 하루 근무 변경(dayOverride) — "그날 이 알람이 울리나" 판정이 core.ts의
+# 로테이션/날짜기반 두 예약 루프에 독립 구현돼 있어서, 게이트(dayWorkFor)를 한쪽에만
+# 넣으면 "달력엔 대근으로 뜨는데 알람은 그대로 안 울린다" 같은 불일치가 조용히 생긴다.
+printf "  dayOverride 게이트가 두 예약 루프 모두에 있는지 ... "
+DW_COUNT=$(grep -c "dayWorkFor(alarm" "$ROOT/src/utils/notifications/core.ts" 2>/dev/null || echo 0)
+grep -q "export function dayWorkFor" "$ROOT/src/utils/index.ts" 2>/dev/null \
+  && [ "$DW_COUNT" -ge 2 ] \
+  && ok "" || { fail "dayWorkFor가 core.ts의 두 예약 루프(로테이션 rm==pattern / 날짜기반) 중 한쪽에서 빠짐"; }
+
+# override로 activeAlarmIds(네이티브 차단 게이트)가 갱신되기 전에 재예약부터 걸면, 그 사이
+# 발화한 알람이 게이트 판정을 못 받는다 — useAlarms.ts의 save()/mount와 같은 순서를 지켜야 함.
+printf "  하루 근무 변경 시 syncWidget → rescheduleAll 순서 ... "
+SW_LINE=$(grep -n "syncWidget(alarms" "$ROOT/src/hooks/useDayOverrides.ts" 2>/dev/null | head -1 | cut -d: -f1)
+RA_LINE=$(grep -n "rescheduleAll(alarms" "$ROOT/src/hooks/useDayOverrides.ts" 2>/dev/null | head -1 | cut -d: -f1)
+[ -n "$SW_LINE" ] && [ -n "$RA_LINE" ] && [ "$SW_LINE" -lt "$RA_LINE" ] \
+  && ok "" || { fail "useDayOverrides.ts에서 syncWidget이 rescheduleAll보다 먼저 호출되지 않음"; }
+
+# isOffDay/shiftForDate는 override를 몰라도 되도록 일부러 안 건드렸다(회귀 위험 최소화) —
+# 대신 표시 계층(달력·홈 헤더·위젯)이 반드시 dayOverrideDisplay를 먼저 확인해야
+# "연차인데 근무일로 표시" 같은 오판정이 안 생긴다. 세 화면 전부 확인.
+printf "  달력·홈·위젯이 override를 shiftForDate/isOffDay보다 먼저 확인하는지 ... "
+grep -q "dayOverrideDisplay" "$ROOT/src/components/Home/CalendarView.tsx" 2>/dev/null \
+  && grep -q "dayOverrideDisplay" "$ROOT/src/components/Home/TodayShiftRow.tsx" 2>/dev/null \
+  && grep -q "dayOverrideDisplay" "$ROOT/src/utils/widgetSync.ts" 2>/dev/null \
+  && ok "" || { fail "달력/홈헤더/위젯 중 하나가 override 표시 분기 없이 기존 shiftForDate/isOffDay만 사용 — 연차 날이 근무일로 보일 수 있음"; }
+
+# 2026-09-13 발견 — wdcustom(요일 반복) 알람은 WEEKLY 트리거로 예약돼서 스케줄링 시점에
+# "이날만 끄기(skips)"가 있을 때만 날짜기반 루프로 전환됐는데, dayOverride 유무는 안 봐서
+# override가 있어도 원래 요일 시각 그대로 예약되는(=override 무시) 우회 경로가 있었다.
+# 일반 사용자의 출근/퇴근 알람 기본 반복방식이 wdcustom이라 이 기능이 가장 지원하려던
+# 대상이 조용히 빠지는 회귀였다.
+printf "  wdcustom 알람도 override 있으면 날짜기반 경로로 전환되는지 ... "
+grep -q "hasUpcomingOverride" "$ROOT/src/utils/notifications/core.ts" 2>/dev/null \
+  && grep -qE "alarm\.rm === 'wdcustom'.*!hasUpcomingOverride|!hasUpcomingOverride.*alarm\.rm === 'wdcustom'" "$ROOT/src/utils/notifications/core.ts" 2>/dev/null \
+  && ok "" || { fail "wdcustom WEEKLY 예약 분기가 hasUpcomingOverride를 확인 안 함 — override가 요일 알람엔 무시될 수 있음"; }
+
+# 2026-09-12 발견 — 실기기(플립)에서 반차로 출근 시각을 08→10시로 바꾸면 실제 예약(dumpsys)은
+# 정확히 10시로 바뀌는데(core.ts의 dayWorkFor는 정상), 달력 하루 상세 팝업의 알람 목록은 여전히
+# 08:00으로 표시됨. 원인: 팝업이 시각 표시에 effectiveTime()만 쓰는데 effectiveTime은
+# rm==='pattern'만 override를 반영하고 cycle/rest/wdcustom은 그냥 alarm.hour/min을 반환 —
+# 반차·야근·연장(copy-kind)처럼 "시각만 바뀐" override는 알람 객체 자체를 안 건드리므로 이
+# 목록이 dayWorkFor를 직접 안 타면 예약된 실제 시각과 화면이 어긋난다.
+printf "  하루 상세 팝업 알람 목록이 시각변경 override를 반영하는지 ... "
+grep -q "dayWorkFor(al, selOverride)" "$ROOT/src/components/Home/CalendarView.tsx" 2>/dev/null \
+  && ok "" || { fail "day-detail 팝업 알람 목록이 dayWorkFor로 override 시각을 반영하지 않음 — 반차/야근/연장 시 실제 예약 시각과 화면 표시가 어긋날 수 있음"; }
+
+# 2026-09-12 설계 변경 — 경조사(family)는 "kind"(연차·대근 등)에서 완전히 분리했다. 남의
+# 결혼식/장례식은 연차를 써서 가든 근무 끝나고 가든 상관없이 몇 시·누구 건지 메모만 있으면
+# 되는 것이라, family는 근무 상태(work) 판정에 절대 관여하면 안 된다. dayWorkFor/
+# dayOverrideDisplay가 kind 없이 family만 있는 override를 "연차처럼 근무 꺼짐"으로 오판정하면
+# 경조사 메모만 남겼는데 근무 알람이 꺼지는 회귀가 생긴다 — kind 존재 여부를 반드시 먼저 본다.
+printf "  경조사(family) 메모가 근무상태 판정(dayWorkFor/dayOverrideDisplay)에 안 섞이는지 ... "
+[ "$(grep -c "if (!ov || !isKnownKind(ov\.kind)) return null;" "$ROOT/src/utils/index.ts" 2>/dev/null)" -ge 2 ] \
+  && ok "" || { fail "dayWorkFor 또는 dayOverrideDisplay가 kind 없이 family만 있는(또는 지금 목록에 없는) override를 근무상태 변경으로 오판정할 수 있음"; }
+
+# 2026-09-12 설계 변경 — "기타" kind를 없앴다(라벨 입력 UI가 끝내 없어서 뭐가 기타인지 알
+# 방법이 없는 죽은 옵션이었음). OVERRIDE_KINDS에서 값 하나가 빠지는 건 이번이 처음이 아니고
+# 앞으로도 있을 수 있는 일이라, dayWorkFor/dayOverrideDisplay가 "지금 목록에 없는 kind"를
+# kind 없음과 동일하게(무해하게) 처리하는지 확인한다 — 안 그러면 예전에 저장된 값이 그대로
+# 남아있는 사용자는 라벨 없는 빈 배지가 뜨거나 최악엔 근무 상태가 오판정될 수 있다.
+printf "  목록에서 빠진 레거시 kind(예: 기타)가 무해하게 무시되는지 ... "
+grep -q "isKnownKind" "$ROOT/src/utils/index.ts" 2>/dev/null \
+  && ok "" || { fail "OVERRIDE_KINDS에 없는 kind를 걸러내는 방어 로직(isKnownKind)이 없음 — 목록에서 종류가 빠지면 레거시 데이터가 라벨 없이 표시되거나 오판정될 수 있음"; }
+
+# 2026-09-12 발견 — 출근/퇴근(하루 근무 변경 대상) 알람에 "이날 끄기"가 열려있으면, 사용자가
+# 출근만 끄고 퇴근은 그대로 둬서 "오늘 하루 쉬기" 의도와 다르게 반쪽만 적용될 수 있었다.
+# 근무 알람은 하루 근무 변경(연차 등) 하나로만 유도해야 한다.
+printf "  근무 알람(출근/퇴근)에는 개별 '이날 끄기'가 안 뜨는지 ... "
+grep -qE "canSkip = .*!isOverridableAlarm\(al\)" "$ROOT/src/components/Home/CalendarView.tsx" 2>/dev/null \
+  && ok "" || { fail "canSkip이 isOverridableAlarm(al)을 확인 안 함 — 근무 알람에도 개별 '이날 끄기'가 떠서 하루 근무 변경과 혼란을 일으킬 수 있음"; }
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

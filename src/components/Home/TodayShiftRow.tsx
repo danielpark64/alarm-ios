@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text } from '../common/AppText';
-import { Alarm } from '../../constants';
+import { Alarm, DayOverrides } from '../../constants';
 import {
   pad, todayStr, isOffDay, shiftForDate, effectiveShift,
-  shiftPeriodLabel, shiftPeriodId, shiftToneIndexMap,
+  shiftPeriodLabel, shiftPeriodId, shiftToneIndexMap, dayOverrideDisplay,
 } from '../../utils';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
@@ -22,7 +22,16 @@ function addDays(dateStr: string, n: number): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-function dayInfo(alarms: Alarm[], ds: string, toneIdxOf: Record<number, number>, C: Palette): DayInfo | null {
+function dayInfo(alarms: Alarm[], ds: string, toneIdxOf: Record<number, number>, C: Palette, overrides: DayOverrides): DayInfo | null {
+  // 하루 근무 변경(연차·대근 등)이 있으면 그걸로 확정 — 없으면(ov===null) 기존 경로 그대로.
+  // 달력 셀과 반드시 같은 순서로 확인해야 "홈엔 있는데 달력엔 없다"는 불일치가 안 생긴다.
+  const ov = dayOverrideDisplay(overrides[ds]);
+  if (ov) {
+    if (ov.isOff) return { label: ov.label, bg: C.offBg, fg: C.offFg, border: C.offBorder };
+    const id = ov.shift ?? null;
+    const tone = id ? C.shift[id] : C.shiftAuto[0];
+    return { label: ov.label, bg: tone.bg, fg: tone.fg, border: null };
+  }
   // 비번은 달력과 같은 "파란 테두리 박스" — 채운 알약으로 그리면 근무조와 같은 비중으로 읽힌다
   if (isOffDay(alarms, ds)) return { label: '비번', bg: C.offBg, fg: C.offFg, border: C.offBorder };
   const a = shiftForDate(alarms, ds);
@@ -38,7 +47,7 @@ function dayInfo(alarms: Alarm[], ds: string, toneIdxOf: Record<number, number>,
 }
 
 export const TodayShiftRow = React.memo(function TodayShiftRow(
-  { alarms, tick }: { alarms: Alarm[]; tick: number }
+  { alarms, tick, overrides }: { alarms: Alarm[]; tick: number; overrides: DayOverrides }
 ) {
   const C = useColors();
   const scale = useScale();
@@ -48,8 +57,8 @@ export const TodayShiftRow = React.memo(function TodayShiftRow(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const [today, tomorrow] = useMemo(() => {
     const t = todayStr();
-    return [dayInfo(alarms, t, toneIdxOf, C), dayInfo(alarms, addDays(t, 1), toneIdxOf, C)];
-  }, [alarms, toneIdxOf, C, tick]);
+    return [dayInfo(alarms, t, toneIdxOf, C, overrides), dayInfo(alarms, addDays(t, 1), toneIdxOf, C, overrides)];
+  }, [alarms, toneIdxOf, C, overrides, tick]);
 
   // 근무 알람이 없는 일반 사용자는 줄 자체가 뜨지 않는다(isWorkAlarm이 걸러줌)
   if (!today && !tomorrow) return null;
@@ -59,7 +68,9 @@ export const TodayShiftRow = React.memo(function TodayShiftRow(
       {today && (
         <View style={s.item}>
           <Text style={s.prefix}>오늘</Text>
-          <Text style={[s.badge, { color: today.fg, backgroundColor: today.bg },
+          {/* key를 라벨로 줘서 override 직후 실기기(Android)에서 배경만 바뀌고 글자가 안 그려지는
+              드문 리페인트 결함을 우회한다 — 내용이 바뀌면 새 엘리먼트로 교체돼 새로 그려진다 */}
+          <Text key={today.label} style={[s.badge, { color: today.fg, backgroundColor: today.bg },
                         today.border ? { borderWidth: 2, borderColor: today.border } : null]}
                 numberOfLines={1}>{today.label}</Text>
         </View>
@@ -67,7 +78,7 @@ export const TodayShiftRow = React.memo(function TodayShiftRow(
       {tomorrow && (
         <View style={s.item}>
           <Text style={s.prefix}>내일</Text>
-          <Text style={[s.badge, { color: tomorrow.fg, backgroundColor: tomorrow.bg },
+          <Text key={tomorrow.label} style={[s.badge, { color: tomorrow.fg, backgroundColor: tomorrow.bg },
                         tomorrow.border ? { borderWidth: 2, borderColor: tomorrow.border } : null]}
                 numberOfLines={1}>{tomorrow.label}</Text>
         </View>

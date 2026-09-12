@@ -8,6 +8,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { useAlarms } from '../src/hooks/useAlarms';
+import { useDayOverrides } from '../src/hooks/useDayOverrides';
 import { useAlarmNotifications } from '../src/hooks/useAlarmNotifications';
 import { useSelectMode } from '../src/hooks/useSelectMode';
 import { useHolidaySync } from '../src/hooks/useHolidaySync';
@@ -34,6 +35,7 @@ export default function App() {
   const { theme } = useThemeSetting();
   const s = makeStyles(C);
   const { alarms, loaded, addAlarm, updateAlarm, deleteAlarms, toggleAlarm, submitWorkPattern } = useAlarms();
+  const { overrides, setOverride } = useDayOverrides(alarms);
   useHolidaySync();
   const { notifGranted, requestPermission, overlayGranted, requestOverlayPermission, tick, ringing, stopRinging, snoozeRinging } = useAlarmNotifications(alarms, updateAlarm);
   const { selectMode, selectedIds, enterSelectMode, toggleSelect, selectAll, exitSelectMode } = useSelectMode();
@@ -336,7 +338,7 @@ export default function App() {
   }, [alarms, tick]);
   const repLimitedIds = useMemo(() => getRepLimitedIds(alarms), [alarms]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const nextText = useMemo(() => nextAlarmText(alarms), [alarms, tick]);
+  const nextText = useMemo(() => nextAlarmText(alarms, overrides), [alarms, overrides, tick]);
 
   if (!loaded)
     return <View style={s.loading}><Text style={s.loadingT}>⏰</Text></View>;
@@ -350,7 +352,7 @@ export default function App() {
       <View style={s.header}>
         <View style={{flex:1}}>
           <ClockHeader />
-          <TodayShiftRow alarms={alarms} tick={tick} />
+          <TodayShiftRow alarms={alarms} tick={tick} overrides={overrides} />
           <Text style={s.nextT} numberOfLines={1}>
             {nextText || '예정된 알람 없음'}
           </Text>
@@ -427,7 +429,7 @@ export default function App() {
             />
           )}
 
-          {tab==='calendar' && <CalendarView alarms={alarms} onUpdateAlarm={updateAlarm} onEditAlarm={al => {
+          {tab==='calendar' && <CalendarView alarms={alarms} overrides={overrides} onSetOverride={setOverride} onUpdateAlarm={updateAlarm} onEditAlarm={al => {
               setTab('alarms');
               setHighlightId(al.id);
               setTimeout(() => setHighlightId(null), 5000);

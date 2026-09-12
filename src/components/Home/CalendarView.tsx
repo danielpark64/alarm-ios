@@ -1,20 +1,23 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { View, FlatList, TouchableOpacity, Modal, StyleSheet, useWindowDimensions, NativeSyntheticEvent, NativeScrollEvent, LayoutChangeEvent } from 'react-native';
+import { View, FlatList, TouchableOpacity, Modal, StyleSheet, useWindowDimensions, NativeSyntheticEvent, NativeScrollEvent, LayoutChangeEvent, TextInput, ScrollView, Keyboard, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '../common/AppText';
-import { Alarm, DAYS, DAYS_DISPLAY } from '../../constants';
+import { Alarm, DAYS, DAYS_DISPLAY, DayOverride, DayOverrides, OverrideKind, OVERRIDE_KINDS, SHIFTS, DEFAULT_SHIFT_TIMES, DEFAULT_SHIFT_TIME_FALLBACK, ShiftPeriod } from '../../constants';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
 import { useFontScale } from '../../hooks/useFontScale';
-import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, shiftForDate, isOffDay, shiftToneIndexMap, shiftPeriodLabel, shiftPeriodId, effectiveShift, effectiveTime, lunarDateText, lunarShortText } from '../../utils';
+import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, isOverridableAlarm, shiftForDate, isOffDay, shiftToneIndexMap, shiftPeriodLabel, shiftPeriodId, effectiveShift, effectiveTime, dayWorkFor, lunarDateText, lunarShortText, dayOverrideDisplay, overrideLabel } from '../../utils';
 import { roleLabel } from '../../utils/workPattern';
 import { getHoliday, getHolidayShort } from '../../constants/holidays';
 import { getSolarTerm } from '../../constants/solarTerms';
+import { OverrideTimeModal } from './OverrideTimeModal';
 
 // 달력 화면 — 근무 알람(주기+출근/퇴근)은 배경색으로 근무조를 표시하고,
 // 그 외 알람만 칩으로 보여준다. 날짜를 누르면 하루 상세 팝업이 뜬다.
 // 좌우로 스와이프하면 한 달씩(무한) 이동, 상단 연도 숫자를 누르면 연도 선택 팝업이 뜬다.
 interface Props {
   alarms: Alarm[];
+  overrides: DayOverrides;
+  onSetOverride: (dateStr: string, ov: DayOverride | null) => void;
   onEditAlarm: (a: Alarm) => void;
   onUpdateAlarm?: (id: number, data: Partial<Alarm>) => void;
 }
@@ -70,10 +73,11 @@ interface MonthGridProps {
   today: string; showLunar: boolean; width: number;
   cv: ReturnType<typeof makeStyles>;
   cellH: number; itemHeight: number;
+  overrides: DayOverrides;
   onSelectDate: (ds: string) => void;
 }
 
-const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneIdxOf, density, cellScale, today, showLunar, width, cv, cellH, itemHeight, onSelectDate }: MonthGridProps) {
+const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneIdxOf, density, cellScale, today, showLunar, width, cv, cellH, itemHeight, overrides, onSelectDate }: MonthGridProps) {
   const cells = useMemo(() => buildCells(year, month), [year, month]);
   const dayMap = useMemo(() => buildDayMap(alarms, year, month), [alarms, year, month]);
   const offset = cells.findIndex(c => c !== null);
@@ -87,15 +91,21 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
         const dow = (offset + d - 1) % 7; // 0=일 … 6=토 (표시 체계)
         const info = dayMap[ds];
         const chips = info.alarms.filter(a => !isWorkAlarm(a) && !a.skips?.includes(ds));
+        // 하루 근무 변경(연차·대근 등)이 있으면 그걸로 확정 — 없으면(ov===null) 기존 경로 그대로.
+        const ov = dayOverrideDisplay(overrides[ds]);
         // 사용자가 근무 시간대(초/중/말/기타)를 직접 지정했으면 고정색으로 눈에 띄게, 아니면 기존 시간순 자동 배색.
         // 로테이션(rm==='pattern') 알람은 날짜마다 시간대가 달라서 effectiveShift로 그날 세그먼트를 직접 조회.
-        const resolvedShift = info.shift ? effectiveShift(info.shift, ds) : null;
+        const resolvedShift = (!ov && info.shift) ? effectiveShift(info.shift, ds) : null;
         // 색 하나가 아니라 배지 톤(배경+글자) 한 쌍을 고른다 — 명시 시간대가 있으면 고정 톤,
         // 없으면 시각순 자동 배색 톤. 둘 다 테마별 값이라 라이트에서도 대비가 유지된다.
         const explicitId = resolvedShift ? shiftPeriodId(info.shift!, resolvedShift) : null;
         const tone = explicitId
           ? C.shift[explicitId]
           : (info.shift ? C.shiftAuto[(toneIdxOf[info.shift.id] ?? 0) % C.shiftAuto.length] : null);
+        // override 배지 — 대근·특근처럼 work가 있으면 근무조 배지 자리를 대신 차지한다(줄이 안 늘어남).
+        const ovWorkTone = (ov && !ov.isOff) ? (ov.shift ? C.shift[ov.shift] : C.shiftAuto[0]) : null;
+        // override로 근무 알람이 꺼진 날(연차 등)은 기존 비번과 같은 취급 — 파란 테두리 박스 + 하단 라벨.
+        const effOff = ov ? ov.isOff : info.off;
         const holiday = getHoliday(ds);
         // 칸마다 들어가는 줄 수가 다르다(공휴일은 한 달에 한두 날뿐). 전체를 일괄로 줄이면
         // 대부분의 여유 있는 칸까지 손해를 보므로, **그 칸에 실제로 그려질 요소만** 세서
@@ -105,8 +115,8 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
         //    여기서 그걸 빼먹으면 "크게"에서 실제 글자가 30% 크게 렌더돼 칸을 넘긴다.
         const eff = density * cellScale;
         const subNeed = ((showLunar ? 9.5 : 0) + (holiday ? 9.5 : 0)
-                         + (info.shift && resolvedShift ? 11.5 : 0)
-                         + (info.off ? 14 : 0) + nChips * 9.5) * 1.7 * eff;
+                         + ((info.shift && resolvedShift) || ovWorkTone ? 11.5 : 0)
+                         + (effOff ? 14 : 0) + nChips * 9.5) * 1.7 * eff;
         const availH = cellH - 8 - 15.5 * eff * 1.55;
         const sd = subNeed > 0 ? Math.max(0.55, Math.min(1, availH / subNeed)) : 1;
         // 절기는 공휴일과 같은 슬롯을 재사용 — 겹치는 날엔 공휴일을 우선 보여주고 그 아래 절기를 덧붙인다.
@@ -122,15 +132,15 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
               { height: cellH },
               // 비번 점선과 "오늘" 표시가 서로 덮지 않도록, 오늘은 셀 테두리가 아니라
               // 날짜 숫자의 원형 배지로 표시한다(아래 dayNumToday).
-              info.off && cv.cellOff,
+              effOff && cv.cellOff,
             ]}
           >
             <Text style={[
               cv.dayNum,
               { fontSize: 15.5 * density },
               (dow === 0 || dow === 6 || holiday) && { color: C.weekendFg },
-              // 비번은 파란 라인 박스 — 주말·공휴일이면 그쪽 색(빨강/골드)이 우선한다.
-              info.off && !(dow === 0 || dow === 6 || holiday) && { color: C.offFg },
+              // 비번(또는 연차 등)은 파란 라인 박스 — 주말·공휴일이면 그쪽 색(빨강/골드)이 우선한다.
+              effOff && !(dow === 0 || dow === 6 || holiday) && { color: C.offFg },
               isToday && cv.dayNumToday,
             ]}>{d}</Text>
             {showLunar && (
@@ -140,7 +150,17 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
             {holiday && (
               <Text style={[cv.holidayLabel, { fontSize: 9.5 * density * sd }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>{getHolidayShort(ds)}</Text>
             )}
-            {info.shift && resolvedShift && tone && (
+            {ovWorkTone ? (
+              // 대근·특근 등 — 근무조 배지 자리를 대신 차지한다(줄이 안 늘어남).
+              <Text
+                style={[cv.shiftLabel, { color: ovWorkTone.fg, backgroundColor: ovWorkTone.bg, fontSize: 11.5 * density * sd }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
+                {ov!.label}
+              </Text>
+            ) : (info.shift && resolvedShift && tone && (
               // 7px 점 + 컬러 글자였던 것을 배지로 바꿨다. "면"이 생기면 같은 글자 크기라도
               // 노안에서 인지가 훨씬 쉽고, 배지 안에서 7:1 대비를 확보할 수 있다.
               <Text
@@ -151,12 +171,12 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
               >
                 {shiftPeriodLabel(info.shift, resolvedShift)}
               </Text>
-            )}
-            {info.off && (
-              // numberOfLines가 없으면 "크게" 설정에서 "비/번"으로 쪼개져 셀 밖으로 넘친다.
+            ))}
+            {effOff && (
+              // numberOfLines가 없으면 "크게" 설정에서 두 줄로 쪼개져 셀 밖으로 넘친다.
               // 세로 스크롤을 넣지 않는 이상 칸은 화면 높이에 묶이므로, 넘칠 때는 글자가
               // 스스로 줄어들게 해서 레이아웃이 깨지지 않도록 한다.
-              <Text style={[cv.offLabel, { fontSize: 14 * density * sd }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>비번</Text>
+              <Text style={[cv.offLabel, { fontSize: 14 * density * sd }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{ov ? ov.label : '비번'}</Text>
             )}
             {chips.slice(0,2).map((al, ai) => {
               const alType = getType(al.typeId);
@@ -176,6 +196,11 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
             {chips.length > 2 && (
               <Text style={cv.moreChip}>+{chips.length-2}</Text>
             )}
+            {/* 경조사 메모 — 근무 상태 배지와 무관하게 항상 작은 점으로만 표시(자리 차지 안 함,
+                subNeed 높이 계산에도 안 들어감 — absolute라 흐름 레이아웃 밖). */}
+            {!!overrides[ds]?.family && (
+              <View style={cv.familyDot} pointerEvents="none" />
+            )}
           </TouchableOpacity>
         );
       })}
@@ -183,7 +208,7 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
   );
 });
 
-export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
+export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, onUpdateAlarm }: Props) {
   const C = useColors();
   // cv는 MonthGrid(React.memo)에 prop으로 내려간다 — 렌더마다 새 객체를 만들면 memo가
   // 절대 bail-out 못 해 스와이프/팝업마다 3개 그리드 × 42셀이 전부 재렌더된다
@@ -196,6 +221,12 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
 
   const [pageIndex, setPageIndex] = useState(RANGE);
   const [selDate, setSelDate] = useState<string|null>(null);
+  // 하루 근무 변경 팝업 안 로컬 상태 — 종류 선택 그리드 → (대근/특근이면 근무조 선택 →) 시각
+  // 편집 모달의 단계를 오간다. selDate가 바뀔 때마다 전부 초기화한다.
+  const [ovPicking, setOvPicking] = useState(false);
+  const [ovPickingShiftFor, setOvPickingShiftFor] = useState<OverrideKind | null>(null);
+  const [ovTimeEditFor, setOvTimeEditFor] = useState<{ kind: OverrideKind; shift?: ShiftPeriod; start?: { hour: number; min: number }; end?: { hour: number; min: number } } | null>(null);
+  const [ovFamilyDraft, setOvFamilyDraft] = useState('');
   const [showLunar, setShowLunar] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
   const listRef = useRef<FlatList>(null);
@@ -284,6 +315,124 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
         return id ? C.shift[id] : C.shiftAuto[(toneIdxOf[selInfo.shift.id] ?? 0) % C.shiftAuto.length];
       })()
     : null;
+  const selOverride = selDate ? overrides[selDate] : undefined;
+  const selOv = dayOverrideDisplay(selOverride);
+
+  // 팝업이 새 날짜로 열릴 때마다 선택 중이던 종류/메모 초안을 리셋 — 어제 고르던 게 남아 보이면 안 된다.
+  useEffect(() => {
+    setOvPicking(false);
+    setOvPickingShiftFor(null);
+    setOvTimeEditFor(null);
+    setOvFamilyDraft(selOverride?.family ?? '');
+  }, [selDate]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 대근·특근 — 원래 비번인 날이라 "복사할 오늘 스케줄"이 없다. 근무조를 먼저 고르게 해서
+  // 표준 시각(DEFAULT_SHIFT_TIMES)을 초안으로 채우고, 그 다음 시간 편집 모달에서 사용자가
+  // 직접 출퇴근 시각을 조정할 수 있게 한다(대근·특근도 실제 근무 시간이 표준과 다를 수 있음).
+  const isWorkKind = (k: OverrideKind) => k === 'substitute' || k === 'special';
+  const presetShiftTimes = (shift: ShiftPeriod) => DEFAULT_SHIFT_TIMES[shift] ?? DEFAULT_SHIFT_TIME_FALLBACK;
+
+  // 반차·반반차·야근·연장 — 이미 근무가 정해진 날이라 근무조를 새로 고를 필요는 없지만,
+  // 출근/퇴근 중 어느 쪽이 바뀔지는 사람마다 다르다(반차가 오전 반차일 수도, 오후 반차일 수도).
+  // 그래서 오늘 실제 시각을 초안으로 채운 뒤 시간 편집 모달을 띄워 사용자가 직접 조정하게 한다.
+  const isCopyKind = (k: OverrideKind) => k === 'half' || k === 'quarter' || k === 'night' || k === 'extend';
+  const copyTodaysWork = (): DayOverride['work'] | undefined => {
+    if (!selDate) return undefined;
+    // shiftForDate/effectiveShift는 isWorkAlarm(교대근무 로테이션) 기준이라 일반 출근/퇴근
+    // 버튼(요일 반복 등)만 쓰는 사용자는 항상 null이 나온다 — 그래도 시각 자체는 알람에서
+    // 그대로 가져올 수 있으니, "근무조 색" 조회 실패로 전체를 막지 않는다.
+    const a = shiftForDate(alarms, selDate);
+    const resolved = a ? effectiveShift(a, selDate) : null;
+    // isWorkAlarm이 아니라 isOverridableAlarm — 교대근무 마법사 없이 출근/퇴근 버튼만으로
+    // 만든 알람(요일 반복 등)도 하루 근무 변경의 기준(시각 초안)이 될 수 있어야 한다.
+    // alarms.find로 그냥 첫 알람을 집으면 출근/퇴근 알람이 여러 개(평일용/주말용 등)일 때
+    // selDate의 요일과 무관한 알람이 잘못 뽑힐 수 있어, alarmsForDate로 실제 그 날짜에
+    // 관여하는 알람만 후보로 좁힌다(shiftForDate와 같은 방식).
+    const overridableToday = alarmsForDate(alarms.filter(isOverridableAlarm), selDate, true);
+    const commuteAlarm = overridableToday.find(x => x.typeId === 'commute');
+    const offworkAlarm = overridableToday.find(x => x.typeId === 'offwork');
+    // ⚠️ 로테이션(rm==='pattern') 알람은 effectiveTime이 null을 반환하면 "이 세그먼트엔 이
+    // 역할이 없다"(hasOffwork:false 등)는 뜻이다 — 알람 최상위 hour/min으로 폴백하면 없어야
+    // 할 퇴근 알람이 유령으로 생긴다. 그 폴백은 비로테이션 알람에서만 의미가 있는데, 비로테이션
+    // 알람은 effectiveTime이 애초에 null을 안 돌려주므로 폴백 자체가 필요 없다 — 그냥 뺀다.
+    const ct = commuteAlarm ? (effectiveTime(commuteAlarm, selDate) ?? undefined) : undefined;
+    const ot = offworkAlarm ? (effectiveTime(offworkAlarm, selDate) ?? undefined) : undefined;
+    const id = resolved ? shiftPeriodId(a!, resolved) : null;
+    return { shift: id ?? undefined, start: ct, end: ot };
+  };
+
+  // 종류 선택 — off형(work 없음, 연차·병가·기타)은 즉시 확정, 그 외(대근·특근·반차·반반차·
+  // 야근·연장)는 초안 시각을 채운 뒤 시간 편집 모달로 넘어간다. 어느 쪽이든 이미 있던
+  // family 메모는 그대로 들고 간다 — kind를 바꾼다고 경조사 메모가 날아가면 안 된다.
+  const pickKind = (k: OverrideKind) => {
+    if (!selDate) return;
+    if (isWorkKind(k)) { setOvPickingShiftFor(k); return; }
+    if (isCopyKind(k)) {
+      const w = copyTodaysWork();
+      setOvTimeEditFor({ kind: k, shift: w?.shift, start: w?.start, end: w?.end });
+      return;
+    }
+    onSetOverride(selDate, { kind: k, family: selOverride?.family });
+    setOvPicking(false);
+  };
+  const pickShiftForWork = (shift: ShiftPeriod) => {
+    if (!ovPickingShiftFor) return;
+    const t = presetShiftTimes(shift);
+    setOvTimeEditFor({ kind: ovPickingShiftFor, shift, start: t.commute, end: t.offwork });
+    setOvPickingShiftFor(null);
+  };
+  const confirmTimeEdit = (start: { hour: number; min: number }, end: { hour: number; min: number }) => {
+    if (!selDate || !ovTimeEditFor) return;
+    onSetOverride(selDate, {
+      kind: ovTimeEditFor.kind,
+      family: selOverride?.family,
+      work: { shift: ovTimeEditFor.shift, start, end },
+    });
+    setOvTimeEditFor(null);
+    setOvPicking(false);
+  };
+  // "하루 근무 변경 해제"는 kind/work만 되돌린다 — family 메모는 근무 상태와 무관하므로
+  // 같이 지우면 "메모만 남기고 싶었는데 근무 변경을 해제했더니 메모까지 날아갔다"가 된다.
+  const clearOverride = () => {
+    if (!selDate) return;
+    onSetOverride(selDate, selOverride?.family ? { family: selOverride.family } : null);
+  };
+  // 경조사 메모 — kind/work와 완전히 독립적으로 항상 편집 가능하다. 메모를 지워서 빈
+  // 문자열이 되고 kind도 없으면 override 자체가 더 이상 필요 없으므로 통째로 지운다.
+  const commitFamilyMemo = () => {
+    if (!selDate) return;
+    const text = ovFamilyDraft.trim();
+    if (!text && !selOverride?.kind) {
+      if (selOverride) onSetOverride(selDate, null);
+    } else {
+      onSetOverride(selDate, { ...(selOverride ?? {}), family: text || undefined });
+    }
+    Keyboard.dismiss();
+  };
+
+  // 달력 아래 집계 줄 — 이번 달/올해 각각 종류별 개수. 0개인 종류는 표시하지 않는다.
+  const tally = useMemo(() => {
+    const ymPrefix = `${year}-${pad(month + 1)}-`;
+    const yPrefix = `${year}-`;
+    const byKind = new Map<string, { label: string; month: number; year: number }>();
+    const bump = (label: string, ds: string) => {
+      const cur = byKind.get(label) ?? { label, month: 0, year: 0 };
+      cur.year++;
+      if (ds.startsWith(ymPrefix)) cur.month++;
+      byKind.set(label, cur);
+    };
+    for (const [ds, o] of Object.entries(overrides)) {
+      if (!ds.startsWith(yPrefix)) continue;
+      // family는 kind와 독립적인 메모라 근무 상태 집계(연차·대근 등)와 별도로,
+      // kind 없이 family만 있는 날도 놓치지 않고 "경조사"로 센다.
+      // overrideLabel은 지금 OVERRIDE_KINDS에 없는 kind(예: 예전에 있다가 빠진 "기타")면
+      // 빈 문자열을 반환하므로, 그런 레거시 데이터가 라벨 없는 항목으로 집계되지 않게 거른다.
+      const label = o.kind ? overrideLabel(o) : '';
+      if (label) bump(label, ds);
+      if (o.family) bump('경조사', ds);
+    }
+    return Array.from(byKind.values()).filter(x => x.month > 0 || x.year > 0);
+  }, [overrides, year, month]);
 
   const pages = useMemo(() => Array.from({ length: RANGE * 2 + 1 }, (_, i) => i), []);
 
@@ -333,7 +482,7 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
           keyExtractor={(i) => String(i)}
           renderItem={({ item }) => {
             const { year: y, month: m } = indexToYearMonth(item);
-            return <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} itemHeight={itemHeight} onSelectDate={setSelDate} />;
+            return <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} itemHeight={itemHeight} overrides={overrides} onSelectDate={setSelDate} />;
           }}
           getItemLayout={(_, index) => ({ length: winWidth, offset: winWidth * index, index })}
           initialScrollIndex={RANGE}
@@ -348,6 +497,19 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
           removeClippedSubviews
         />
       </View>
+
+      {/* 하루 근무 변경 집계 — 이번 달/올해 종류별 개수. 이 줄이 생긴 만큼 위 그리드가
+          flex:1로 자동으로 줄어들어(onGridAreaLayout이 그 남은 공간을 다시 측정) 칸 높이가
+          알아서 반영된다. 0개인 종류는 애초에 tally에 안 들어간다. */}
+      {tally.length > 0 && (
+        <View style={cv.tallyWrap}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={cv.tallyRow}>
+            {tally.map(t => (
+              <Text key={t.label} style={cv.tallyItem}>{t.label} {t.month} (년 {t.year})</Text>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {/* 연도 선택 팝업 */}
       <Modal visible={showYearPicker} transparent animationType="fade" onRequestClose={() => setShowYearPicker(false)}>
@@ -391,6 +553,10 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
 
       {/* 하루 상세 팝업 */}
       <Modal visible={selDate != null} transparent animationType="fade" onRequestClose={() => setSelDate(null)}>
+        {/* 경조사 메모 입력칸이 키보드에 가려 저장 버튼이 안 보이던 문제 — KeyboardAvoidingView로
+            카드 전체를 키보드 위로 밀어 올린다. Android는 windowSoftInputMode가 이미 처리해줘서
+            보통 'height'/생략 쪽이 자연스럽고, iOS는 'padding'이 표준. */}
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <TouchableOpacity style={cv.modalBack} activeOpacity={1} onPress={() => setSelDate(null)}>
           <TouchableOpacity activeOpacity={1} style={cv.modalCard} onPress={() => {}}>
             {selDateObj && (
@@ -411,85 +577,243 @@ export function CalendarView({ alarms, onEditAlarm, onUpdateAlarm }: Props) {
                 <Text style={cv.modalHolidayText}>{getSolarTerm(selDate)}</Text>
               </View>
             )}
-            {selInfo?.shift && selShiftTone && (
-              <View style={[cv.modalShiftRow, {backgroundColor: selShiftTone.bg}]}>
-                <Text style={[cv.modalShiftText, {color: selShiftTone.fg}]}>
-                  {selShiftLabel} 근무
-                </Text>
+            {selOv ? (
+              // 하루 근무 변경이 있으면 원래 근무/비번 표시 대신 이걸로 확정해서 보여준다.
+              (() => {
+                const tone = selOv.isOff ? null : (selOv.shift ? C.shift[selOv.shift] : C.shiftAuto[0]);
+                return (
+                  <View style={tone ? [cv.modalShiftRow, {backgroundColor: tone.bg}] : cv.modalOffRow}>
+                    <Text style={tone ? [cv.modalShiftText, {color: tone.fg}] : cv.modalOffText}>
+                      {selOv.label}{tone ? ' 근무' : ''}
+                    </Text>
+                  </View>
+                );
+              })()
+            ) : (
+              <>
+                {selInfo?.shift && selShiftTone && (
+                  <View style={[cv.modalShiftRow, {backgroundColor: selShiftTone.bg}]}>
+                    <Text style={[cv.modalShiftText, {color: selShiftTone.fg}]}>
+                      {selShiftLabel} 근무
+                    </Text>
+                  </View>
+                )}
+                {selInfo?.off && (
+                  <View style={cv.modalOffRow}>
+                    <Text style={cv.modalOffText}>비번 (쉬는 날)</Text>
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* 하루 근무 변경(메인) — 연차·병가 / 대근·특근·야근·연장·반차·반반차(시각 직접 지정).
+                경조사(메모, 보조)보다 먼저 둔다. 오늘 이후만 바꿀 수 있다("이날 끄기"와 같은 제약). */}
+            {selDate && selDate >= today && (
+              <View style={cv.ovSection}>
+                {selOv ? (
+                  <TouchableOpacity style={cv.ovClearBtn} onPress={clearOverride}>
+                    <Text style={cv.ovClearBtnText}>하루 근무 변경 해제</Text>
+                  </TouchableOpacity>
+                ) : ovPickingShiftFor ? (
+                  <>
+                    <Text style={cv.ovSectionLabel}>
+                      {OVERRIDE_KINDS.find(k => k.id === ovPickingShiftFor)?.label} — 근무조 선택
+                    </Text>
+                    <View style={cv.ovChipRow}>
+                      {SHIFTS.filter(s => s.id !== 'none').map(s => (
+                        <TouchableOpacity key={s.id} style={cv.ovChip} onPress={() => pickShiftForWork(s.id)}>
+                          <Text style={cv.ovChipText}>{s.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    <TouchableOpacity onPress={() => setOvPickingShiftFor(null)}>
+                      <Text style={cv.ovBackText}>‹ 종류 다시 선택</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : ovPicking ? (
+                  <>
+                    <Text style={cv.ovSectionLabel}>하루 근무 변경</Text>
+                    <View style={cv.ovChipRow}>
+                      {OVERRIDE_KINDS.map(k => (
+                        <TouchableOpacity key={k.id} style={cv.ovChip} onPress={() => pickKind(k.id)}>
+                          <Text style={cv.ovChipText}>{k.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </>
+                ) : (
+                  <TouchableOpacity style={cv.ovOpenBtn} onPress={() => setOvPicking(true)}>
+                    <Text style={cv.ovOpenBtnText}>하루 근무 변경 (연차·대근 등)</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
-            {selInfo?.off && (
-              <View style={cv.modalOffRow}>
-                <Text style={cv.modalOffText}>비번 (쉬는 날)</Text>
+
+            {/* 경조사 메모 저장 확인(보조) — 아래 입력칸은 값이 그대로 남아있는 편집 상태라
+                저장 전후로 화면이 똑같아 보여서 "저장이 안 됐다"고 오해하기 쉬웠다(실사용
+                피드백). 저장된 메모를 여기 별도 줄로 눈에 띄게 보여줘서 확실히 확인시킨다. */}
+            {selOverride?.family && (
+              <View style={cv.familyMemoRow}>
+                <Text style={cv.familyMemoRowText} numberOfLines={2}>📌 경조사: {selOverride.family}</Text>
               </View>
             )}
-            {selInfo && selInfo.alarms.length > 0 ? (
-              selInfo.alarms
-                .slice()
-                .sort((a,b) => {
-                  const ta = (a.rm === 'pattern' && selDate ? effectiveTime(a, selDate) : null) ?? { hour: a.hour, min: a.min };
-                  const tb = (b.rm === 'pattern' && selDate ? effectiveTime(b, selDate) : null) ?? { hour: b.hour, min: b.min };
-                  return ta.hour - tb.hour || ta.min - tb.min;
-                })
-                .map((al, ai) => {
-                  const alType = getType(al.typeId);
-                  const skipped = !!(selDate && al.skips?.includes(selDate));
-                  // "이날만 끄기"는 오늘 이후 + 반복 알람만 (한 번 알람은 스위치로 끄면 됨)
-                  const canSkip = !!onUpdateAlarm && !!selDate && selDate >= today && al.rm !== 'once';
-                  const toggleSkip = () => {
-                    if (!selDate || !onUpdateAlarm) return;
-                    const next = skipped
-                      ? (al.skips ?? []).filter(s => s !== selDate)
-                      : [...(al.skips ?? []), selDate];
-                    onUpdateAlarm(al.id, { skips: next.length ? next : undefined });
-                  };
-                  // 로테이션 알람은 al.hour/min/label이 첫 세그먼트 기준 레거시 값이라, 이 날짜의
-                  // 실제 시각/라벨을 다시 조회해야 한다(알림에서 실제로 뜨는 문구와 동일하게).
-                  const isPattern = al.rm === 'pattern';
-                  const patternTime = isPattern && selDate ? effectiveTime(al, selDate) : null;
-                  const patternShift = isPattern && selDate ? effectiveShift(al, selDate) : null;
-                  const dispHour = patternTime?.hour ?? al.hour;
-                  const dispMin  = patternTime?.min  ?? al.min;
-                  const dispLabel = patternShift
-                    ? roleLabel(patternShift, (al.groupRole ?? 'commute'))
-                    : (al.label || alType.label);
-                  return (
-                    <View key={ai} style={cv.modalAlarmRow}>
-                      <TouchableOpacity
-                        style={[cv.modalAlarmMain, skipped && {opacity:0.45}]}
-                        activeOpacity={0.7}
-                        onPress={() => { setSelDate(null); onEditAlarm(al); }}
-                      >
-                        <Text style={cv.modalAlarmIcon}>{alType.icon}</Text>
+
+            {/* 경조사 메모(보조) — 근무 상태(kind/work)와 완전히 독립적으로 항상 노출된다.
+                남의 결혼식·장례식은 연차를 쓰든 근무 끝나고 가든 상관없이 몇 시·누구 건지만
+                남기면 되는 것이라, "하루 근무 변경" 종류 선택과는 별개의 자리를 둔다. 메인
+                기능인 하루 근무 변경보다 아래에 둬서 우선순위를 명확히 한다. */}
+            {selDate && selDate >= today && (
+              <View style={cv.ovMemoRow}>
+                <TextInput
+                  style={cv.ovMemoInput}
+                  placeholder="경조사 메모 (예: 김과장 결혼식 15시)"
+                  placeholderTextColor={C.txt3}
+                  value={ovFamilyDraft}
+                  onChangeText={setOvFamilyDraft}
+                  onSubmitEditing={commitFamilyMemo}
+                  returnKeyType="done"
+                />
+                {/* onBlur만 믿으면 키보드에 가려 버튼이 안 보일 때 저장이 안 됐다고
+                    오해하기 쉽다 — 항상 보이는 명시적 저장 버튼을 따로 둔다. */}
+                <TouchableOpacity style={cv.ovMemoSaveBtn} onPress={commitFamilyMemo}>
+                  <Text style={cv.ovMemoSaveBtnText}>저장</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            {(() => {
+              // 알람 목록은 buildDayMap/alarmsForDate 기준이라 override를 모른다 — override가
+              // 근무 알람을 끄거나(연차 등) 새로 켰는데(대근 등) 이 목록이 그대로면 위에 보이는
+              // override 요약과 모순된 정보를 보여주게 된다. 여기서 표시만 override에 맞춰 보정한다.
+              // isWorkAlarm이 아니라 isOverridableAlarm — 요일 반복 등으로 만든 일반 출근/퇴근
+              // 알람도 override로 꺼지면 여기서 dim 처리+라벨이 붙어야 한다.
+              const workIds = new Set(alarms.filter(isOverridableAlarm).map(a => a.id));
+              // 합성 행은 "원래 알람이 없던 날에 새로 생긴 근무"(대근·특근)에서만 필요하다.
+              // 반차·야근·연장(copy-kind)은 그날 실제 알람이 이미 selInfo.alarms에 들어있으므로
+              // 여기서 또 합성하면 같은 시각이 두 줄로 중복 표시된다.
+              const isSubstituteKind = selOverride?.kind === 'substitute' || selOverride?.kind === 'special';
+              const ovWork = (selOv && !selOv.isOff && isSubstituteKind) ? selOverride?.work : undefined;
+              const hasAny = (selInfo && selInfo.alarms.length > 0) || !!ovWork;
+              if (!hasAny) return <Text style={cv.modalEmpty}>이날 울리는 알람이 없어요</Text>;
+              return (
+                <>
+                  {/* 대근·특근 등으로 새로 생긴 근무 — 실제 Alarm 객체가 아니라 정보 표시만(편집·끄기 불가) */}
+                  {ovWork?.start && (
+                    <View style={cv.modalAlarmRow}>
+                      <View style={cv.modalAlarmMain}>
+                        <Text style={cv.modalAlarmIcon}>🚇</Text>
                         <View style={{flex:1, minWidth:0}}>
-                          <Text style={cv.modalAlarmTime}>{pad(dispHour)}:{pad(dispMin)}</Text>
+                          <Text style={cv.modalAlarmTime}>{pad(ovWork.start.hour)}:{pad(ovWork.start.min)}</Text>
                           <Text style={cv.modalAlarmLabel} numberOfLines={1}>
-                            {dispLabel}{skipped ? ' · 이날 꺼짐' : ''}
+                            {roleLabel({ shift: ovWork.shift ?? 'none' }, 'commute')} · {selOv!.label}
                           </Text>
                         </View>
-                      </TouchableOpacity>
-                      {canSkip && (
-                        <TouchableOpacity
-                          style={skipped ? cv.skipBtnOn : cv.skipBtn}
-                          activeOpacity={0.7}
-                          onPress={toggleSkip}
-                        >
-                          <Text style={skipped ? cv.skipBtnOnText : cv.skipBtnText}>
-                            {skipped ? '다시 켜기' : '이날 끄기'}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
+                      </View>
                     </View>
-                  );
-                })
-            ) : (
-              <Text style={cv.modalEmpty}>이날 울리는 알람이 없어요</Text>
-            )}
+                  )}
+                  {ovWork?.end && (
+                    <View style={cv.modalAlarmRow}>
+                      <View style={cv.modalAlarmMain}>
+                        <Text style={cv.modalAlarmIcon}>🏠</Text>
+                        <View style={{flex:1, minWidth:0}}>
+                          <Text style={cv.modalAlarmTime}>{pad(ovWork.end.hour)}:{pad(ovWork.end.min)}</Text>
+                          <Text style={cv.modalAlarmLabel} numberOfLines={1}>
+                            {roleLabel({ shift: ovWork.shift ?? 'none' }, 'offwork')} · {selOv!.label}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+                  {selInfo && selInfo.alarms
+                    .slice()
+                    .sort((a,b) => {
+                      const ta = (selOverride && dayWorkFor(a, selOverride)?.time) ?? (a.rm === 'pattern' && selDate ? effectiveTime(a, selDate) : null) ?? { hour: a.hour, min: a.min };
+                      const tb = (selOverride && dayWorkFor(b, selOverride)?.time) ?? (b.rm === 'pattern' && selDate ? effectiveTime(b, selDate) : null) ?? { hour: b.hour, min: b.min };
+                      return ta.hour - tb.hour || ta.min - tb.min;
+                    })
+                    .map((al, ai) => {
+                      const alType = getType(al.typeId);
+                      const skipped = !!(selDate && al.skips?.includes(selDate));
+                      // override로 이미 꺼진 근무 알람은 "이날 끄기" 토글을 더 보여줄 필요가 없다 —
+                      // 하루 전체가 override로 결정된 상태라 개별 스킵은 의미가 없다.
+                      const overriddenOff = !!selOv && selOv.isOff && workIds.has(al.id);
+                      // "이날만 끄기"는 오늘 이후 + 반복 알람만 (한 번 알람은 스위치로 끄면 됨).
+                      // 근무 알람(출근/퇴근, isOverridableAlarm)은 여기서 아예 뺀다 — "하루 근무
+                      // 변경"과 용도가 겹쳐서, 출근만 끄고 퇴근은 그대로 두는 식으로 절반만
+                      // 눌러도 의도(오늘 하루 근무 안 함)와 다르게 동작하는 혼란이 있었다.
+                      // 근무 알람의 개별 조정은 이제 하루 근무 변경(연차 등) 하나로만 유도한다.
+                      const canSkip = !!onUpdateAlarm && !!selDate && selDate >= today && al.rm !== 'once' && !overriddenOff && !isOverridableAlarm(al);
+                      const toggleSkip = () => {
+                        if (!selDate || !onUpdateAlarm) return;
+                        const next = skipped
+                          ? (al.skips ?? []).filter(s => s !== selDate)
+                          : [...(al.skips ?? []), selDate];
+                        onUpdateAlarm(al.id, { skips: next.length ? next : undefined });
+                      };
+                      // 로테이션 알람은 al.hour/min/label이 첫 세그먼트 기준 레거시 값이라, 이 날짜의
+                      // 실제 시각/라벨을 다시 조회해야 한다(알림에서 실제로 뜨는 문구와 동일하게).
+                      const isPattern = al.rm === 'pattern';
+                      const patternTime = isPattern && selDate ? effectiveTime(al, selDate) : null;
+                      const patternShift = isPattern && selDate ? effectiveShift(al, selDate) : null;
+                      // 반차·야근·연장처럼 시각만 바뀌는 override는 실제 Alarm 객체(al.hour/min)를
+                      // 건드리지 않으므로, 이 목록도 dayWorkFor로 그날 조정된 시각을 우선 반영해야
+                      // 한다 — 안 그러면 예약(core.ts)은 조정된 시각으로 울리는데 목록엔 원래
+                      // 시각이 보이는 불일치가 생긴다(실제 겪은 버그).
+                      const ovTime = selOverride ? dayWorkFor(al, selOverride)?.time : undefined;
+                      const dispHour = ovTime?.hour ?? patternTime?.hour ?? al.hour;
+                      const dispMin  = ovTime?.min  ?? patternTime?.min  ?? al.min;
+                      const dispLabel = patternShift
+                        ? roleLabel(patternShift, (al.groupRole ?? 'commute'))
+                        : (al.label || alType.label);
+                      return (
+                        <View key={ai} style={cv.modalAlarmRow}>
+                          <TouchableOpacity
+                            style={[cv.modalAlarmMain, (skipped || overriddenOff) && {opacity:0.45}]}
+                            activeOpacity={0.7}
+                            onPress={() => { setSelDate(null); onEditAlarm(al); }}
+                          >
+                            <Text style={cv.modalAlarmIcon}>{alType.icon}</Text>
+                            <View style={{flex:1, minWidth:0}}>
+                              <Text style={cv.modalAlarmTime}>{pad(dispHour)}:{pad(dispMin)}</Text>
+                              <Text style={cv.modalAlarmLabel} numberOfLines={1}>
+                                {dispLabel}{overriddenOff ? ` · ${selOv!.label}로 꺼짐` : (skipped ? ' · 이날 꺼짐' : '')}
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+                          {canSkip && (
+                            <TouchableOpacity
+                              style={skipped ? cv.skipBtnOn : cv.skipBtn}
+                              activeOpacity={0.7}
+                              onPress={toggleSkip}
+                            >
+                              <Text style={skipped ? cv.skipBtnOnText : cv.skipBtnText}>
+                                {skipped ? '다시 켜기' : '이날 끄기'}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      );
+                    })}
+                </>
+              );
+            })()}
             <TouchableOpacity style={cv.modalClose} onPress={() => setSelDate(null)}>
               <Text style={cv.modalCloseText}>닫기</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
+        {/* 대근·특근·반차·야근 등 — 출퇴근 시각을 직접 조정하는 오버레이. 반드시 같은 <Modal>
+            안, 배경 TouchableOpacity의 형제 위치에 둔다 — 별도 <Modal>로 빼서 이미 열려 있는
+            이 하루 상세 팝업 위에 겹쳐 띄우면 iOS가 두 번째 present를 조용히 무시해서 안 뜬다
+            (CycleRestControls.tsx가 겪은 것과 같은 문제, {"{children}"} 패턴과 동일한 이유). */}
+        <OverrideTimeModal
+          visible={ovTimeEditFor != null}
+          title={ovTimeEditFor ? `${OVERRIDE_KINDS.find(k => k.id === ovTimeEditFor.kind)?.label} 시각` : ''}
+          start={ovTimeEditFor?.start}
+          end={ovTimeEditFor?.end}
+          onConfirm={confirmTimeEdit}
+          onClose={() => setOvTimeEditFor(null)}
+        />
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -530,6 +854,8 @@ function makeStyles(C: Palette) {
     // overflow:hidden이 없으면 칸 내용이 아래 행 날짜 위로 올라탄다(음력 켜면 바로 재현됨).
     // 세로 스크롤을 넣지 않는 이상 칸 높이는 화면에 묶이므로, 넘치는 경우를 구조적으로 막아둔다.
     cell:        { width:'14.28%', marginBottom:CELL_MB, padding:2, borderRadius:8, overflow:'hidden' },
+    // 경조사 메모 표시 — 근무 배지와 겹치지 않는 우상단 구석에 작은 점만, 흐름 레이아웃 밖(absolute).
+    familyDot:   { position:'absolute', top:3, right:3, width:6, height:6, borderRadius:3, backgroundColor:C.accent2 },
     // 비번 = 파란 2px 라인 박스(시안 4b/4d). 다른 셀은 전부 테두리가 없으니 이 테두리 하나로
     // "쉬는 날"이 한눈에 구분된다. 배경은 옅은 파란 틴트로 면도 살짝 보이게.
     cellOff:     { backgroundColor:C.offCellBg, borderWidth:2, borderColor:C.offBorder },
@@ -567,10 +893,37 @@ function makeStyles(C: Palette) {
     modalLunar:  { fontSize:12, fontWeight:'600', color:C.txt3, textAlign:'center', marginBottom:12 },
     modalHolidayRow:{ borderRadius:12, paddingVertical:6, paddingHorizontal:12, marginBottom:8, alignItems:'center', backgroundColor:C.holidayBg },
     modalHolidayText:{ fontSize:13.5, fontWeight:'800', color:C.holidayFg },
+    // 경조사 메모 저장 확인 줄 — "저장" 버튼과 같은 accent2 계열로 눈에 띄게, 입력칸과는
+    // 시각적으로 분리된 별도 확인 표시라는 걸 알 수 있게 한다.
+    familyMemoRow:{ borderRadius:12, paddingVertical:7, paddingHorizontal:12, marginBottom:8, backgroundColor:`${C.accent2}26` },
+    familyMemoRowText:{ fontSize:13, fontWeight:'700', color:C.accent2, textAlign:'center' },
     modalShiftRow:{ borderRadius:12, paddingVertical:8, paddingHorizontal:12, marginBottom:10, alignItems:'center' },
     modalShiftText:{ fontSize:15, fontWeight:'800' },
     modalOffRow: { borderRadius:12, paddingVertical:8, paddingHorizontal:12, marginBottom:10, alignItems:'center', borderWidth:2, borderColor:C.offBorder, backgroundColor:C.offBg },
     modalOffText:{ fontSize:15.5, fontWeight:'800', color:C.offFg },
+    // 하루 근무 변경 섹션 — 상세 팝업 안, 알람 목록 위에 자리한다.
+    ovSection:    { marginBottom:12, gap:8 },
+    ovSectionLabel:{ fontSize:13, fontWeight:'700', color:C.txt3 },
+    ovChipRow:    { flexDirection:'row', flexWrap:'wrap', gap:8 },
+    ovChip:       { paddingHorizontal:12, paddingVertical:8, borderRadius:99, backgroundColor:C.bg3, borderWidth:1, borderColor:C.border2 },
+    ovChipText:   { fontSize:13.5, fontWeight:'700', color:C.txt2 },
+    ovBackText:   { fontSize:12.5, fontWeight:'700', color:C.txt3, marginTop:2 },
+    // 메인 액션(하루 근무 변경 진입 버튼) — 예전엔 옅은 점선 테두리 + txt3 회색 글자였는데,
+    // 다크에서는 txt3가 밝은 라벤더라 눈에 띄지만 라이트에서는 txt3가 중간 회색이라 배경에
+    // 묻혀서 잘 안 보인다는 실사용 피드백. accent2는 라이트/다크 둘 다 고정된 선명한 보라라
+    // 테마 상관없이 항상 눈에 띈다 — 실선 테두리 + 옅은 틴트 배경으로 톤을 올렸다.
+    ovOpenBtn:    { paddingVertical:10, borderRadius:12, alignItems:'center', borderWidth:1.5, borderColor:C.accent2, backgroundColor:`${C.accent2}1a` },
+    ovOpenBtnText:{ fontSize:13.5, fontWeight:'800', color:C.accent2 },
+    ovClearBtn:   { paddingVertical:9, borderRadius:12, alignItems:'center', backgroundColor:C.bg3 },
+    ovClearBtnText:{ fontSize:13, fontWeight:'700', color:C.txt2 },
+    ovMemoRow:    { flexDirection:'row', alignItems:'center', gap:8 },
+    ovMemoInput:  { flex:1, borderRadius:10, borderWidth:1, borderColor:C.border2, paddingHorizontal:10, paddingVertical:8, fontSize:13.5, color:C.txt, backgroundColor:C.bg3 },
+    ovMemoSaveBtn:{ paddingHorizontal:14, paddingVertical:9, borderRadius:10, backgroundColor:C.accent2 },
+    ovMemoSaveBtnText:{ fontSize:13, fontWeight:'800', color:'#ffffff' },
+    // 달력 아래 집계 줄 — 종류별 이번 달/올해 개수를 한 줄로, 다 못 들어가면 가로 스크롤.
+    tallyWrap:    { paddingHorizontal:14, paddingVertical:6, borderTopWidth:1, borderTopColor:C.border },
+    tallyRow:     { flexDirection:'row', gap:14 },
+    tallyItem:    { fontSize:12, fontWeight:'700', color:C.txt3 },
     modalAlarmRow:{ flexDirection:'row', alignItems:'center', gap:10, paddingVertical:12, borderBottomWidth:1, borderBottomColor:C.border },
     modalAlarmMain:{ flex:1, minWidth:0, flexDirection:'row', alignItems:'center', gap:12 },
     skipBtn:     { paddingHorizontal:12, paddingVertical:10, borderRadius:12, borderWidth:1.3, borderColor:C.offBorder },

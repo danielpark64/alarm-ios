@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { Alarm, SNOOZE_ENABLED } from '../../constants';
+import { Alarm, SNOOZE_ENABLED, DayOverrides } from '../../constants';
 import { cancelNativeAlarms, syncActiveNativeAlarms } from './android';
 import { scheduleAlarmTriggers, scheduleGroupReps } from './core';
 
@@ -48,7 +48,7 @@ export async function cancelExpoGroupReps(body: string) {
 }
 
 // 전체 재스케줄 (같은 시간대 묶음 처리 포함)
-export async function rescheduleAll(alarms: Alarm[]) {
+export async function rescheduleAll(alarms: Alarm[], overrides: DayOverrides = {}) {
   await cancelAllNotifications();
   for (const alarm of alarms) cancelNativeAlarms(alarm.id);
   const active = alarms.filter(a => a.active);
@@ -62,7 +62,7 @@ export async function rescheduleAll(alarms: Alarm[]) {
   const regular = active.filter(a => a.rm !== 'pattern');
 
   for (const alarm of patternAlarms) {
-    await scheduleAlarmTriggers(alarm);
+    await scheduleAlarmTriggers(alarm, overrides);
   }
 
   // 시간대별 그룹화
@@ -76,10 +76,10 @@ export async function rescheduleAll(alarms: Alarm[]) {
   for (const [key, group] of groups) {
     // 메인 트리거 (개별, 같은 threadIdentifier로 묶음)
     for (const alarm of group) {
-      await scheduleAlarmTriggers(alarm, `grp_${key}`);
+      await scheduleAlarmTriggers(alarm, overrides, `grp_${key}`);
     }
     // 그룹 rep 슬롯 (시간대당 1세트)
-    await scheduleGroupReps(group);
+    await scheduleGroupReps(group, overrides);
   }
 
   // 삭제된 알람의 잔여 네이티브 예약 정리 — 위 cancelNativeAlarms 루프는 "남아 있는 알람"만
@@ -89,11 +89,11 @@ export async function rescheduleAll(alarms: Alarm[]) {
 }
 
 // 단일 알람 재스케줄 (개별 변경 시 fallback용)
-export async function scheduleAlarm(alarm: Alarm) {
+export async function scheduleAlarm(alarm: Alarm, overrides: DayOverrides = {}) {
   if (!alarm.active) return;
   await cancelAlarmNotifications(alarm.id);
-  await scheduleAlarmTriggers(alarm, `grp_${alarm.hour}_${alarm.min}`);
-  await scheduleGroupReps([alarm]);
+  await scheduleAlarmTriggers(alarm, overrides, `grp_${alarm.hour}_${alarm.min}`);
+  await scheduleGroupReps([alarm], overrides);
 }
 
 // 알림(폰 배너/잠금화면 + 워치로 브릿지되는 것)의 액션 버튼 구성.

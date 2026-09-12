@@ -93,3 +93,43 @@ export interface Alarm {
   groupRole?: 'commute' | 'offwork'; // 그룹 내에서 이 알람이 출근/퇴근 중 무엇인지
   pattern?: WorkSegment[]; // rm==='pattern'일 때 전체 블록 시퀀스 — 그룹 멤버 전원에 동일하게 복제 저장
 }
+
+// ─── 하루 근무 변경(day override) ───────────────────────────────────────
+// 연차·병가처럼 "그날 근무 없음"과 대근·특근처럼 "원래 비번인데 근무 있음"을
+// 하나의 모델로 표현한다. work가 없으면 그날 근무 알람이 꺼지고, work가 있으면
+// 그 시각으로 (없던 날이어도) 켜진다 — 종류가 아니라 work 유무가 켜기/끄기를 가른다.
+//
+// 경조사는 이 kind 목록에 없다 — 남의 결혼식/장례식은 "내가 쉬는지 일하는지"와 무관하고
+// (연차를 써서 가든, 근무 끝나고 가든), 실제로 필요한 건 몇 시·누구 건지 적어두는 메모뿐이다.
+// 그래서 kind/work와 완전히 독립된 DayOverride.family로 뺐다 — 연차인 날에도, 정상 근무하는
+// 날에도, 아무 override 없는 날에도 family 메모만 따로 얹을 수 있다.
+// "기타"는 뺐다 — 사용자가 직접 이름을 적을 방법이 없어서(customLabel을 받는 UI가 끝내
+// 없었다) 뭐가 기타인지 알 수 없는 채로 "기타"라고만 뜨는 죽은 옵션이었다. 자유 텍스트가
+// 필요한 경우는 이미 경조사(family)가 커버한다.
+export type OverrideKind =
+  | 'annual' | 'half' | 'quarter' | 'sick'   // 연차 반차 반반차 병가
+  | 'substitute' | 'special' | 'night' | 'extend';       // 대근 특근 야근 연장
+
+export const OVERRIDE_KINDS: { id: OverrideKind; label: string }[] = [
+  { id: 'annual',     label: '연차' },
+  { id: 'half',       label: '반차' },
+  { id: 'quarter',    label: '반반차' },
+  { id: 'sick',       label: '병가' },
+  { id: 'substitute', label: '대근' },
+  { id: 'special',    label: '특근' },
+  { id: 'night',      label: '야근' },
+  { id: 'extend',     label: '연장' },
+];
+
+// work 없음 = 그날 근무 알람 끔(연차 등 기본값). UI가 기본값을 미리 채워줄 뿐,
+// 최종적으로 work를 채울지 말지는 항상 사용자가 결정한다.
+export type DayOverride = {
+  kind?: OverrideKind;   // 없을 수 있다 — 근무 상태는 그대로 두고 family 메모만 있는 날
+  family?: string;      // 경조사 메모, 자유 입력(예: "김과장 결혼식 15시") — kind/work와 무관
+  work?: {
+    shift?: ShiftPeriod;                     // 배지 색·이름에 쓸 근무 시간대(대근/특근 등)
+    start?: { hour: number; min: number };   // 출근(typeId==='commute') 알람 시각
+    end?:   { hour: number; min: number };   // 퇴근(typeId==='offwork') 알람 시각
+  };
+};
+export type DayOverrides = Record<string, DayOverride>; // key = 'YYYY-MM-DD'

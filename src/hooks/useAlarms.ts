@@ -5,6 +5,7 @@ import { todayStr } from '../utils';
 import { rescheduleAll } from '../utils/notifications';
 import { syncWidget } from '../utils/widgetSync';
 import { reconcileWorkPattern } from '../utils/workPattern';
+import { getDayOverridesCache, loadDayOverrides } from '../utils/dayOverrideStore';
 
 const KEY = 'alarms_v1_rn';
 // 처음 설치 시에는 알람 없이 시작 — 첫 알람은 "따라하기" 튜토리얼에서 직접 만들도록 유도
@@ -43,31 +44,35 @@ export function useAlarms() {
         await AsyncStorage.setItem(KEY, JSON.stringify({ alarms: loaded, nextId: 100 }));
       }
       setAlarms(loaded);
+      // 하루 근무 변경(dayOverride) 캐시를 먼저 채워야 아래 syncWidget/rescheduleAll이
+      // 연차·대근 같은 override를 앱 시작 시점부터 반영한다. useDayOverrides 훅도 자기 마운트
+      // 시 같은 키를 다시 로드하지만, AsyncStorage 읽기는 멱등이라 순서와 무관하게 안전하다.
+      await loadDayOverrides();
       // syncWidget이 먼저 — 여기서 저장하는 activeAlarmIds가 네이티브 차단 게이트의 기준이라,
       // 예약보다 나중에 쓰면 그 사이에 발화한 알람이 게이트 판정을 못 받는다
       // (다른 경로도 save() → rescheduleAll 순서라 여기만 반대였다).
-      syncWidget(loaded);
+      syncWidget(loaded, getDayOverridesCache());
       // 앱 시작 시 전체 재스케줄링 — 사운드 설정 변경 등 즉시 반영
-      await rescheduleAll(loaded);
+      await rescheduleAll(loaded, getDayOverridesCache());
       setLoaded(true);
     })();
   }, []);
 
   const save = useCallback(async (a: Alarm[], nid: number) => {
     await AsyncStorage.setItem(KEY, JSON.stringify({ alarms: a, nextId: nid }));
-    syncWidget(a);
+    syncWidget(a, getDayOverridesCache());
   }, []);
 
   const addAlarm = useCallback(async (data: Omit<Alarm,'id'|'active'>) => {
     const a: Alarm = { ...data, id: nextId, active: true };
     const next = [...alarms, a]; const nid = nextId + 1;
-    setAlarms(next); setNextId(nid); await save(next, nid); await rescheduleAll(next);
+    setAlarms(next); setNextId(nid); await save(next, nid); await rescheduleAll(next, getDayOverridesCache());
     return a;
   }, [alarms, nextId, save]);
 
   const updateAlarm = useCallback(async (id: number, data: Partial<Alarm>) => {
     const next = alarms.map(a => a.id === id ? { ...a, ...data } : a);
-    setAlarms(next); await save(next, nextId); await rescheduleAll(next);
+    setAlarms(next); await save(next, nextId); await rescheduleAll(next, getDayOverridesCache());
   }, [alarms, nextId, save]);
 
   // 근무 시간대 로테이션 그룹(출근+퇴근)은 항상 함께 삭제된다 — 멤버 하나만 지우면
@@ -86,13 +91,13 @@ export function useAlarms() {
   const deleteAlarm = useCallback(async (id: number) => {
     const idsToRemove = expandGroups(new Set([id]));
     const next = alarms.filter(a => !idsToRemove.has(a.id));
-    setAlarms(next); await save(next, nextId); await rescheduleAll(next);
+    setAlarms(next); await save(next, nextId); await rescheduleAll(next, getDayOverridesCache());
   }, [alarms, nextId, save, expandGroups]);
 
   const deleteAlarms = useCallback(async (ids: Set<number>) => {
     const idsToRemove = expandGroups(ids);
     const next = alarms.filter(a => !idsToRemove.has(a.id));
-    setAlarms(next); await save(next, nextId); await rescheduleAll(next);
+    setAlarms(next); await save(next, nextId); await rescheduleAll(next, getDayOverridesCache());
   }, [alarms, nextId, save, expandGroups]);
 
   // 근무 시간대 로테이션 그룹(출근+퇴근 최대 2개)을 블록 패턴 기준으로 정밀 재조합해서
@@ -126,7 +131,7 @@ export function useAlarms() {
       })
       .concat(added);
 
-    setAlarms(next); setNextId(nid); await save(next, nid); await rescheduleAll(next);
+    setAlarms(next); setNextId(nid); await save(next, nid); await rescheduleAll(next, getDayOverridesCache());
     return gid!;
   }, [alarms, nextId, save]);
 
@@ -137,7 +142,7 @@ export function useAlarms() {
 
   const toggleAll = useCallback(async (active: boolean) => {
     const next = alarms.map(a => ({...a, active}));
-    setAlarms(next); await save(next, nextId); await rescheduleAll(next);
+    setAlarms(next); await save(next, nextId); await rescheduleAll(next, getDayOverridesCache());
   }, [alarms, nextId, save]);
 
   return { alarms, loaded, addAlarm, updateAlarm, deleteAlarm, deleteAlarms, toggleAlarm, toggleAll, submitWorkPattern };

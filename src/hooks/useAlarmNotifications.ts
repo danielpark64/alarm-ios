@@ -5,6 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { Alarm } from '../constants';
 import { requestNotificationPermission, registerNotificationCategories, rescheduleAll, cancelExpoGroupReps } from '../utils/notifications';
 import { getAlarmDefaults } from './useAlarmDefaults';
+import { getDayOverridesCache } from '../utils/dayOverrideStore';
 
 const { AlarmModule } = NativeModules;
 
@@ -57,7 +58,7 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (next) => {
       if (appStateRef.current.match(/inactive|background/) && next === 'active') {
-        await rescheduleAll(alarmsRef.current);
+        await rescheduleAll(alarmsRef.current, getDayOverridesCache());
         setTick(n => n + 1);
       }
       appStateRef.current = next;
