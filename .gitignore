@@ -41,3 +41,7 @@ src/constants/holidayApiKey.ts
 # generated native folders
 /ios
 .idea/
+
+# R8 mapping 파일 — 원본 클래스·메서드 이름이 전부 들어있어 공개 저장소에 올리면 안 된다
+# (AAB로 빌드하면 번들에 자동 포함돼 Play Console이 가져가므로 커밋할 이유도 없다)
+store-assets/mapping/

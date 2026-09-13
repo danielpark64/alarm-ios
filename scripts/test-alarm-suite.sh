@@ -247,6 +247,48 @@ printf "  근무 알람(출근/퇴근)에는 개별 '이날 끄기'가 안 뜨�
 grep -qE "canSkip = .*!isOverridableAlarm\(al\)" "$ROOT/src/components/Home/CalendarView.tsx" 2>/dev/null \
   && ok "" || { fail "canSkip이 isOverridableAlarm(al)을 확인 안 함 — 근무 알람에도 개별 '이날 끄기'가 떠서 하루 근무 변경과 혼란을 일으킬 수 있음"; }
 
+# ═══════════════════════════════════════════════════════════
+# R8 난독화 설정 회귀 방지 (2026-09-13, Play "앱 최적화 기준점 미만" 경고 대응)
+# 난독화는 깨져도 크래시가 안 나고 "조용히 no-op"이 되는 방식으로 실패한다 —
+# 재부팅 후 알람 미등록, 위젯 먹통 등. 그래서 설정이 실수로 꺼지거나 keep 규칙이
+# 빠지는 걸 여기서 막는다.
+# ═══════════════════════════════════════════════════════════
+GRADLE_PROPS="$ROOT/android/gradle.properties"
+PROGUARD="$ROOT/android/app/proguard-rules.pro"
+
+printf "  R8 난독화 활성화(gradle.properties) ... "
+grep -Eq '^[[:space:]]*android\.enableMinifyInReleaseBuilds[[:space:]]*=[[:space:]]*true' "$GRADLE_PROPS" 2>/dev/null \
+  && ok "" || { fail "android.enableMinifyInReleaseBuilds=true 없음 — 난독화가 꺼져 Play '앱 최적화' 경고가 재발생함"; }
+
+# AppWidgetProvider 클래스명은 런처의 AppWidgetHost DB에 영구 저장된다.
+# 이름이 바뀌면 기존 사용자의 홈화면 위젯이 죽고, 롤백해도 자동 복구가 안 된다(재추가만이 방법).
+printf "  위젯 Provider keep 규칙 ... "
+grep -q 'AlarmWidgetMedium' "$PROGUARD" 2>/dev/null \
+  && grep -q 'AlarmWidgetLarge' "$PROGUARD" 2>/dev/null \
+  && grep -q 'WidgetListService' "$PROGUARD" 2>/dev/null \
+  && ok "" || { fail "proguard-rules.pro에 위젯 Provider keep이 없음 — 기존 사용자 홈화면 위젯이 영구 파손될 수 있음"; }
+
+# 시스템이 "이름으로" 배달하는 컴포넌트 + JS 브리지.
+# BootReceiver가 깨지면 "재부팅 후 알람 안 울림"이 크래시 없이 발생하고,
+# 브리지 메서드가 사라지면 JS의 존재 확인 분기가 예외 없이 폴백으로 새서 취소가 누락된다.
+printf "  알람 체인·브리지 keep 규칙 ... "
+PG_MISS=""
+for C in BootReceiver AlarmReceiver AlarmService CoverAlarmActivity AlarmModule WidgetModule; do
+  grep -q "com\.danielpark\.alarmapp\.$C" "$PROGUARD" 2>/dev/null || PG_MISS="$PG_MISS $C"
+done
+grep -q 'ReactMethod <methods>' "$PROGUARD" 2>/dev/null || PG_MISS="$PG_MISS @ReactMethod"
+[ -z "$PG_MISS" ] \
+  && ok "" || { fail "keep 누락:$PG_MISS — 재부팅 복구/directBoot 발화/알람 취소가 조용히 깨질 수 있음"; }
+
+# 앱 패키지를 통째로 keep하면 난독화율이 다시 떨어져 Play 기준(25%)을 못 맞춘다.
+printf "  과도한 패키지 통째 keep 없음 ... "
+grep -Eq '^-keep[a-z]* class com\.danielpark\.alarmapp\.\*\*' "$PROGUARD" 2>/dev/null \
+  && fail "com.danielpark.alarmapp.** 통째 keep 발견 — 난독화율이 떨어져 Play 경고가 재발생함" || ok ""
+
+printf "  스택트레이스 줄번호 보존(LineNumberTable) ... "
+grep -q 'keepattributes.*LineNumberTable' "$PROGUARD" 2>/dev/null \
+  && ok "" || { fail "-keepattributes SourceFile,LineNumberTable 없음 — 난독화 후 크래시 라인 판독 불가"; }
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
