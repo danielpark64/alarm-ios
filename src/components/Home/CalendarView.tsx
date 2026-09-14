@@ -693,7 +693,12 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
               const isSubstituteKind = selOverride?.kind === 'substitute' || selOverride?.kind === 'special';
               const ovWork = (selOv && !selOv.isOff && isSubstituteKind) ? selOverride?.work : undefined;
               const hasAny = (selInfo && selInfo.alarms.length > 0) || !!ovWork;
-              if (!hasAny) return <Text style={cv.modalEmpty}>이날 울리는 알람이 없어요</Text>;
+              // 종류·근무조·시각을 고르는 중이라면 "알람 없음"을 띄우지 않는다 — 비번날에
+              // 대근을 넣으려고 근무조를 고르는 중인데 바로 아래에 "이날 울리는 알람이
+              // 없어요"가 같이 떠 있으면 방금 넣으려는 근무가 무시된 것처럼 읽힌다(실사용
+              // 피드백). 선택을 끝내면 아래 합성 행으로 새 근무 시각이 바로 나타난다.
+              const pickingOverride = ovPicking || ovPickingShiftFor != null || ovTimeEditFor != null;
+              if (!hasAny) return pickingOverride ? null : <Text style={cv.modalEmpty}>이날 울리는 알람이 없어요</Text>;
               return (
                 <>
                   {/* 대근·특근 등으로 새로 생긴 근무 — 실제 Alarm 객체가 아니라 정보 표시만(편집·끄기 불가) */}
