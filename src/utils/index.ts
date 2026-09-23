@@ -1,5 +1,6 @@
 import KoreanLunarCalendar from 'korean-lunar-calendar';
 import { Alarm, TYPES, SOUNDS, VIBS, DAYS, SHIFTS, ShiftPeriod, WorkSegment, DayOverride, DayOverrides, OverrideKind, OVERRIDE_KINDS } from '../constants';
+import { isStatutoryHoliday } from '../constants/holidays';
 export const pad = (n: number) => String(n).padStart(2, '0');
 export const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
 export const fmtDate = (s: string) => { if (!s) return ''; const [y,m,d] = s.split('-'); return `${y}.${m}.${d}`; };
@@ -151,6 +152,9 @@ export function getNextFireDate(alarm: Alarm, overrides: DayOverrides = {}): Dat
       return cand;
     }
     if (alarm.skips?.includes(cs)) continue;
+    // 법정공휴일 — 위 dayWorkFor 블록보다 뒤에 와야 한다. 공휴일에 출근해야 하는 날은
+    // 달력에서 "하루 근무 변경(특근/대근)"을 걸면 그 블록이 먼저 return하므로 정상 발화한다.
+    if (isHolidaySkipped(alarm, cs)) continue;
 
     // 로테이션 알람은 날짜마다 시각이 달라서(세그먼트별 출근/퇴근 시각) 일반 알람처럼
     // 맨 위에서 alarm.hour/min으로 setHours할 수 없다 — 세그먼트를 먼저 찾은 뒤 그 시각을 쓴다.
@@ -252,6 +256,9 @@ export function alarmsForDate(alarms: Alarm[], dateStr: string, includeSkipped =
   return alarms.filter(a => {
     if (!a.active) return false;
     if (!includeSkipped && a.skips?.includes(dateStr)) return false;
+    // 공휴일도 "이날만 끄기"와 같은 급으로 다룬다 — includeSkipped=true로 부르는 달력 하루
+    // 팝업에서는 계속 보여야 사용자가 그 자리에서 "하루 근무 변경(특근)"을 걸 수 있다.
+    if (!includeSkipped && isHolidaySkipped(a, dateStr)) return false;
     if (a.sd && dateStr < a.sd) return false;
     if (a.rm === 'daily')    return true;
     if (a.rm === 'weekdays') return dow < 5;
@@ -316,6 +323,27 @@ export const isWorkAlarm = (a: Alarm) =>
 export const isOverridableAlarm = (a: Alarm) =>
   (a.typeId === 'commute' || a.typeId === 'offwork')
   && (a.rm === 'cycle' || a.rm === 'rest' || a.rm === 'pattern' || a.rm === 'wdcustom');
+
+// 법정공휴일에 건너뛸 알람인지 — "교대근무가 아닌 출퇴근 알람"만 해당한다.
+// ⚠️ isOverridableAlarm을 재사용하면 안 된다. 그쪽은 cycle/rest/pattern(교대근무)을
+// 포함하는데, 교대근무자는 공휴일에도 근무하므로 그 알람이 꺼지면 결근한다.
+// once/monthly/yearly도 뺀다 — 하루짜리 약속이나 연례 행사라 공휴일과 무관하다.
+// (daily/weekdays/weekends는 useAlarms에서 wdcustom으로 마이그레이션되지만,
+//  마이그레이션 전 데이터가 스케줄링 경로로 흘러도 같게 동작하도록 같이 적는다)
+export const skipsStatutoryHoliday = (a: Alarm) =>
+  (a.typeId === 'commute' || a.typeId === 'offwork')
+  && (a.rm === 'wdcustom' || a.rm === 'daily' || a.rm === 'weekdays' || a.rm === 'weekends');
+
+// 그 알람이 그 날짜에 공휴일이라 안 울리는가. 표시·예약 양쪽에서 같은 답을 내야
+// "달력엔 울린다고 나오는데 실제로는 안 울린다"는 불일치가 안 생긴다.
+export const isHolidaySkipped = (a: Alarm, dateStr: string) =>
+  skipsStatutoryHoliday(a) && isStatutoryHoliday(dateStr);
+
+// 위와 같되 하루 근무 변경까지 반영한 최종 판정 — 표시 경로(달력 칩·위젯 이벤트)용.
+// 공휴일에 특근/대근을 걸어둔 날은 실제로 울리므로 목록에서 빼면 안 된다.
+// 예약 경로(core.ts)는 dayWorkFor가 fires를 통째로 덮는 구조라 이 함수가 필요 없다.
+export const isHolidayOffWithOverride = (a: Alarm, dateStr: string, ov?: DayOverride) =>
+  isHolidaySkipped(a, dateStr) && !dayWorkFor(a, ov)?.fires;
 
 // 근무조 색 팔레트 — 시간대가 아니라 알람별로 배정한다.
 // 같은 시간대 안에서 갈리는 교대(예: 04:20 초번 / 05:20 말번)도 색으로 구분되도록,

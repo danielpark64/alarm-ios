@@ -79,6 +79,25 @@ export function setApiHolidays(map: Record<string, string>) { apiHolidays = map;
 
 export const getHoliday = (dateStr: string): string | undefined => apiHolidays[dateStr] ?? HOLIDAYS[dateStr];
 
+// API 이름은 "대체공휴일(광복절)"처럼 괄호로 원인 공휴일을 덧붙여 온다 — 비교·표시 전에 떼어낸다.
+const normalizeHolidayName = (full: string) => full.replace(/\s*\([^)]*\)\s*/g, '').trim();
+
+// 위 표는 "달력에 표시할 날"이라 관공서 공휴일이 아닌 날도 들어 있다.
+// 알람을 끌지 판단할 때는 이 둘을 반드시 빼야 한다 — 출근하는 날인데 알람이 안 울리면 지각이다.
+//   제헌절     : 2008년부터 공휴일이 아니다(국경일이지만 다들 출근한다)
+//   근로자의날 : 근로기준법상 유급휴일일 뿐이라 공무원·교사는 정상 출근한다
+// 지방선거일·임시공휴일은 관공서 공휴일이 맞으므로 여기 넣지 않는다.
+const NOT_DAY_OFF = new Set(['제헌절', '근로자의날', '근로자의 날']);
+
+// "이 날은 법정공휴일이라 쉬는 날인가?" — 알람 스킵 판정 전용.
+// 표에 없는 날(데이터 범위 밖인 2028년 이후, API 실패 등)은 false를 반환해 알람이 울린다.
+// 알람 앱에서는 "모르면 울린다"가 안전한 방향이다 — 안 울려서 지각하는 것보다 낫다.
+export const isStatutoryHoliday = (dateStr: string): boolean => {
+  const full = getHoliday(dateStr);
+  if (!full) return false;
+  return !NOT_DAY_OFF.has(normalizeHolidayName(full));
+};
+
 // 달력 칸 표시용 축약 이름.
 // 칸 하나의 글자 영역이 45px 안팎이라 4자를 넘으면 읽을 수 없을 만큼 축소돼 버린다
 // (실제로 API가 주는 "대체공휴일(광복절)"이 뭉개져서 안 보였다).
@@ -96,7 +115,6 @@ const HOLIDAY_SHORT: Record<string, string> = {
 export const getHolidayShort = (dateStr: string): string | undefined => {
   const full = getHoliday(dateStr);
   if (!full) return undefined;
-  // API 이름은 "대체공휴일(광복절)"처럼 괄호로 원인 공휴일을 덧붙여 온다 — 칸에서는 괄호를 뗀다
-  const base = full.replace(/\s*\([^)]*\)\s*/g, '').trim();
+  const base = normalizeHolidayName(full);
   return HOLIDAY_SHORT[base] ?? base;
 };

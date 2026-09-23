@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Alarm, DayOverrides, ShiftPeriod } from '../../constants';
-import { getType, pad, getNextFireDate, lunarToSolarInYear, effectiveShift, effectiveTime, dayWorkFor, isOverridableAlarm } from '../index';
+import { getType, pad, getNextFireDate, lunarToSolarInYear, effectiveShift, effectiveTime, dayWorkFor, isOverridableAlarm, isHolidaySkipped, skipsStatutoryHoliday } from '../index';
+import { isStatutoryHoliday } from '../../constants/holidays';
 import { roleLabel } from '../workPattern';
 import { scheduleNative } from './android';
 import { weekdaySlotId, mainNativeId } from './alarmIds';
@@ -127,9 +128,26 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
   const end13Ds = `${end13.getFullYear()}-${p2d(end13.getMonth()+1)}-${p2d(end13.getDate())}`;
   const hasUpcomingOverride = isOverridableAlarm(alarm)
     && Object.keys(overrides).some(ds => ds >= todayDs && ds <= end13Ds);
+  // 법정공휴일도 같은 이유로 날짜 기반 전환이 필요한데, 이쪽은 이유가 하나 더 있다.
+  // ⚠️ 네이티브(AlarmScheduling.nextWeeklyTrigger)는 recurrence='weekly' 예약을 JS와 무관하게
+  // 자체 재계산해서 발화 때마다 스스로 다음 주를 다시 잡는다(AlarmReceiver). 그래서 WEEKLY
+  // 경로로 내려보내면 JS에서 아무리 공휴일을 걸러도 네이티브 알람이 그대로 울린다.
+  // 날짜 기반('once')으로 내려보내야 공휴일이 실제로 빠진다.
+  // 그 알람이 울리는 요일과 겹치는 공휴일만 센다 — 안 그러면 주말에만 걸린 공휴일 때문에
+  // 평일 알람까지 불필요하게 14일 창 방식으로 바뀐다.
+  const hasUpcomingHoliday = skipsStatutoryHoliday(alarm) && (() => {
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(now0); d.setDate(d.getDate() + i);
+      const ds = `${d.getFullYear()}-${p2d(d.getMonth()+1)}-${p2d(d.getDate())}`;
+      const dow = (d.getDay() + 6) % 7; // 0=월 ~ 6=일
+      if (!(alarm.days || []).includes(dow)) continue;
+      if (isStatutoryHoliday(ds)) return true;
+    }
+    return false;
+  })();
 
   // ── wdcustom (요일 선택) ──────────────────────────────────────────
-  if (alarm.rm === 'wdcustom' && alarm.days.length > 0 && !hasUpcomingSkips && !hasUpcomingOverride) {
+  if (alarm.rm === 'wdcustom' && alarm.days.length > 0 && !hasUpcomingSkips && !hasUpcomingOverride && !hasUpcomingHoliday) {
     const iw = (d: number) => (d + 2) % 7 || 7;
     for (const d of alarm.days) {
       await Notifications.scheduleNotificationAsync({
@@ -186,6 +204,9 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
       }
     }
     if (fires && alarm.skips?.includes(ds)) fires = false; // 이날만 끄기
+    // 법정공휴일 — 교대근무가 아닌 출퇴근 알람만. 바로 아래 dayWorkFor가 fires를 통째로
+    // 대체하므로, 공휴일에 특근/대근을 걸어둔 날은 이 줄과 무관하게 정상 발화한다.
+    if (fires && isHolidaySkipped(alarm, ds)) fires = false;
 
     // 하루 근무 변경 — dayWorkFor는 출근/퇴근 타입이 아닌 알람이면 항상 null이라
     // 운동·식사·생일 등 나머지 알람 종류는 이 블록의 영향을 전혀 받지 않는다.

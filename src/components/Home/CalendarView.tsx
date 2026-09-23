@@ -5,7 +5,7 @@ import { Alarm, DAYS, DAYS_DISPLAY, DayOverride, DayOverrides, OverrideKind, OVE
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
 import { useFontScale } from '../../hooks/useFontScale';
-import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, isOverridableAlarm, shiftForDate, isOffDay, shiftToneIndexMap, shiftPeriodLabel, shiftPeriodId, effectiveShift, effectiveTime, dayWorkFor, lunarDateText, lunarShortText, dayOverrideDisplay, overrideLabel } from '../../utils';
+import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, isOverridableAlarm, isHolidayOffWithOverride, shiftForDate, isOffDay, shiftToneIndexMap, shiftPeriodLabel, shiftPeriodId, effectiveShift, effectiveTime, dayWorkFor, lunarDateText, lunarShortText, dayOverrideDisplay, overrideLabel } from '../../utils';
 import { roleLabel } from '../../utils/workPattern';
 import { getHoliday, getHolidayShort } from '../../constants/holidays';
 import { getSolarTerm } from '../../constants/solarTerms';
@@ -90,7 +90,9 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
         const isToday = ds === today;
         const dow = (offset + d - 1) % 7; // 0=일 … 6=토 (표시 체계)
         const info = dayMap[ds];
-        const chips = info.alarms.filter(a => !isWorkAlarm(a) && !a.skips?.includes(ds));
+        // 공휴일에 안 울리는 알람은 칩도 빼야 한다 — 안 그러면 추석 칸에 울리지도 않을 출근 칩이 뜬다.
+        // 단 특근/대근을 걸어둔 공휴일은 실제로 울리므로 칩이 남아야 한다(isHolidayOffWithOverride).
+        const chips = info.alarms.filter(a => !isWorkAlarm(a) && !a.skips?.includes(ds) && !isHolidayOffWithOverride(a, ds, overrides[ds]));
         // 하루 근무 변경(연차·대근 등)이 있으면 그걸로 확정 — 없으면(ov===null) 기존 경로 그대로.
         const ov = dayOverrideDisplay(overrides[ds]);
         // 사용자가 근무 시간대(초/중/말/기타)를 직접 지정했으면 고정색으로 눈에 띄게, 아니면 기존 시간순 자동 배색.
@@ -764,6 +766,9 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
                       // 한다 — 안 그러면 예약(core.ts)은 조정된 시각으로 울리는데 목록엔 원래
                       // 시각이 보이는 불일치가 생긴다(실제 겪은 버그).
                       const ovTime = selOverride ? dayWorkFor(al, selOverride)?.time : undefined;
+                      // 법정공휴일이라 안 울리는 날. 단 특근·대근을 걸어둔 날은 실제로 울리므로
+                      // 꺼진 것처럼 보이면 안 된다.
+                      const holidayOff = !!selDate && isHolidayOffWithOverride(al, selDate, selOverride);
                       const dispHour = ovTime?.hour ?? patternTime?.hour ?? al.hour;
                       const dispMin  = ovTime?.min  ?? patternTime?.min  ?? al.min;
                       const dispLabel = patternShift
@@ -772,7 +777,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
                       return (
                         <View key={ai} style={cv.modalAlarmRow}>
                           <TouchableOpacity
-                            style={[cv.modalAlarmMain, (skipped || overriddenOff) && {opacity:0.45}]}
+                            style={[cv.modalAlarmMain, (skipped || overriddenOff || holidayOff) && {opacity:0.45}]}
                             activeOpacity={0.7}
                             onPress={() => { setSelDate(null); onEditAlarm(al); }}
                           >
@@ -780,7 +785,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
                             <View style={{flex:1, minWidth:0}}>
                               <Text style={cv.modalAlarmTime}>{pad(dispHour)}:{pad(dispMin)}</Text>
                               <Text style={cv.modalAlarmLabel} numberOfLines={1}>
-                                {dispLabel}{overriddenOff ? ` · ${selOv!.label}로 꺼짐` : (skipped ? ' · 이날 꺼짐' : '')}
+                                {dispLabel}{overriddenOff ? ` · ${selOv!.label}로 꺼짐` : (skipped ? ' · 이날 꺼짐' : (holidayOff ? ' · 공휴일이라 꺼짐' : ''))}
                               </Text>
                             </View>
                           </TouchableOpacity>

@@ -1,6 +1,6 @@
 import { Platform, NativeModules } from 'react-native';
 import { Alarm, DayOverrides, SHIFTS } from '../constants';
-import { pad, todayStr, getType, getNextFireDate, shiftForDate, isOffDay, shiftColorMap, alarmsForDate, isWorkAlarm, effectiveShift, dayOverrideDisplay } from './index';
+import { pad, todayStr, getType, getNextFireDate, shiftForDate, isOffDay, shiftColorMap, alarmsForDate, isWorkAlarm, isHolidayOffWithOverride, effectiveShift, dayOverrideDisplay } from './index';
 import { roleLabel } from './workPattern';
 
 const { WidgetModule } = NativeModules;
@@ -76,7 +76,11 @@ export async function syncWidget(alarms: Alarm[], overrides: DayOverrides = {}) 
     const ov = dayOverrideDisplay(overrides[ds]);
     const shift = ov ? null : shiftForDate(alarms, ds);
     const off   = ov ? ov.isOff : isOffDay(alarms, ds);
-    const events = alarmsForDate(alarms, ds)
+    // includeSkipped=true로 받아 여기서 직접 거른다 — alarmsForDate는 override를 몰라서,
+    // 공휴일에 특근을 걸어둔 날(실제로 울림)까지 빼버리면 같은 위젯의 "다음 알람"과 답이 엇갈린다.
+    const events = alarmsForDate(alarms, ds, true)
+      .filter(a => !a.skips?.includes(ds))
+      .filter(a => !isHolidayOffWithOverride(a, ds, overrides[ds]))
       .filter(a => !isWorkAlarm(a))
       .map(a => a.label || getType(a.typeId).label)
       .filter(Boolean)

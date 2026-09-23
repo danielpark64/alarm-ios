@@ -289,6 +289,46 @@ printf "  스택트레이스 줄번호 보존(LineNumberTable) ... "
 grep -q 'keepattributes.*LineNumberTable' "$PROGUARD" 2>/dev/null \
   && ok "" || { fail "-keepattributes SourceFile,LineNumberTable 없음 — 난독화 후 크래시 라인 판독 불가"; }
 
+# ─── 법정공휴일 스킵 (교대근무가 아닌 출퇴근 알람) ───────────────────
+HOLIDAYS_TS="$ROOT/src/constants/holidays.ts"
+
+# 달력 표엔 제헌절(2008년부터 공휴일 아님)·근로자의날(관공서 공휴일 아님)도 들어 있다.
+# 이 둘을 스킵 대상에서 빼지 않으면 정상 출근일에 알람이 안 울려 지각한다.
+printf "  공휴일 스킵 제외 목록(제헌절·근로자의날) ... "
+grep -q 'NOT_DAY_OFF' "$HOLIDAYS_TS" 2>/dev/null \
+  && grep -A4 'NOT_DAY_OFF' "$HOLIDAYS_TS" 2>/dev/null | grep -q '제헌절' \
+  && grep -A4 'NOT_DAY_OFF' "$HOLIDAYS_TS" 2>/dev/null | grep -q '근로자의날' \
+  && ok "" || { fail "isStatutoryHoliday 제외 목록에 제헌절·근로자의날이 없음 — 출근일에 알람이 안 울려 지각함"; }
+
+# 교대근무자는 공휴일에도 근무한다. cycle/rest/pattern이 스킵 대상에 들어가면
+# 이 앱의 주 사용자층인 교대근무자 알람이 공휴일마다 통째로 꺼진다.
+printf "  공휴일 스킵이 교대근무(cycle/rest/pattern)를 제외하는지 ... "
+if grep -q 'export const skipsStatutoryHoliday' "$ROOT/src/utils/index.ts" 2>/dev/null; then
+  if grep -A4 'export const skipsStatutoryHoliday' "$ROOT/src/utils/index.ts" | grep -Eq "'cycle'|'rest'|'pattern'"; then
+    fail "skipsStatutoryHoliday가 교대근무 반복모드를 포함 — 교대근무자 알람이 공휴일에 안 울림"
+  else
+    ok ""
+  fi
+else
+  fail "skipsStatutoryHoliday 헬퍼가 없음"
+fi
+
+# 판정 지점이 4곳으로 흩어져 있어(공통 게이트 없음) 한 곳만 빠져도
+# "달력엔 안 울린다고 표시되는데 실제로는 울린다" 같은 불일치가 생긴다.
+printf "  공휴일 게이트가 예약·표시 경로 모두에 있는지 ... "
+grep -A3 'skips?.includes(cs)' "$ROOT/src/utils/index.ts" 2>/dev/null | grep -q 'isHolidaySkipped' \
+  && grep -A3 'includeSkipped && a.skips' "$ROOT/src/utils/index.ts" 2>/dev/null | grep -q 'isHolidaySkipped' \
+  && grep -A3 'fires && alarm.skips?.includes(ds)' "$ROOT/src/utils/notifications/core.ts" 2>/dev/null | grep -q 'isHolidaySkipped' \
+  && ok "" || { fail "getNextFireDate/alarmsForDate/core.ts 날짜루프 중 공휴일 게이트가 빠진 곳이 있음 — 표시와 실제 발화가 어긋남"; }
+
+# ⚠️ 가장 중요한 항목. 네이티브(AlarmScheduling.kt)는 recurrence='weekly' 예약을
+# JS와 무관하게 자체 재계산해서 자가 재예약한다. WEEKLY 조기반환을 막아
+# 날짜기반('once')으로 내려보내지 않으면, JS를 아무리 고쳐도 공휴일에 그대로 울린다.
+printf "  공휴일이 WEEKLY 예약을 날짜기반으로 전환시키는지 ... "
+grep -q 'hasUpcomingHoliday' "$ROOT/src/utils/notifications/core.ts" 2>/dev/null \
+  && grep "rm === 'wdcustom' && alarm.days.length" "$ROOT/src/utils/notifications/core.ts" 2>/dev/null | grep -q '!hasUpcomingHoliday' \
+  && ok "" || { fail "WEEKLY 조기반환에 !hasUpcomingHoliday가 없음 — 네이티브 주간 알람이 공휴일에 그대로 울림"; }
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
