@@ -31,14 +31,49 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.danielpark.alarmapp",
       "infoPlist": {
-        "UIBackgroundModes": ["fetch", "remote-notification"],
-        "NSUserNotificationsUsageDescription": "알람을 울리기 위해 알림 권한이 필요합니다."
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ],
+        "NSUserNotificationsUsageDescription": "알람을 울리기 위해 알림 권한이 필요합니다.",
+        "UIApplicationSceneManifest": {
+          "UIApplicationSupportsMultipleScenes": false,
+          "UISceneConfigurations": {
+            "UIWindowSceneSessionRoleApplication": [
+              {
+                "UISceneConfigurationName": "Default Configuration",
+                "UISceneDelegateClassName": "$(PRODUCT_MODULE_NAME).SceneDelegate"
+              }
+            ]
+          }
+        }
       }
     },
     "plugins": [
       "expo-router",
-      ["expo-notifications", {"color": "#000000", "sounds": ["./assets/alarm_long.wav"]}]
+      "./plugins/withoutPushEntitlement.js",
+      [
+        "expo-notifications",
+        {
+          "color": "#000000",
+          "sounds": [
+            "./assets/alarm_long.wav"
+          ]
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "16.4"
+          }
+        }
+      ],
+      "./plugins/withIosMinDeploymentTarget.js",
+      "./plugins/withIosSceneDelegate.js"
     ],
-    "experiments": { "typedRoutes": true }
+    "experiments": {
+      "typedRoutes": true
+    }
   }
 }
