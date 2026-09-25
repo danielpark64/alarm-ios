@@ -482,14 +482,18 @@ export function lunarToSolarInYear(solarYear: number, lunarMonth: number, lunarD
   return null;
 }
 
-export const nextAlarmText = (alarms: Alarm[], overrides: DayOverrides = {}): string => {
+// 헤더 "다음 알람" — 조각으로 돌려준다. 이름(label)은 길면 말줄임되고 날짜·시각(when)은
+// 항상 다 보여야 해서, 한 문자열로 합치면 한 줄 Text의 꼬리 말줄임에 시각이 잘린다.
+export const nextAlarmParts = (
+  alarms: Alarm[], overrides: DayOverrides = {}
+): { icon: string; label: string; when: string } | null => {
   const active = alarms.filter(a => a.active);
-  if (!active.length) return '';
+  if (!active.length) return null;
   const candidates = active
     .map(a => ({ alarm: a, date: getNextFireDate(a, overrides) }))
     .filter((x): x is { alarm: Alarm; date: Date } => x.date !== null)
     .sort((a, b) => a.date.getTime() - b.date.getTime());
-  if (!candidates.length) return '';
+  if (!candidates.length) return null;
   const { alarm, date } = candidates[0];
   const type = getType(alarm.typeId);
   const now  = new Date();
@@ -499,5 +503,12 @@ export const nextAlarmText = (alarms: Alarm[], overrides: DayOverrides = {}): st
   // 시각은 반드시 getNextFireDate가 돌려준 date에서 뽑는다 — 로테이션(pattern) 알람의
   // alarm.hour/min은 첫 블록 시각으로 고정된 레거시 폴백값이라, 그날 실제 울릴 시각과 다르다.
   // (AlarmCard는 patternTime으로 이미 고쳤지만 이 헤더 문구가 빠져 있었음)
-  return `다음 ${type.icon} ${dateStr} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  // 로테이션 알람의 alarm.label은 첫 블록 기준 레거시 값이라, 그날 세그먼트의 근무조로 다시 만든다
+  // (workPattern.roleLabel과 같은 규칙 — 그 모듈이 이 파일을 import해서 순환을 피하려고 직접 조립).
+  const ds = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+  const seg = alarm.rm === 'pattern' ? effectiveShift(alarm, ds) : null;
+  const label = seg
+    ? `${shiftPrefixFor(seg.shift, seg.shiftCustom)}${alarm.groupRole === 'offwork' ? '퇴근' : '출근'}`
+    : (alarm.label || type.label);
+  return { icon: type.icon, label, when: `${dateStr} ${pad(date.getHours())}:${pad(date.getMinutes())}` };
 };
