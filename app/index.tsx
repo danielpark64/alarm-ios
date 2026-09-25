@@ -14,6 +14,7 @@ import { useSelectMode } from '../src/hooks/useSelectMode';
 import { useHolidaySync } from '../src/hooks/useHolidaySync';
 import { ClockHeader } from '../src/components/Home/ClockHeader';
 import { TodayShiftRow } from '../src/components/Home/TodayShiftRow';
+import { NextAlarmLine } from '../src/components/Home/NextAlarmLine';
 import { CalendarView } from '../src/components/Home/CalendarView';
 import { AlarmsTab } from '../src/components/Home/AlarmsTab';
 import { SettingsView } from '../src/components/Home/SettingsView';
@@ -361,17 +362,7 @@ export default function App() {
         </View>
         {/* "다음" 줄은 ＋ 버튼 옆 칸이 아니라 헤더 전체 폭을 쓴다 — 버튼 기둥 옆에 두면 버튼 아래가 비어
             보여도 그만큼 좁아서, "초번 출근 · 9/27 일 05:40"이 "초번 …"으로 잘렸다(32 실측). */}
-        {next ? (
-          <View style={s.nextRow}>
-            <Text style={s.nextT}>다음 {next.icon} </Text>
-            <Text style={[s.nextT, s.nextLabel]} numberOfLines={1}>{next.label}</Text>
-            <Text style={s.nextT}> · {next.when}</Text>
-          </View>
-        ) : (
-          <View style={s.nextRow}>
-            <Text style={s.nextT} numberOfLines={1}>예정된 알람 없음</Text>
-          </View>
-        )}
+        <NextAlarmLine next={next} textStyle={s.nextT} />
       </View>
 
       {/* 표시 권한(다른 앱 위에 표시)은 안드로이드 전용 — iOS는 overlayGranted가 항상 null이라 Platform 체크 필수 */}
@@ -552,9 +543,6 @@ function makeStyles(C: Palette) {
     header:    { paddingHorizontal:18, paddingTop:12, paddingBottom:14, backgroundColor:C.bg, borderBottomWidth:1, borderBottomColor:C.border },
     headerTop: { flexDirection:'row', alignItems:'center', gap:14 },
     nextT:     { fontSize:15, fontWeight:'800', color:C.txt2, textAlign:'left' },
-    nextRow:   { flexDirection:'row', alignItems:'center', marginTop:8 },
-    // 이름만 줄어들고(말줄임) 날짜·시각 조각은 항상 온전히 보이게
-    nextLabel: { flexShrink:1 },
     addBtn:    { width:64, height:64, borderRadius:20, backgroundColor:C.accent2, alignItems:'center', justifyContent:'center', shadowColor:C.accent, shadowOffset:{width:0,height:4}, shadowOpacity:0.4, shadowRadius:10, elevation:6 },
     addBtnT:   { fontSize:32, color:'#fff', fontWeight:'900' },
     permRow:   { flexDirection:'row', gap:8, paddingHorizontal:18, paddingVertical:10, backgroundColor:C.bg, borderBottomWidth:1, borderBottomColor:C.border },
