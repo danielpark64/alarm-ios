@@ -329,6 +329,18 @@ grep -q 'hasUpcomingHoliday' "$ROOT/src/utils/notifications/core.ts" 2>/dev/null
   && grep "rm === 'wdcustom' && alarm.days.length" "$ROOT/src/utils/notifications/core.ts" 2>/dev/null | grep -q '!hasUpcomingHoliday' \
   && ok "" || { fail "WEEKLY 조기반환에 !hasUpcomingHoliday가 없음 — 네이티브 주간 알람이 공휴일에 그대로 울림"; }
 
+# 하루 근무 변경(연차·대근 등) 보존 — 2026-10-07: 대근을 등록했는데 다음날 사라진 버그.
+# ① 앱을 열 때 지난 날짜를 지우면 달력 아래 "이번 달/올해" 집계와 지난 기록이 날아간다.
+printf "  하루 근무 변경이 지난 날짜라고 지워지지 않는지 ... "
+grep -vE '^\s*//' "$ROOT/src/hooks/useDayOverrides.ts" 2>/dev/null | grep -qE "ds < today" \
+  && { fail "useDayOverrides가 'ds < today'로 지난 기록을 지움 — 대근·연차 내역과 올해 집계가 사라짐"; } || ok ""
+
+# ② setState 업데이터 안에서 next를 만들어 저장하면, React 19에서 업데이터가 늦게 돌아
+#    빈 {}이 저장돼 연속 등록 시 기록 전체가 날아간다. 동기 캐시를 기준으로 만들어야 한다.
+printf "  setOverride가 setState 업데이터에 기대지 않는지 ... "
+grep -vE '^\s*//' "$ROOT/src/hooks/useDayOverrides.ts" 2>/dev/null | grep -qE "setOverrides\(prev" \
+  && { fail "setOverride가 setOverrides(prev => …) 안에서 next를 만듦 — 저장값이 빈 {}이 될 수 있음"; } || ok ""
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
