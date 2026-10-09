@@ -5,6 +5,7 @@ import { isStatutoryHoliday } from '../../constants/holidays';
 import { roleLabel } from '../workPattern';
 import { scheduleNative } from './android';
 import { weekdaySlotId, mainNativeId } from './alarmIds';
+import { isStaleGen } from './rescheduleGen';
 import { getAlarmDefaults } from '../../hooks/useAlarmDefaults';
 
 function getVibrationPattern(vib: string): number[] | undefined {
@@ -31,7 +32,7 @@ function appDayToJs(d: number): number       { return d === 6 ? 0 : d + 1; }
 // 일반 알람처럼 title/bodyText를 루프 밖에서 한 번만 계산할 수 없다. 세그먼트가 바뀌지
 // 않는 일반 알람 경로(아래 scheduleAlarmTriggers 본문)는 이 분기와 완전히 분리해서
 // 한 글자도 건드리지 않는다 — 가장 많이 테스트된 영역이라 회귀 위험을 최소화하기 위함.
-async function schedulePatternAlarmTriggers(alarm: Alarm, overrides: DayOverrides, threadIdentifier?: string) {
+async function schedulePatternAlarmTriggers(alarm: Alarm, overrides: DayOverrides, threadIdentifier?: string, gen?: number) {
   const type    = getType(alarm.typeId);
   const soundOn = alarm.snd === 'default';
   const vibOn   = alarm.vib === 'pulse';
@@ -86,16 +87,19 @@ async function schedulePatternAlarmTriggers(alarm: Alarm, overrides: DayOverride
       content,
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: ft },
     });
+    if (isStaleGen(gen)) return; // 더 새로운 rescheduleAll이 시작됨 — 이 호출은 여기서 멈춘다
     scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', t.hour, t.min, -1, soundOn, vibOn, volume, alarm.id);
     nativeIdx++;
   }
 }
 
 // ── 메인 트리거만 예약 (rep 슬롯 제외) ────────────────────────────────
-export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverrides = {}, threadIdentifier?: string) {
+// gen: rescheduleAll이 넘기는 세대 번호 — 각 await 뒤에 isStaleGen(gen)이면 즉시 중단(rescheduleGen.ts 참고).
+// 단일 알람 경로(scheduleAlarm)처럼 세대 관리 밖에서 부를 땐 생략하면 된다.
+export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverrides = {}, threadIdentifier?: string, gen?: number) {
   if (!alarm.active) return;
   if (alarm.rm === 'pattern') {
-    if (alarm.pattern?.length) await schedulePatternAlarmTriggers(alarm, overrides, threadIdentifier);
+    if (alarm.pattern?.length) await schedulePatternAlarmTriggers(alarm, overrides, threadIdentifier, gen);
     return;
   }
 
@@ -155,6 +159,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
         content: baseContent,
         trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: iw(d), hour: alarm.hour, minute: alarm.min },
       });
+      if (isStaleGen(gen)) return;
       scheduleNative(weekdaySlotId(alarm.id, d), nextJsWeekday(alarm.hour, alarm.min, appDayToJs(d)), title, bodyText, 'weekly', alarm.hour, alarm.min, appDayToCalendar(d), soundOn, vibOn, volume, alarm.id);
     }
     return;
@@ -229,6 +234,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
       content: dw?.time ? { ...baseContent, body: `${pad(hh)}:${pad(mm)} 알람` } : baseContent,
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: ft },
     });
+    if (isStaleGen(gen)) return;
     // ⚠️ 네이티브는 override여도 bodyText를 원래 시각 그대로 넘긴다(고쳤다가 되돌림) —
     // 이 문자열이 실제 발화 시 cancelExpoGroupReps(ringing.body)의 정규식 파싱으로 rep
     // 슬롯 gkey(`${first.hour}_${first.min}`, scheduleGroupReps는 override를 모르는 고정값)를
@@ -243,12 +249,13 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
 }
 
 // ── 같은 시간대 알람 묶음 rep 슬롯 예약 (+1분/+2분) ───────────────────
-export async function scheduleGroupReps(group: Alarm[], overrides: DayOverrides = {}) {
+export async function scheduleGroupReps(group: Alarm[], overrides: DayOverrides = {}, gen?: number) {
   const active = group.filter(a => a.active);
   if (!active.length) return;
 
   // 슬롯 여유 확인
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  if (isStaleGen(gen)) return;
   if (scheduled.length + 2 > 62) return;
 
   const [first] = active;
@@ -275,12 +282,16 @@ export async function scheduleGroupReps(group: Alarm[], overrides: DayOverrides 
   } as Notifications.NotificationContentInput;
 
   for (const offset of [1, 2]) {
+    if (isStaleGen(gen)) return;
     await Notifications.scheduleNotificationAsync({
       identifier: `grp_${gkey}_rep${offset}`,
       content: {
         ...repBase,
         data: {
           alarmIds: active.map(a => a.id),
+          // 단일 알람이면 alarmId도 넣는다 — 수신 리스너의 '한 번' 알람 rep2 자동 비활성화가
+          // data.alarmId를 보는데, alarmIds만 있으면 그 조건이 항상 거짓이라 불발됐다.
+          alarmId: active.length === 1 ? active[0].id : undefined,
           groupKey: gkey,
           isRepeat: true,
           repIndex: offset,

@@ -1,5 +1,99 @@
 # 버그 이력
 
+## 2026-10-09 · [치명] 알람 id 중복 — 만료된 '한 번' 알람 자동 비활성화 저장이 nextId를 100으로 되돌림
+
+**증상**: 앱 콜드 스타트 시 만료된 '한 번' 알람이 있으면 자동 비활성화 후 저장되는데, 그 다음
+콜드 스타트부터 새로 만든 알람이 기존 알람과 같은 id를 받음 → 한 알람을 켜고 끄면 다른 알람이
+같이 바뀌고, 네이티브 requestCode(알람 id 기반 합성)도 충돌해 취소/예약이 서로 덮어씀.
+**원인**: `src/hooks/useAlarms.ts` 로드 분기. 디스크에서 읽은 `d.nextId`는 `setNextId()`로 React
+상태에만 넣고, 만료 알람을 비활성화한 뒤 다시 `AsyncStorage.setItem`할 때는 상수
+`nextId: 100`을 썼다. 상태(메모리)와 저장값(디스크)이 서로 다른 소스에서 온 것.
+**수정**: 로드한 nextId를 지역변수 `loadedNextId`로 받아 `setNextId(loadedNextId)`와 저장
+양쪽에 같은 값을 쓰도록 통일. `scripts/test-alarm-suite.sh --static`에 "useAlarms 로드 분기가
+`nextId: 100` 상수를 저장하지 않는지" grep 체크 추가.
+**파일**: `src/hooks/useAlarms.ts`, `scripts/test-alarm-suite.sh`
+**재발 감시 포인트**: "setState로 넣는 값"과 "디스크에 저장하는 값"이 한 함수 안에서 서로 다른
+변수/리터럴에서 나오면 의심. 특히 로드 직후 곧바로 저장(마이그레이션·자동 정리)하는 경로는
+로드한 전체 객체를 그대로 기준으로 삼아 필요한 필드만 바꿔 쓰고, 상수 폴백은 "파일이 없을 때"
+한 번만 쓰이도록 할 것. 저장 포맷에 카운터/시퀀스 필드가 있으면 저장 호출마다 그 필드의
+출처를 확인.
+
+## 2026-10-09 · [중간] 로드 완료 전 포그라운드 복귀 시 알람 예약·네이티브 원장 전부 삭제
+
+**증상**: 스플래시~AsyncStorage 로드 사이에 다른 앱으로 갔다 돌아오면(알림 탭, 전화 등) 모든
+알람의 Expo 예약과 네이티브 AlarmManager 예약이 사라지고 `activeAlarmIds` 원장도 비워짐.
+알람 목록 화면엔 정상으로 보이는데 실제로는 아무것도 울리지 않음.
+**원인**: `src/hooks/useAlarmNotifications.ts`의 AppState 리스너가 `background→active` 전이에
+무조건 `rescheduleAll(alarmsRef.current, ...)`를 호출. 로드 전엔 `alarmsRef.current`가 `[]`라
+`rescheduleAll([])` = 전체 취소 + `syncActiveNativeAlarms([])`로 동작.
+**수정**: `useAlarmNotifications`에 `loaded` 인자 추가(`app/index.tsx`에서 `useAlarms`의 loaded
+전달), `loadedRef` 가드로 로드 전엔 건너뜀. 겸사겸사 `${todayStr()}|${JSON(alarms)}|${JSON(overrides)}`
+키를 `lastRescheduleKeyRef`에 저장해 마지막 재스케줄과 같으면 다시 돌리지 않음(재스케줄은
+알람당 최대 14회 직렬 await라 수 초 걸림; 날짜를 키에 넣어 "지나간 슬롯 보충"은 유지).
+정적 체크 "포그라운드 재스케줄이 loaded 전엔 건너뛰는지" 추가.
+**파일**: `src/hooks/useAlarmNotifications.ts`, `app/index.tsx`, `scripts/test-alarm-suite.sh`
+**재발 감시 포인트**: 비동기 로드되는 상태(`useAlarms`·`useDayOverrides` 등)를 "전체 기준으로
+다시 맞추는" 파괴적 동기화(`rescheduleAll`, `syncActiveNativeAlarms`, 위젯 전체 갱신)에 넘길
+때는 항상 "로드 전 빈 배열이 들어가면 무슨 일이 생기나"를 먼저 묻기. 빈 배열이 "알람 없음"과
+"아직 모름"을 구분 못 하는 구조라, 새 호출부(새 이벤트 리스너·새 화면 진입 효과)를 추가하면
+`loaded` 가드가 있는지 확인.
+
+## 2026-10-09 · [중간·추정] rescheduleAll 두 개가 겹치면 꺼진 알람이 Expo에 다시 예약됨
+
+**증상**: 알람이 울려 앱이 전면에 뜨면 포그라운드 재스케줄(rescheduleAll)이 돌기 시작하는데,
+그 수 초 동안 사용자가 그 알람을 토글 OFF하면 두 번째 rescheduleAll이 전체 취소를 끝낸 뒤에도
+첫 번째 호출이 남은 루프를 계속 돌며 방금 끈 알람을 Expo에 다시 예약. 네이티브는
+`activeAlarmIds` 게이트가 걸러주지만 Expo 알림엔 게이트가 없어 그대로 울림. (실기기에서
+재현한 것은 아니고 코드 경로 분석으로 추정한 버그 — 재현 시도는 verify-fix에 위임 필요.)
+**원인**: `src/utils/notifications/index.ts`의 `rescheduleAll`에 재진입 방어가 없음. "전체 취소 →
+알람마다 최대 14회 await 재예약"이 원자적이지 않은데 호출부(포그라운드 복귀·토글·override 변경)가
+서로 직렬화되지 않음.
+**수정**: `src/utils/notifications/rescheduleGen.ts` 신설 — 모듈 전역 세대 번호
+`nextGen()`/`isStaleGen(gen)`. `rescheduleAll`이 시작할 때 세대를 받고, `index.ts`·`core.ts`
+(`scheduleAlarmTriggers`/`schedulePatternAlarmTriggers`/`scheduleGroupReps`)의 각 await 뒤에
+`isStaleGen(gen)`이면 즉시 return — 마지막으로 시작한 호출만 끝까지 수행. gen 생략 시(단일 알람
+`scheduleAlarm` 경로) 항상 유효. 취소는 멱등이라 겹쳐도 무해. 정적 체크 "rescheduleAll 세대
+번호(재진입 중단)" 추가.
+**파일**: `src/utils/notifications/rescheduleGen.ts`(신규), `src/utils/notifications/index.ts`,
+`src/utils/notifications/core.ts`, `scripts/test-alarm-suite.sh`
+**재발 감시 포인트**: `core.ts`에 새 예약 루프나 새 await 지점을 추가하면 그 뒤에
+`if (isStaleGen(gen)) return;`을 넣고 `gen`을 인자로 끝까지 전달해야 한다 — 한 함수만 빠뜨리면
+그 구간이 다시 "앞 호출이 뒤 호출을 덮어쓰는" 창이 된다. 2026-09-12 항목이 말한 "같은 뒷정리를
+여러 호출부가 각자 구현" 골격의 변형: 여러 진입점이 같은 장기 작업을 서로 모르고 시작하는 구조.
+
+## 2026-10-09 · [중간] 네이티브 "끄기"(알림 버튼·커버 화면·워치)로 끄면 Expo +1/+2분 재알림이 그대로 울림
+
+**증상**: 알람을 네이티브 알림의 "끄기" 액션 버튼(워치 Bluetooth 브릿지로 전달된 버튼 포함)
+이나 네이티브 커버(풀스크린) 화면에서 끄면 1분·2분 뒤 Expo 재알림(`grp_{h}_{m}_rep1/2`)이
+그대로 울림. 인앱 팝업(`stopRinging`)으로 끌 때만 재알림이 취소됐다. 부수적으로 '한 번' 알람의
+rep2 자동 비활성화도 단일 알람 그룹에서 전혀 동작하지 않았음.
+**원인**: 끄기 경로가 인앱 팝업 / 알림 액션 버튼 / 커버 화면 / 워치 4갈래인데 뒷정리(Expo rep
+취소 + once 알람 비활성화)는 인앱 경로(JS `stopRinging`)에만 있었다. `AlarmService.kt`의
+`ACTION_STOP`은 서비스만 정지하고 JS에 아무것도 알리지 않음. 부수 버그: 수신 리스너의 once rep2
+자동 비활성화가 `data.alarmId`를 보는데 `scheduleGroupReps`는 `alarmIds`(배열)만 넣어 조건이
+항상 거짓.
+**수정**: (네이티브) `AlarmService.notifyStopped(currentRinging)` — RN이 살아 있으면
+DeviceEvent `alarmStopped{body, baseAlarmId}` 즉시 전달, 아니면 prefs `AlarmLastStopped`에 기록;
+`AlarmModule.consumeLastStopped()`가 포그라운드 복귀 때 읽고 지움. `AlarmReceiver`→`AlarmService`에
+`baseAlarmId`(알람 원본 id; 합성 requestCode와 별개) 전달, `RingingInfo`에 `baseAlarmId` 필드 추가.
+(JS) `useAlarmNotifications.afterNativeStop(body, baseAlarmId)` 한 곳에 뒷정리 집중 —
+`cancelExpoGroupReps(body)` + `rm==='once'`면 `active:false`. `alarmStopped` 리스너와
+`consumeLastStopped` 처리가 모두 이 함수를 탄다. 부수: `scheduleGroupReps`가 단일 알람 그룹이면
+`alarmId: active[0].id`도 데이터에 넣음. 정적 체크 "네이티브 끄기 → JS alarmStopped → Expo rep
+취소", "단일 알람 그룹 rep 데이터에 alarmId 포함" 추가.
+**파일**: `android/app/src/main/java/com/danielpark/alarmapp/AlarmService.kt`, `AlarmModule.kt`,
+`AlarmReceiver.kt`, `src/hooks/useAlarmNotifications.ts`, `src/utils/notifications/core.ts`,
+`scripts/test-alarm-suite.sh`
+**재발 감시 포인트**: 2026-09-12 항목 골격("같은 판정/뒷정리를 여러 호출부가 각자 구현")의 네 번째
+변형. 알람 종료/해제의 새 진입점(새 알림 액션, 위젯 버튼, 워치 전용 액션, 자동 종료 타임아웃
+등)을 추가하면 반드시 `afterNativeStop`(또는 인앱의 `stopRinging`)을 거치는지 확인 — 네이티브
+쪽에서 끝나는 경로는 `notifyStopped`를 호출해야 JS 뒷정리가 돈다. 또 네이티브 이벤트에 id를
+실을 때 "합성 requestCode"와 "알람 원본 id"를 섞지 말고 둘 다 명시적으로 보내기(2026-06
+`0155346`/`70978ba` rep 슬롯 취소 누락과 같은 혼동). 앱이 죽어 있을 때 이벤트가 유실되는 경로는
+prefs 기록 + 복귀 시 consume 패턴으로 보완했는지 확인. rep 발화는 1~2분 뒤라 그 안에 앱이 안
+열리면 여전히 울릴 수 있음 — 완전 해결은 네이티브가 Expo 예약을 직접 취소하거나 rep 자체를
+네이티브로 옮겨야 함.
+
 ## 2026-09-12 · [위험지점] dayOverride(하루 근무 변경) — 판정 로직이 4곳에 분산 구현됨
 
 **상태**: 버그 아님 — 신규 기능 구현 시점의 구조적 위험지점 기록.

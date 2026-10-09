@@ -49,6 +49,7 @@ class AlarmReceiver : BroadcastReceiver() {
             putExtra(AlarmService.EXTRA_TITLE, title)
             putExtra(AlarmService.EXTRA_BODY, body)
             putExtra("alarmId", alarmId)
+            putExtra("baseAlarmId", baseAlarmId) // JS가 '한 번' 알람 자동 비활성화 등에 쓸 원본 id
             putExtra("soundOn", soundOn)
             putExtra("vibOn", vibOn)
             putExtra("volume", volume)

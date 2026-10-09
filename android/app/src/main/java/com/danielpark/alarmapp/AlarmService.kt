@@ -39,6 +39,7 @@ class AlarmService : Service() {
                 cancelReps(alarmId)
                 stopRinging()
                 cancelCoverRelaunch()
+                notifyStopped(currentRinging)
                 currentRinging = null
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
@@ -53,6 +54,9 @@ class AlarmService : Service() {
                 cancelReps(alarmId)
                 stopRinging()
                 cancelCoverRelaunch()
+                // 스누즈는 notifyStopped를 보내지 않는다 — 스누즈 진입점은 JS snoozeRinging 하나뿐이고
+                // 그쪽이 Expo rep 취소를 이미 직접 한다. 여기서 alarmStopped를 보내면 '한 번' 알람이
+                // 비활성화되어 rescheduleAll → cancelNativeAlarms가 방금 건 SNOOZE_REQUEST_CODE까지 지운다.
                 currentRinging = null
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 scheduleSnooze(title, body, soundOn, vibOn, volume)
@@ -66,11 +70,12 @@ class AlarmService : Service() {
         val soundOn = intent?.getBooleanExtra("soundOn", true) ?: true
         val vibOn   = intent?.getBooleanExtra("vibOn", true) ?: true
         val volume  = intent?.getFloatExtra("volume", 1f) ?: 1f
+        val baseAlarmId = intent?.getIntExtra("baseAlarmId", -1) ?: -1
 
         startForeground(NOTIFICATION_ID, buildNotification(title, body, alarmId, soundOn, vibOn, volume))
         startRinging(soundOn, vibOn, volume)
-        currentRinging = RingingInfo(title, body, alarmId)
-        emitRingingEvent(title, body, alarmId)
+        currentRinging = RingingInfo(title, body, alarmId, baseAlarmId)
+        emitRingingEvent(title, body, alarmId, baseAlarmId)
         bringRingingActivityToFront(title, alarmId)
         return START_STICKY
     }
@@ -221,8 +226,40 @@ class AlarmService : Service() {
         }
     }
 
+    /**
+     * 네이티브 경로(상시 알림의 "끄기" 버튼 — 워치로 브릿지되는 것도 이 버튼 —, 커버 화면 "끄기")로
+     * 알람을 끄면 JS는 그 사실을 모른다. 그런데 +1분/+2분 재알림 중 Expo 쪽(grp_{h}_{m}_rep1/2)은
+     * JS만 취소할 수 있어서, 인앱 팝업으로 끌 때(cancelExpoGroupReps)와 달리 1분·2분 뒤 두 번 더 울렸다.
+     *
+     * 두 갈래로 알린다:
+     *  1) RN이 살아 있으면 alarmStopped 이벤트 즉시 전달
+     *  2) RN이 죽어 있을 수 있으니 "마지막으로 끈 알람"을 prefs에도 남겨, JS가 다음 포그라운드 때
+     *     AlarmModule.consumeLastStopped로 읽어 처리(rep 발화는 1~2분 뒤라 그 안에 앱이 열려야 효과가 있다)
+     * body는 원래 시각 문구 그대로다 — cancelExpoGroupReps가 이걸 파싱해 rep 식별자를 만든다(core.ts 주석 참고).
+     */
+    private fun notifyStopped(info: RingingInfo?) {
+        if (info == null) return
+        try {
+            getSharedPreferences(PREFS_STOPPED, Context.MODE_PRIVATE).edit()
+                .putString("body", info.body)
+                .putInt("baseAlarmId", info.baseAlarmId)
+                .putLong("at", System.currentTimeMillis())
+                .apply()
+        } catch (e: Exception) { e.printStackTrace() }
+        if (getSystemService(UserManager::class.java)?.isUserUnlocked == false) return
+        try {
+            val reactContext = (applicationContext as? ReactApplication)
+                ?.reactHost?.currentReactContext ?: return
+            val params = Arguments.createMap().apply {
+                putString("body", info.body)
+                putInt("baseAlarmId", info.baseAlarmId)
+            }
+            reactContext.emitDeviceEvent("alarmStopped", params)
+        } catch (e: Exception) { e.printStackTrace() }
+    }
+
     // 포그라운드 JS로 알람 울림 이벤트 전달 (인앱 끄기/스누즈 UI 표시용)
-    private fun emitRingingEvent(title: String, body: String, alarmId: Int) {
+    private fun emitRingingEvent(title: String, body: String, alarmId: Int, baseAlarmId: Int) {
         // 잠금해제 전(Direct Boot)에는 RN이 붙을 수 없어 어차피 no-op이다. 그런데 reactHost가
         // by lazy라 여기서 건드리는 순간 잠긴 상태에서 ReactHost 전체가 생성되면서
         // startForeground 5초 제한을 갉아먹는다. 잠겨 있으면 아예 만지지 않는다.
@@ -235,6 +272,7 @@ class AlarmService : Service() {
                 putString("title", title)
                 putString("body", body)
                 putInt("alarmId", alarmId)
+                putInt("baseAlarmId", baseAlarmId)
             }
             reactContext.emitDeviceEvent("alarmRinging", params)
         } catch (e: Exception) { e.printStackTrace() }
@@ -407,8 +445,12 @@ class AlarmService : Service() {
 
     companion object {
         // 현재 울리고 있는 알람 정보 (RN 쪽이 재시작/포그라운드 복귀해도 끄기 팝업을 복구할 수 있도록)
-        data class RingingInfo(val title: String, val body: String, val alarmId: Int)
+        // alarmId는 합성 requestCode, baseAlarmId는 JS 알람 원본 id(없으면 -1 — 구버전 예약분)
+        data class RingingInfo(val title: String, val body: String, val alarmId: Int, val baseAlarmId: Int = -1)
         @Volatile var currentRinging: RingingInfo? = null
+
+        // 네이티브 경로로 마지막에 끈 알람 기록 — AlarmModule.consumeLastStopped가 읽고 지운다
+        const val PREFS_STOPPED       = "AlarmLastStopped"
 
         const val CHANNEL_ID          = "alarm_ringing_ch"
         const val NOTIFICATION_ID     = 9001

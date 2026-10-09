@@ -6,13 +6,17 @@ import { Alarm } from '../constants';
 import { requestNotificationPermission, registerNotificationCategories, rescheduleAll, cancelExpoGroupReps } from '../utils/notifications';
 import { getAlarmDefaults } from './useAlarmDefaults';
 import { getDayOverridesCache } from '../utils/dayOverrideStore';
+import { todayStr } from '../utils';
 
 const { AlarmModule } = NativeModules;
 
-export type RingingState = { title: string; body: string; alarmId?: number; groupKey?: string; source?: 'native' | 'expo' };
+// alarmId: Expo 경로면 알람 원본 id, 네이티브 경로면 합성 requestCode. baseAlarmId: 네이티브 경로에서
+// 함께 오는 알람 원본 id(구버전 예약분은 없음) — '한 번' 알람 자동 비활성화 등 알람 목록 조회에 쓴다.
+export type RingingState = { title: string; body: string; alarmId?: number; baseAlarmId?: number; groupKey?: string; source?: 'native' | 'expo' };
 
 // 알림 권한/리스너/포그라운드 재스케줄/네이티브 울림 이벤트를 한곳에서 관리
-export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number, patch: Partial<Alarm>) => Promise<void>) {
+// loaded: useAlarms의 로드 완료 여부 — 로드 전엔 alarms가 []라 포그라운드 재스케줄을 돌리면 안 된다.
+export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number, patch: Partial<Alarm>) => Promise<void>, loaded = true) {
   const [notifGranted, setNotifGranted] = useState(false);
   const [overlayGranted, setOverlayGranted] = useState<boolean | null>(null);
   const [tick, setTick] = useState(0);
@@ -20,8 +24,26 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
   const appStateRef    = useRef(AppState.currentState);
   const alarmsRef      = useRef(alarms);
   const updateAlarmRef = useRef(updateAlarm);
+  const loadedRef      = useRef(loaded);
   alarmsRef.current     = alarms;
   updateAlarmRef.current = updateAlarm;
+  loadedRef.current      = loaded;
+  // 포그라운드 재스케줄 변경 감지 키(아래 AppState 효과 참고). 알람이 울리면 null로 리셋한다 —
+  // Expo +1/+2분 rep 슬롯(grp_{h}_{m}_rep1/2)은 "다음 1회분"만 걸려 있어 울리면 소모되는데,
+  // 식별자가 날짜와 무관해 날짜 키만으로는 다음 날 rep 재생성이 보장되지 않기 때문이다
+  // (Android는 AlarmReceiver가 네이티브 rep를 따로 걸지만 iOS는 Expo rep만 있다).
+  const lastRescheduleKeyRef = useRef<string | null>(null);
+
+  // 네이티브 경로로 끈 알람의 후속 처리 — Expo +1/+2분 재알림 취소 + '한 번' 알람 자동 비활성화.
+  // 인앱 팝업(stopRinging)과 네이티브 알림 버튼/커버 화면(alarmStopped 이벤트·consumeLastStopped)
+  // 어느 경로로 꺼도 같은 뒷정리를 거치게 한곳에 모은다.
+  const afterNativeStop = async (body: string | undefined, baseAlarmId: number | undefined) => {
+    if (body) await cancelExpoGroupReps(body);
+    if (baseAlarmId != null && baseAlarmId >= 0) {
+      const a = alarmsRef.current.find(x => x.id === baseAlarmId);
+      if (a?.rm === 'once' && a.active) await updateAlarmRef.current(a.id, { active: false });
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -55,10 +77,22 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
   }, []);
 
   // 앱이 포그라운드로 돌아오면 전체 재스케줄링 (지나간 슬롯 보충)
+  //
+  // 두 가지 가드:
+  //  1) loaded 전엔 건너뛴다 — 스플래시~로드 사이에 다른 앱으로 갔다 오면 alarmsRef가 []라
+  //     rescheduleAll([])이 전체 취소 + syncActiveNativeAlarms([])로 네이티브 원장을 통째로 비웠다.
+  //  2) 알람·override·날짜가 마지막 재스케줄 때와 같으면 건너뛴다 — 재스케줄은 알람 N개 기준
+  //     Expo 예약 최대 14N회(직렬 await, 수 초)라 복귀마다 무조건 돌릴 일이 아니다. 14일 창은
+  //     날짜가 바뀔 때만 밀리므로 날짜를 키에 넣으면 "지나간 슬롯 보충"은 그대로 보장된다.
+  //     (useAlarms의 변경 경로는 이 키를 갱신하지 않아 변경 뒤 첫 복귀엔 한 번 더 돈다 — 무해)
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (next) => {
-      if (appStateRef.current.match(/inactive|background/) && next === 'active') {
-        await rescheduleAll(alarmsRef.current, getDayOverridesCache());
+      if (appStateRef.current.match(/inactive|background/) && next === 'active' && loadedRef.current) {
+        const key = `${todayStr()}|${JSON.stringify(alarmsRef.current)}|${JSON.stringify(getDayOverridesCache())}`;
+        if (key !== lastRescheduleKeyRef.current) {
+          lastRescheduleKeyRef.current = key;
+          await rescheduleAll(alarmsRef.current, getDayOverridesCache());
+        }
         setTick(n => n + 1);
       }
       appStateRef.current = next;
@@ -68,6 +102,7 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
 
   useEffect(() => {
     const s1 = Notifications.addNotificationReceivedListener(async n => {
+      lastRescheduleKeyRef.current = null; // 울림 → 다음 포그라운드 복귀 때 rep 재생성 보장
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       if (Platform.OS === 'android') {
         const { title, body } = n.request.content;
@@ -138,15 +173,24 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
   // 네이티브 AlarmService 알람 울림 이벤트 (포그라운드 인앱 끄기/스누즈 UI)
   useEffect(() => {
     if (Platform.OS !== 'android') return;
-    const sub = DeviceEventEmitter.addListener('alarmRinging', (e: { title: string; body: string; alarmId: number }) => {
+    const sub = DeviceEventEmitter.addListener('alarmRinging', (e: { title: string; body: string; alarmId: number; baseAlarmId?: number }) => {
+      lastRescheduleKeyRef.current = null; // 울림 → 다음 포그라운드 복귀 때 rep 재생성 보장
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       setRinging({
         title: e.title ?? '⏰ 알람', body: e.body ?? '',
         alarmId: e.alarmId >= 0 ? e.alarmId : undefined,
+        baseAlarmId: (e.baseAlarmId ?? -1) >= 0 ? e.baseAlarmId : undefined,
         source: 'native',
       });
     });
-    return () => sub.remove();
+    // 네이티브 알림의 "끄기" 버튼(워치 포함)·커버 화면으로 끈 경우 — JS 팝업을 거치지 않아
+    // Expo rep 취소가 빠졌던 경로. AlarmService.notifyStopped가 보내준다.
+    const stopped = DeviceEventEmitter.addListener('alarmStopped', async (e: { body?: string; baseAlarmId?: number }) => {
+      lastRescheduleKeyRef.current = null;
+      setRinging(prev => (prev?.source === 'native' ? null : prev));
+      await afterNativeStop(e.body, e.baseAlarmId);
+    });
+    return () => { sub.remove(); stopped.remove(); };
   }, []);
 
   // 앱 시작/포그라운드 복귀 시 AlarmService가 여전히 울리는 중이면 끄기 팝업 복구
@@ -159,11 +203,18 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
         setRinging({
           title: info.title ?? '⏰ 알람', body: info.body ?? '',
           alarmId: info.alarmId >= 0 ? info.alarmId : undefined,
+          baseAlarmId: (info.baseAlarmId ?? -1) >= 0 ? info.baseAlarmId : undefined,
           source: 'native',
         });
       } else {
         // 폴더블 커버 화면 등 앱 UI 바깥에서 이미 알람이 꺼진 경우, JS 쪽 끄기 팝업도 같이 닫음
         setRinging(prev => (prev?.source === 'native' ? null : prev));
+        // 앱이 죽어 있어 alarmStopped 이벤트를 못 받았을 수 있다 — 네이티브가 남긴 "마지막 끈 알람"
+        // 기록을 읽어(한 번 읽으면 지워짐) 같은 뒷정리를 한다.
+        if (AlarmModule?.consumeLastStopped) {
+          const last = await AlarmModule.consumeLastStopped();
+          if (last) await afterNativeStop(last.body, last.baseAlarmId);
+        }
       }
     };
     restore();
@@ -186,7 +237,9 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
     if (AlarmModule) AlarmModule.stopAlarm(ringing?.alarmId ?? -1);
     // expo-notifications rep 슬롯 취소
     if (ringing?.source === 'native') {
-      await cancelExpoGroupReps(ringing.body);
+      // stopAlarm → ACTION_STOP → notifyStopped가 alarmStopped도 보내지만, 여기서 바로 처리해도
+      // 취소는 멱등이고 '한 번' 비활성화는 active 검사로 한 번만 적용된다.
+      await afterNativeStop(ringing.body, ringing.baseAlarmId);
     } else if (ringing?.groupKey) {
       await Notifications.cancelScheduledNotificationAsync(`grp_${ringing.groupKey}_rep1`);
       await Notifications.cancelScheduledNotificationAsync(`grp_${ringing.groupKey}_rep2`);

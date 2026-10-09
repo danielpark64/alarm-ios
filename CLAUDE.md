@@ -18,6 +18,10 @@ Expo만 취소하고 AlarmManager를 빠뜨리면 알람이 비활성화해도 �
       원장 기준 정리(`syncActiveNativeAlarms`)가 재등록 **이후에** 호출되는가?
 - [ ] **부팅 복구**: 새 예약 경로를 추가했다면 `AlarmStore`에도 기록되는가?
       (기록 안 하면 재부팅·앱 교체 후 그 예약만 조용히 사라진다)
+- [ ] **재진입**: `rescheduleAll`/`scheduleAlarmTriggers`에 새 `await`를 넣었다면 그 뒤에
+      `if (isStaleGen(gen)) return;`이 있는가? (겹쳐 돈 앞 호출이 꺼진 알람을 다시 예약하는 경쟁 방지)
+- [ ] **네이티브 끄기 뒷정리**: 새 끄기 경로(알림 버튼·커버·워치 등)는 `AlarmService.ACTION_STOP`을
+      거치는가? 그래야 `notifyStopped` → JS `alarmStopped`로 Expo +1/+2분 재알림 취소가 된다.
 
 # TDD 원칙 — 버그 수정·회귀 방지 로직 추가 시
 

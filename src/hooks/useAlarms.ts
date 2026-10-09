@@ -32,16 +32,20 @@ export function useAlarms() {
   useEffect(() => {
     (async () => {
       let loaded: Alarm[] = DEFAULT;
+      let loadedNextId = 100;
       try {
         const raw = await AsyncStorage.getItem(KEY);
-        if (raw) { const d = JSON.parse(raw); loaded = (d.alarms ?? DEFAULT).map(migrateAlarm); setNextId(d.nextId ?? 100); }
+        if (raw) { const d = JSON.parse(raw); loaded = (d.alarms ?? DEFAULT).map(migrateAlarm); loadedNextId = d.nextId ?? 100; }
       } catch {}
+      setNextId(loadedNextId);
       // 만료된 '한 번' 알람 자동 비활성화
       const today = todayStr();
       const migrated = loaded.map(a => (a.rm === 'once' && a.sd < today && a.active) ? { ...a, active: false } : a);
       if (migrated.some((a, i) => a.active !== loaded[i].active)) {
         loaded = migrated;
-        await AsyncStorage.setItem(KEY, JSON.stringify({ alarms: loaded, nextId: 100 }));
+        // ⚠️ nextId는 반드시 디스크에서 읽은 값을 그대로 다시 쓴다 — 예전엔 여기서 상수 100을 저장해,
+        // 이 세션에서 알람을 추가하지 않으면 다음 콜드 스타트에 새 알람이 기존 알람과 같은 id를 받았다.
+        await AsyncStorage.setItem(KEY, JSON.stringify({ alarms: loaded, nextId: loadedNextId }));
       }
       setAlarms(loaded);
       // 하루 근무 변경(dayOverride) 캐시를 먼저 채워야 아래 syncWidget/rescheduleAll이

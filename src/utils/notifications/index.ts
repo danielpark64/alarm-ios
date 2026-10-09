@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import { Alarm, SNOOZE_ENABLED, DayOverrides } from '../../constants';
 import { cancelNativeAlarms, syncActiveNativeAlarms } from './android';
 import { scheduleAlarmTriggers, scheduleGroupReps } from './core';
+import { nextGen, isStaleGen } from './rescheduleGen';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -49,7 +50,11 @@ export async function cancelExpoGroupReps(body: string) {
 
 // 전체 재스케줄 (같은 시간대 묶음 처리 포함)
 export async function rescheduleAll(alarms: Alarm[], overrides: DayOverrides = {}) {
+  // 세대 번호 — 이 호출 도중 새 rescheduleAll이 시작되면 아래 await 뒤 검사에서 즉시 중단한다
+  // (자세한 배경은 rescheduleGen.ts). 취소는 멱등이라 겹쳐도 무해하고, 재예약만 마지막 호출이 맡는다.
+  const gen = nextGen();
   await cancelAllNotifications();
+  if (isStaleGen(gen)) return;
   for (const alarm of alarms) cancelNativeAlarms(alarm.id);
   const active = alarms.filter(a => a.active);
 
@@ -62,7 +67,8 @@ export async function rescheduleAll(alarms: Alarm[], overrides: DayOverrides = {
   const regular = active.filter(a => a.rm !== 'pattern');
 
   for (const alarm of patternAlarms) {
-    await scheduleAlarmTriggers(alarm, overrides);
+    await scheduleAlarmTriggers(alarm, overrides, undefined, gen);
+    if (isStaleGen(gen)) return;
   }
 
   // 시간대별 그룹화
@@ -76,10 +82,12 @@ export async function rescheduleAll(alarms: Alarm[], overrides: DayOverrides = {
   for (const [key, group] of groups) {
     // 메인 트리거 (개별, 같은 threadIdentifier로 묶음)
     for (const alarm of group) {
-      await scheduleAlarmTriggers(alarm, overrides, `grp_${key}`);
+      await scheduleAlarmTriggers(alarm, overrides, `grp_${key}`, gen);
+      if (isStaleGen(gen)) return;
     }
     // 그룹 rep 슬롯 (시간대당 1세트)
-    await scheduleGroupReps(group, overrides);
+    await scheduleGroupReps(group, overrides, gen);
+    if (isStaleGen(gen)) return;
   }
 
   // 삭제된 알람의 잔여 네이티브 예약 정리 — 위 cancelNativeAlarms 루프는 "남아 있는 알람"만

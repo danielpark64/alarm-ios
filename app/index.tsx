@@ -38,7 +38,7 @@ export default function App() {
   const { alarms, loaded, addAlarm, updateAlarm, deleteAlarms, toggleAlarm, submitWorkPattern } = useAlarms();
   const { overrides, setOverride } = useDayOverrides(alarms);
   useHolidaySync();
-  const { notifGranted, requestPermission, overlayGranted, requestOverlayPermission, tick, ringing, stopRinging, snoozeRinging } = useAlarmNotifications(alarms, updateAlarm);
+  const { notifGranted, requestPermission, overlayGranted, requestOverlayPermission, tick, ringing, stopRinging, snoozeRinging } = useAlarmNotifications(alarms, updateAlarm, loaded);
   const { selectMode, selectedIds, enterSelectMode, toggleSelect, selectAll, exitSelectMode } = useSelectMode();
   // 메인 화면은 달력 — 교대근무자는 약속 잡을 때 근무표(달력)부터 본다
   const [tab, setTab] = useState<HomeTab>('calendar');

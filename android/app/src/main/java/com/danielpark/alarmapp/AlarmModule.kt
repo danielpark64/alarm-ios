@@ -143,6 +143,30 @@ class AlarmModule(private val reactContext: ReactApplicationContext) :
             putString("title", info.title)
             putString("body", info.body)
             putInt("alarmId", info.alarmId)
+            putInt("baseAlarmId", info.baseAlarmId)
+        })
+    }
+
+    /**
+     * 네이티브 경로(알림 버튼·커버 화면)로 마지막에 끈 알람 기록을 한 번 읽고 지운다.
+     * JS가 포그라운드 복귀 때 호출해, 앱이 죽어 있어 alarmStopped 이벤트를 못 받은 경우에도
+     * Expo +1/+2분 재알림을 취소할 수 있게 한다. 오래된 기록(3분 초과)은 rep가 이미 울렸거나
+     * 지나갔으므로 버린다.
+     */
+    @ReactMethod
+    fun consumeLastStopped(promise: Promise) {
+        val prefs = reactContext.getSharedPreferences(AlarmService.PREFS_STOPPED, Context.MODE_PRIVATE)
+        val body = prefs.getString("body", null)
+        val at = prefs.getLong("at", 0L)
+        val baseAlarmId = prefs.getInt("baseAlarmId", -1)
+        if (body != null) prefs.edit().clear().apply()
+        if (body == null || System.currentTimeMillis() - at > 3 * 60 * 1000L) {
+            promise.resolve(null)
+            return
+        }
+        promise.resolve(Arguments.createMap().apply {
+            putString("body", body)
+            putInt("baseAlarmId", baseAlarmId)
         })
     }
 

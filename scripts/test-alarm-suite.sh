@@ -341,6 +341,39 @@ printf "  setOverride가 setState 업데이터에 기대지 않는지 ... "
 grep -vE '^\s*//' "$ROOT/src/hooks/useDayOverrides.ts" 2>/dev/null | grep -qE "setOverrides\(prev" \
   && { fail "setOverride가 setOverrides(prev => …) 안에서 next를 만듦 — 저장값이 빈 {}이 될 수 있음"; } || ok ""
 
+# ── 2026-10-09 로직 리뷰에서 나온 항목들 ──────────────────────────────
+# ① 만료된 '한 번' 알람을 자동 비활성화하며 저장할 때 nextId를 상수 100으로 덧씌우면,
+#    다음 콜드 스타트에서 새 알람이 기존 알람과 같은 id를 받아 토글/삭제가 둘 다에 걸린다.
+printf "  로드 시 저장이 nextId를 상수로 덧씌우지 않는지 ... "
+grep -vE '^\s*//' "$ROOT/src/hooks/useAlarms.ts" 2>/dev/null | grep -qE "nextId:\s*100\s*\}" \
+  && { fail "useAlarms 로드 분기가 nextId: 100 상수를 저장함 — 알람 id 중복 생성 경로"; } || ok ""
+
+# ② 로드가 끝나기 전 포그라운드 복귀 리스너가 빈 목록으로 rescheduleAll을 돌리면
+#    네이티브 원장·예약이 전부 비워진다. loaded 가드가 있어야 한다.
+printf "  포그라운드 재스케줄이 loaded 전엔 건너뛰는지 ... "
+grep -q "loadedRef.current" "$ROOT/src/hooks/useAlarmNotifications.ts" 2>/dev/null \
+  && ok "" || { fail "useAlarmNotifications 포그라운드 rescheduleAll에 loaded 가드 없음"; }
+
+# ③ rescheduleAll이 겹쳐 돌면(포그라운드 복귀 + 토글) 뒤 호출의 전체 취소 뒤에도 앞 호출이
+#    남은 루프를 계속 돌며 방금 꺼진 알람을 Expo에 다시 예약한다. 세대 번호로 앞 호출을 중단해야 한다.
+printf "  rescheduleAll 세대 번호(재진입 중단) ... "
+grep -q "isStaleGen" "$ROOT/src/utils/notifications/index.ts" 2>/dev/null \
+  && grep -q "isStaleGen" "$ROOT/src/utils/notifications/core.ts" 2>/dev/null \
+  && ok "" || { fail "rescheduleAll/scheduleAlarmTriggers에 세대 번호 중단 없음"; }
+
+# ④ 네이티브 알림 버튼·커버 화면으로 끄면 JS가 모르므로 Expo +1/+2분 재알림이 그대로 울린다.
+#    ACTION_STOP이 JS에 alarmStopped 이벤트를 보내고, JS가 받아서 cancelExpoGroupReps 해야 한다.
+printf "  네이티브 끄기 → JS alarmStopped → Expo rep 취소 ... "
+grep -q "alarmStopped" "$ROOT/android/app/src/main/java/com/danielpark/alarmapp/AlarmService.kt" 2>/dev/null \
+  && grep -q "alarmStopped" "$ROOT/src/hooks/useAlarmNotifications.ts" 2>/dev/null \
+  && grep -q "consumeLastStopped" "$ROOT/android/app/src/main/java/com/danielpark/alarmapp/AlarmModule.kt" 2>/dev/null \
+  && ok "" || { fail "네이티브 끄기가 JS에 전달되지 않음 — Expo rep 슬롯 잔존"; }
+
+# ⑤ 그룹 rep 데이터에 alarmIds만 있고 alarmId가 없으면 '한 번' 알람의 rep2 자동 비활성화가 항상 불발.
+printf "  단일 알람 그룹 rep 데이터에 alarmId 포함 ... "
+grep -q "alarmId: active.length === 1" "$ROOT/src/utils/notifications/core.ts" 2>/dev/null \
+  && ok "" || { fail "scheduleGroupReps 데이터에 alarmId 없음 — once 자동 비활성화 불발"; }
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
