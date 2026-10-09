@@ -345,6 +345,20 @@ export const isHolidaySkipped = (a: Alarm, dateStr: string) =>
 export const isHolidayOffWithOverride = (a: Alarm, dateStr: string, ov?: DayOverride) =>
   isHolidaySkipped(a, dateStr) && !dayWorkFor(a, ov)?.fires;
 
+// "휴일근무" — 법정공휴일인데 실제로 근무한 날. 달력 아래 집계 전용이며 사용자가 손대는 값이 없다.
+// 판정 순서는 달력 셀·홈·위젯과 똑같이 override 우선: 하루 근무 변경이 있으면 그걸로 확정
+// (연차=휴일근무 아님, 대근·특근=휴일근무), 없으면 교대근무 로테이션(isWorkAlarm: cycle/rest/pattern)이
+// 그날 근무인지로 판정한다. 요일 반복 출퇴근(wdcustom)은 공휴일에 알람이 꺼지는 규칙이라 그 사용자는
+// 특근 override를 걸어야만 휴일근무로 센다(= 위 override 우선 분기). "이날 끄기"는 알람만 끈 것이지
+// 근무가 없어진 게 아니므로 shiftForDate/isOffDay와 같이 includeSkipped=true로 본다.
+// dateStr가 공휴일이 아니면 항상 false — 호출부가 공휴일 목록만 넘겨도, 아무 날짜나 넘겨도 안전.
+export function isHolidayWorkDay(alarms: Alarm[], dateStr: string, ov?: DayOverride): boolean {
+  if (!isStatutoryHoliday(dateStr)) return false;
+  const disp = dayOverrideDisplay(ov);
+  if (disp) return !disp.isOff;
+  return alarmsForDate(alarms.filter(isWorkAlarm), dateStr, true).length > 0;
+}
+
 // 근무조 색 팔레트 — 시간대가 아니라 알람별로 배정한다.
 // 같은 시간대 안에서 갈리는 교대(예: 04:20 초번 / 05:20 말번)도 색으로 구분되도록,
 // 근무 알람을 시각순으로 정렬해 순서대로 색을 준다.

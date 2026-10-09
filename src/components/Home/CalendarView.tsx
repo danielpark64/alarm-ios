@@ -5,9 +5,9 @@ import { Alarm, DAYS, DAYS_DISPLAY, DayOverride, DayOverrides, OverrideKind, OVE
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
 import { useFontScale } from '../../hooks/useFontScale';
-import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, isOverridableAlarm, isHolidayOffWithOverride, shiftForDate, isOffDay, shiftToneIndexMap, shiftPeriodLabel, shiftPeriodId, effectiveShift, effectiveTime, dayWorkFor, lunarDateText, lunarShortText, dayOverrideDisplay, overrideLabel } from '../../utils';
+import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, isOverridableAlarm, isHolidayOffWithOverride, isHolidayWorkDay, shiftForDate, isOffDay, shiftToneIndexMap, shiftPeriodLabel, shiftPeriodId, effectiveShift, effectiveTime, dayWorkFor, lunarDateText, lunarShortText, dayOverrideDisplay, overrideLabel } from '../../utils';
 import { roleLabel } from '../../utils/workPattern';
-import { getHoliday, getHolidayShort } from '../../constants/holidays';
+import { getHoliday, getHolidayShort, statutoryHolidaysInYear } from '../../constants/holidays';
 import { getSolarTerm } from '../../constants/solarTerms';
 import { OverrideTimeModal } from './OverrideTimeModal';
 
@@ -433,8 +433,20 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
       if (label) bump(label, ds);
       if (o.family) bump('경조사', ds);
     }
-    return Array.from(byKind.values()).filter(x => x.month > 0 || x.year > 0);
-  }, [overrides, year, month]);
+    // 휴일근무 — 법정공휴일에 실제로 근무한 날. 사용자가 입력하는 값이 아니라 공휴일 표 × 그날
+    // 근무 여부(override 우선 → 교대 로테이션)로 자동 산정한다(isHolidayWorkDay). 오늘까지만
+    // 센다 — 앞으로의 공휴일 근무는 연차를 넣으면 바뀌는 "예정"이라, 수당 계산처럼 실제 근무한
+    // 날을 세는 용도에 맞게 지난 날만 확정치로 보여준다.
+    for (const ds of statutoryHolidaysInYear(year)) {
+      if (ds > today) break; // 정렬돼 있으니 오늘 이후는 더 볼 필요 없음
+      if (isHolidayWorkDay(alarms, ds, overrides[ds])) bump('휴일근무', ds);
+    }
+    // 표시 순서를 고정한다 — Map은 기록된 순서라 기기·사용자마다 달랐다. 종류 순 → 경조사 → 휴일근무.
+    const order = [...OVERRIDE_KINDS.map(k => k.label), '경조사', '휴일근무'];
+    return Array.from(byKind.values())
+      .filter(x => x.month > 0 || x.year > 0)
+      .sort((a, b) => order.indexOf(a.label) - order.indexOf(b.label));
+  }, [overrides, alarms, year, month, today]);
 
   const pages = useMemo(() => Array.from({ length: RANGE * 2 + 1 }, (_, i) => i), []);
 
@@ -609,8 +621,13 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
             )}
 
             {/* 하루 근무 변경(메인) — 연차·병가 / 대근·특근·야근·연장·반차·반반차(시각 직접 지정).
-                경조사(메모, 보조)보다 먼저 둔다. 오늘 이후만 바꿀 수 있다("이날 끄기"와 같은 제약). */}
-            {selDate && selDate >= today && (
+                경조사(메모, 보조)보다 먼저 둔다.
+                지난 날짜도 편집·해제할 수 있다 — 이 기록은 알람 예약이 아니라 "실제로 그날 뭘
+                했는지"의 장부(달력 배지·이번 달/올해 집계)라서, 잘못 적은 지난 연차·대근을 바로잡을
+                길이 있어야 한다(2026-10-09 요청). 알람 "이날 끄기"(skips)는 예약에만 쓰이므로 그쪽은
+                여전히 오늘 이후로 제한한다(아래 canSkip). 지난 날짜에 override를 바꿔도 예약 루프는
+                지난 발화 시각을 건너뛰므로(ft <= now) rescheduleAll에 영향이 없다. */}
+            {selDate && (
               <View style={cv.ovSection}>
                 {selOv ? (
                   <TouchableOpacity style={cv.ovClearBtn} onPress={clearOverride}>
@@ -663,8 +680,9 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
             {/* 경조사 메모(보조) — 근무 상태(kind/work)와 완전히 독립적으로 항상 노출된다.
                 남의 결혼식·장례식은 연차를 쓰든 근무 끝나고 가든 상관없이 몇 시·누구 건지만
                 남기면 되는 것이라, "하루 근무 변경" 종류 선택과는 별개의 자리를 둔다. 메인
-                기능인 하루 근무 변경보다 아래에 둬서 우선순위를 명확히 한다. */}
-            {selDate && selDate >= today && (
+                기능인 하루 근무 변경보다 아래에 둬서 우선순위를 명확히 한다.
+                지난 날짜도 적을 수 있다(위 하루 근무 변경과 같은 이유). */}
+            {selDate && (
               <View style={cv.ovMemoRow}>
                 <TextInput
                   style={cv.ovMemoInput}

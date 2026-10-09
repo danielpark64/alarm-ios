@@ -98,6 +98,17 @@ export const isStatutoryHoliday = (dateStr: string): boolean => {
   return !NOT_DAY_OFF.has(normalizeHolidayName(full));
 };
 
+// 그 해의 법정공휴일 날짜 목록(정렬, 중복 제거) — 달력 아래 "휴일근무" 집계처럼 날짜를 하나씩
+// 묻는 게 아니라 "올해 공휴일을 전부 훑어야" 하는 곳용. 내장 표와 API 캐시를 합치되 판정은
+// isStatutoryHoliday에 위임해 제헌절·근로자의날 같은 비공휴일 제외 규칙이 한 곳에만 있게 한다.
+export const statutoryHolidaysInYear = (year: number): string[] => {
+  const prefix = `${year}-`;
+  const all = new Set<string>();
+  for (const ds of Object.keys(HOLIDAYS)) if (ds.startsWith(prefix)) all.add(ds);
+  for (const ds of Object.keys(apiHolidays)) if (ds.startsWith(prefix)) all.add(ds);
+  return Array.from(all).filter(isStatutoryHoliday).sort();
+};
+
 // 달력 칸 표시용 축약 이름.
 // 칸 하나의 글자 영역이 45px 안팎이라 4자를 넘으면 읽을 수 없을 만큼 축소돼 버린다
 // (실제로 API가 주는 "대체공휴일(광복절)"이 뭉개져서 안 보였다).

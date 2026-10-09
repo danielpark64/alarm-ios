@@ -17,12 +17,14 @@ export function useDayOverrides(alarms: Alarm[]) {
       // 지난 기록은 지우지 않는다 — 달력 아래 "이번 달/올해" 집계와 지난 달력 배지가 이 기록으로
       // 만들어진다. 전날이 되자마자 지우면 대근·연차 내역이 사라진다(2026-10-07 버그).
       // 알람 예약은 오늘 이후만 보므로 남겨 둬도 영향이 없다. 다만 저장소가 무한히 커지지 않게
-      // 작년 1월 1일보다 오래된 것만 정리한다.
+      // 10년 전 1월 1일보다 오래된 것만 정리한다. (예전엔 "작년 1월 1일"이었는데, 2026-10-09에
+      // 지난 날짜 편집을 허용하면서 그보다 오래된 날짜에 적은 기록이 다음 실행 때 조용히 사라지는
+      // 경로가 생겨 넉넉히 늘렸다 — 날짜당 수십 바이트라 10년치여도 크기는 문제가 안 된다.)
       // 여기서 kind도 같이 검증한다 — OVERRIDE_KINDS에서 나중에 빠진 값(예: 예전에 있던
       // "기타")이 그대로 저장돼 있으면 dayOverrideDisplay/dayWorkFor는 이미 무시하지만
       // 저장소엔 라벨 없는 죽은 데이터로 영원히 남는다. kind가 없어지고 family도 없는
       // 완전히 빈 항목이면 이 기회에 통째로 지운다.
-      const keepFrom = `${new Date().getFullYear() - 1}-01-01`;
+      const keepFrom = `${new Date().getFullYear() - 10}-01-01`;
       let changed = false;
       const kept: DayOverrides = {};
       for (const [ds, v] of Object.entries(raw)) {

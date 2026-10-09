@@ -374,6 +374,34 @@ printf "  단일 알람 그룹 rep 데이터에 alarmId 포함 ... "
 grep -q "alarmId: active.length === 1" "$ROOT/src/utils/notifications/core.ts" 2>/dev/null \
   && ok "" || { fail "scheduleGroupReps 데이터에 alarmId 없음 — once 자동 비활성화 불발"; }
 
+# ⑥ 하루 근무 변경·경조사 메모는 지난 날짜도 편집 가능해야 한다(2026-10-09) — 장부 성격이라
+#    잘못 적은 과거 기록을 고칠 길이 있어야 함. 반대로 알람 "이날 끄기"(canSkip)는 예약 전용이라
+#    오늘 이후 제한을 유지한다. ovSection/ovMemoRow 바로 위 조건에 selDate >= today가 다시 들어오면 실패.
+printf "  하루 근무 변경이 지난 날짜도 편집 가능한지(canSkip은 오늘 이후 유지) ... "
+_CV="$ROOT/src/components/Home/CalendarView.tsx"
+if [ "$(grep -cE "<View style=\{cv\.(ovSection|ovMemoRow)\}>" "$_CV" 2>/dev/null)" != "2" ]; then
+  fail "ovSection/ovMemoRow 마커를 못 찾음 — 스타일명이 바뀌었으면 이 체크의 grep도 같이 고칠 것"
+elif grep -B3 -E "<View style=\{cv\.(ovSection|ovMemoRow)\}>" "$_CV" 2>/dev/null | grep -q "selDate >= today"; then
+  fail "하루 근무 변경/경조사 메모 섹션이 selDate >= today로 막혀 있음 — 지난 날짜 수정 불가"
+elif ! grep -q "canSkip = .*selDate >= today" "$_CV" 2>/dev/null; then
+  fail "알람 '이날 끄기'(canSkip)의 오늘 이후 제한이 사라짐 — 지난 날짜 skip은 무의미"
+else
+  ok ""
+fi
+
+# ⑦ 달력 아래 "휴일근무" 집계(2026-10-09) — 사용자 입력 없이 공휴일×근무 여부로 자동 산정.
+#    판정은 isHolidayWorkDay 한 곳에만 두고(override 우선 → isWorkAlarm 로테이션), 달력 tally가
+#    그 헬퍼를 쓰는지 확인. 집계가 헬퍼를 우회해 자체 판정을 넣으면 셀·홈·위젯과 어긋난다.
+printf "  휴일근무 집계가 isHolidayWorkDay(override 우선) 헬퍼를 쓰는지 ... "
+grep -q "isHolidayWorkDay" "$ROOT/src/components/Home/CalendarView.tsx" 2>/dev/null \
+  && grep -A4 "export function isHolidayWorkDay" "$ROOT/src/utils/index.ts" 2>/dev/null | grep -q "dayOverrideDisplay" \
+  && ok "" || { fail "휴일근무 집계가 isHolidayWorkDay를 안 쓰거나 헬퍼가 override를 먼저 보지 않음"; }
+
+# ⑧ 지난 날짜 편집 허용과 짝 — 로드 시 정리 기준이 "작년"으로 되돌아가면 과거 편집이 재시작 때 사라진다.
+printf "  하루 근무 변경 보관 기간이 10년 이상인지 ... "
+grep -qE "getFullYear\(\) - (1[0-9]|[2-9][0-9])\}-01-01" "$ROOT/src/hooks/useDayOverrides.ts" 2>/dev/null \
+  && ok "" || { fail "useDayOverrides keepFrom이 10년 미만 — 지난 날짜 편집 기록이 다음 실행 때 지워질 수 있음"; }
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
