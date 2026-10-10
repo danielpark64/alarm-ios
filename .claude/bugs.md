@@ -1,5 +1,52 @@
 # 버그 이력
 
+## 2026-10-10 · [치명] iOS "진동만" 알람이 무음 배너로만 뜸 — 소리 없는 알림엔 iOS가 진동도 안 울림
+
+**증상**: 소리를 "진동만"으로 둔 알람이 iOS에서 울릴 시각에 소리도 진동도 없이 배너만 조용히 뜸.
+사용자 보고: "폰만 있으면(워치 없이) 알람이 온 줄 전혀 모른다". Android는 정상.
+**원인**: iOS는 알림 content에 `sound`가 없으면 진동(햅틱)도 함께 생략한다. `core.ts`가
+`snd !== 'default'`면 `sound: undefined`로 보내고 있었고, 함께 넣던 `vibrate` 필드는 Android
+전용이라 iOS에선 아무 효과가 없음. 즉 "진동만"이 iOS에서는 "완전 무음 배너"로 번역되고 있었다.
+**수정**: `notifSound()`가 iOS + 진동만일 때 0.5초 무음 파일 `silent_short.wav`를 sound로 붙여
+iOS가 "소리 있는 알림"으로 취급 → 진동이 울림. 파일은 `assets/`, `ios/app/`, Android raw,
+`app.json`의 `sounds`, pbxproj Resources 5곳에 모두 등록. 겸사겸사 iOS 반복 울림 재설계:
+`scheduleRepSeries` 30초 간격, 가장 가까운 알람은 10회(5분)·나머지는 2회, 로테이션(pattern)
+알람도 iOS에선 `alarm_{id}_rep*` 묶음으로 통일, "60개 한도 넘으면 포기" 검사 제거(iOS는 64개를
+넘으면 먼 것부터 알아서 버리므로 가까운 알람이 손해 보지 않음), 취소 경로는
+`cancelRepSeries(REP_MAX)` 하나로 통일, 응답 리스너는 `refreshRepsOnly`(보조 반복만 갱신, 전체
+재예약 금지). 실기기(iPhone 17 Pro Max)에서 30초 간격 반복과 끄기 후 중지 확인. 정적 체크
+⑬⑭⑮⑯ 추가.
+**파일**: `src/utils/notifications/core.ts`, `src/hooks/useAlarmNotifications.ts`,
+`assets/silent_short.wav`, `ios/app/silent_short.wav`, `android/app/src/main/res/raw/silent_short.wav`,
+`app.json`, `ios/app.xcodeproj/project.pbxproj`, `scripts/test-alarm-suite.sh`
+**재발 감시 포인트**: iOS용 알림 content를 `sound` 없이 보내는 코드가 하나라도 생기면 그 알림은
+진동도 사라진다 — "무음이지만 진동은 있어야 하는" 모든 경우는 `notifSound()`를 거쳐 무음 파일을
+붙일 것(`sound: undefined`/`null` 직접 대입 금지). 반복 알림 취소는 `rep1`/`rep2` 식별자를 직접
+취소하지 말고 반드시 `cancelRepSeries`를 호출 — 회수(REP_MAX)가 바뀌어도 한 곳만 고치면 되게.
+2026-10-09 "네이티브 끄기" 항목과 같은 골격(취소 경로 다원화)이 재현되지 않도록 새 취소 진입점은
+`cancelRepSeries`를 타는지 확인.
+
+## 2026-10-10 · [중간] iOS 27 빌드에서 딥링크(alarmapp://) 전부 무시됨 — SceneDelegate가 URL을 RN에 안 넘김
+
+**증상**: `alarmapp://...` 딥링크가 콜드 스타트·웜 스타트 모두 앱만 띄우고 RN `Linking`에 아무
+이벤트도 오지 않음. 발견 계기: 테스트 알람 생성용 개발 딥링크(`alarmapp://?testAlarm=3`,
+`?dumpPending=1`, `?clearTestAlarms=1`)를 `devicectl --payload-url`로 보내다가 전부 무반응.
+**원인**: `plugins/withIosSceneDelegate.js`가 생성한 SceneDelegate에 URL 전달 코드가 없음.
+UIScene 기반 앱에서는 `AppDelegate.application(_:open:)`이 호출되지 않고 URL이
+`scene(_:openURLContexts:)`(실행 중) 또는 `connectionOptions.urlContexts`(콜드 스타트)로만 오는데
+둘 다 처리하지 않아 RN 쪽 `launchOptions[.url]`·`RCTLinkingManager`에 URL이 닿지 않았다.
+**수정**: SceneDelegate에 `scene(_:openURLContexts:)`와 `scene(_:continue:)`(유니버설 링크) 추가,
+`willConnectTo`에서 `connectionOptions.urlContexts.first?.url`을 `launchOptions[.url]`로 주입.
+플러그인(`withIosSceneDelegate.js`)과 이미 생성된 `ios/app/AppDelegate.swift` 둘 다 반영.
+정적 체크 ⑰(SceneDelegate에 두 경로가 있는지) 추가.
+**파일**: `plugins/withIosSceneDelegate.js`, `ios/app/AppDelegate.swift`, `scripts/test-alarm-suite.sh`
+**재발 감시 포인트**: `withIosSceneDelegate.js`를 고칠 때 URL 전달 두 경로(콜드 스타트
+`connectionOptions.urlContexts` → `launchOptions[.url]`, 실행 중 `scene(_:openURLContexts:)`)를
+반드시 유지. `ios/`는 gitignore 대상이라 prebuild로 다시 생성되면 수동 수정은 사라지므로 진짜
+소스는 플러그인이고, prebuild 뒤 정적 체크 ⑰로 결과물을 확인. UIScene 앱에서 AppDelegate의
+URL/푸시/유니버설 링크 콜백에 의존하는 새 기능을 추가할 때는 SceneDelegate 대응 콜백이 있는지
+먼저 확인.
+
 ## 2026-10-09 · [치명] 알람 id 중복 — 만료된 '한 번' 알람 자동 비활성화 저장이 nextId를 100으로 되돌림
 
 **증상**: 앱 콜드 스타트 시 만료된 '한 번' 알람이 있으면 자동 비활성화 후 저장되는데, 그 다음

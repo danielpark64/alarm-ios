@@ -1,8 +1,9 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { Alarm, SNOOZE_ENABLED, DayOverrides } from '../../constants';
+import { Alarm, SNOOZE_ENABLED, DayOverrides, REP_MAX, IOS_REP_COUNT_NEAREST, IOS_REP_COUNT_OTHERS, ANDROID_REP_COUNT } from '../../constants';
+import { getNextFireDate } from '../index';
 import { cancelNativeAlarms, syncActiveNativeAlarms } from './android';
-import { scheduleAlarmTriggers, scheduleGroupReps } from './core';
+import { scheduleAlarmTriggers, scheduleGroupReps, schedulePatternAlarmReps } from './core';
 import { nextGen, isStaleGen } from './rescheduleGen';
 
 Notifications.setNotificationHandler({
@@ -39,13 +40,75 @@ export async function cancelAllNotifications() {
   await Notifications.cancelAllScheduledNotificationsAsync();
 }
 
-// 네이티브 알람 울림(body="HH:MM 알람")에서 시간을 파싱해 expo 그룹 rep 슬롯(+1/+2분) 취소
+// 보조 알림(`${idBase}_rep1..REP_MAX`) 전부 취소 — 그룹(grp_{h}_{m})·알람별(alarm_{id}) 공용.
+// 없는 식별자는 조용히 무시되므로 상한까지 돌려도 안전하다. 취소 지점이 여러 곳(응답 리스너·인앱 끄기·
+// 스누즈·네이티브 끄기)이라 반드시 이 함수를 쓴다 — 예전처럼 rep1/rep2만 직접 지우면 iOS의 긴 묶음이 남는다.
+export async function cancelRepSeries(idBase: string) {
+  await Promise.all(
+    Array.from({ length: REP_MAX }, (_, i) =>
+      Notifications.cancelScheduledNotificationAsync(`${idBase}_rep${i + 1}`).catch(() => {})),
+  );
+}
+
+// 네이티브 알람 울림(body="HH:MM 알람")에서 시간을 파싱해 expo 그룹 보조 알림 취소
 export async function cancelExpoGroupReps(body: string) {
   const m = body.match(/^(\d{2}):(\d{2})/);
   if (!m) return;
   const gkey = `${parseInt(m[1], 10)}_${parseInt(m[2], 10)}`;
-  await Notifications.cancelScheduledNotificationAsync(`grp_${gkey}_rep1`).catch(() => {});
-  await Notifications.cancelScheduledNotificationAsync(`grp_${gkey}_rep2`).catch(() => {});
+  await cancelRepSeries(`grp_${gkey}`);
+}
+
+// 보조 알림(반복 울림) 묶음 전체 예약 — rescheduleAll과 refreshRepsOnly가 공유.
+// 가장 가까운 묶음(또는 iOS 로테이션 알람)에는 긴 묶음(IOS_REP_COUNT_NEAREST), 나머지는 짧게.
+// Android는 네이티브가 끌 때까지 울리므로 예전과 같은 +1/+2분 2개만(ANDROID_REP_COUNT).
+// 반환: 끝까지 수행했으면 true, 세대가 바뀌어 중단됐으면 false.
+async function scheduleAllReps(groups: Map<string, Alarm[]>, patternAlarms: Alarm[], overrides: DayOverrides, gen?: number): Promise<boolean> {
+  const ios = Platform.OS === 'ios';
+  const nextOf = (as: Alarm[]) => Math.min(...as.map(a => getNextFireDate(a, overrides)?.getTime() ?? Infinity));
+  const candidates: { key: string; next: number }[] = [
+    ...Array.from(groups.entries()).map(([key, g]) => ({ key: `grp_${key}`, next: nextOf(g) })),
+    ...(ios ? patternAlarms.map(a => ({ key: `alarm_${a.id}`, next: nextOf([a]) })) : []),
+  ].filter(c => Number.isFinite(c.next));
+  const nearestKey = candidates.length ? candidates.reduce((m, c) => (c.next < m.next ? c : m)).key : null;
+  const countFor = (key: string) =>
+    ios ? (key === nearestKey ? IOS_REP_COUNT_NEAREST : IOS_REP_COUNT_OTHERS) : ANDROID_REP_COUNT;
+
+  for (const [key, group] of groups) {
+    await scheduleGroupReps(group, overrides, gen, countFor(`grp_${key}`));
+    if (isStaleGen(gen)) return false;
+  }
+  for (const alarm of patternAlarms) {
+    await schedulePatternAlarmReps(alarm, overrides, gen, countFor(`alarm_${alarm.id}`));
+    if (isStaleGen(gen)) return false;
+  }
+  return true;
+}
+
+function groupRegular(active: Alarm[]) {
+  const patternAlarms = active.filter(a => a.rm === 'pattern');
+  const groups = new Map<string, Alarm[]>();
+  for (const a of active.filter(x => x.rm !== 'pattern')) {
+    const key = `${a.hour}_${a.min}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(a);
+  }
+  return { groups, patternAlarms };
+}
+
+// 보조 알림만 다시 거는 경량 경로 — 알람 응답(끄기/닫기)으로 앱이 백그라운드에서 잠깐 깨어났을 때 쓴다.
+// 그 상황에서 rescheduleAll(전체 취소 → 전부 재예약)을 돌리면 iOS가 몇 초 만에 앱을 멈출 수 있어
+// "취소는 됐는데 메인은 일부만 예약된" 상태로 남을 위험이 있다(앱을 안 여는 사용자는 다음 알람을
+// 놓친다). 여기서는 메인 예약은 손대지 않고 보조 식별자(grp_*/alarm_*_rep*)만 지우고 다시 건다 —
+// 중간에 멈춰도 잃는 건 보조 알림뿐이고, 다음 포그라운드 복귀 때 전체 재예약이 메운다.
+export async function refreshRepsOnly(alarms: Alarm[], overrides: DayOverrides = {}) {
+  const gen = nextGen();
+  const { groups, patternAlarms } = groupRegular(alarms.filter(a => a.active));
+  await Promise.all([
+    ...Array.from(groups.keys()).map(key => cancelRepSeries(`grp_${key}`)),
+    ...patternAlarms.map(a => cancelRepSeries(`alarm_${a.id}`)),
+  ]);
+  if (isStaleGen(gen)) return;
+  await scheduleAllReps(groups, patternAlarms, overrides, gen);
 }
 
 // 전체 재스케줄 (같은 시간대 묶음 처리 포함)
@@ -63,31 +126,24 @@ export async function rescheduleAll(alarms: Alarm[], overrides: DayOverrides = {
   // 실제로 무관한 알람과 잘못 묶이거나 회전 도중 반복알림이 어긋날 수 있다.
   // v1은 pattern 알람을 그룹/rep 슬롯 대상에서 제외하고 개별 스케줄링만 한다
   // (주 알람이 정확한 시각에 울리는 것 자체엔 영향 없음, +1/+2분 보조 알림만 없음).
-  const patternAlarms = active.filter(a => a.rm === 'pattern');
-  const regular = active.filter(a => a.rm !== 'pattern');
+  const { groups, patternAlarms } = groupRegular(active);
 
+  // ── 1) 보조 알림(반복 울림) 먼저 ──────────────────────────────────────────
+  // iOS는 대기 알림 64개를 넘으면 발화 시각이 먼 것부터 버리므로(순서 무관) 보조 알림은 어차피
+  // 살아남지만, 중간에 중단돼도 "다음 알람의 반복 울림"부터 확보되도록 먼저 건다.
+  if (!(await scheduleAllReps(groups, patternAlarms, overrides, gen))) return;
+
+  // ── 2) 메인 트리거 ──────────────────────────────────────────────────────
   for (const alarm of patternAlarms) {
     await scheduleAlarmTriggers(alarm, overrides, undefined, gen);
     if (isStaleGen(gen)) return;
   }
-
-  // 시간대별 그룹화
-  const groups = new Map<string, Alarm[]>();
-  for (const a of regular) {
-    const key = `${a.hour}_${a.min}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(a);
-  }
-
   for (const [key, group] of groups) {
     // 메인 트리거 (개별, 같은 threadIdentifier로 묶음)
     for (const alarm of group) {
       await scheduleAlarmTriggers(alarm, overrides, `grp_${key}`, gen);
       if (isStaleGen(gen)) return;
     }
-    // 그룹 rep 슬롯 (시간대당 1세트)
-    await scheduleGroupReps(group, overrides, gen);
-    if (isStaleGen(gen)) return;
   }
 
   // 삭제된 알람의 잔여 네이티브 예약 정리 — 위 cancelNativeAlarms 루프는 "남아 있는 알람"만
@@ -101,7 +157,7 @@ export async function scheduleAlarm(alarm: Alarm, overrides: DayOverrides = {}) 
   if (!alarm.active) return;
   await cancelAlarmNotifications(alarm.id);
   await scheduleAlarmTriggers(alarm, overrides, `grp_${alarm.hour}_${alarm.min}`);
-  await scheduleGroupReps([alarm], overrides);
+  await scheduleGroupReps([alarm], overrides, undefined, Platform.OS === 'ios' ? IOS_REP_COUNT_OTHERS : ANDROID_REP_COUNT);
 }
 
 // 알림(폰 배너/잠금화면 + 워치로 브릿지되는 것)의 액션 버튼 구성.

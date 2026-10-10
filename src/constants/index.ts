@@ -58,6 +58,17 @@ export const VIBS = [
 export const CYCLE_PRESETS = [2,3,4,7,10,30];
 // 인앱 알람 울림 팝업의 "5분 후" 스누즈 버튼 노출 여부. false면 끄기 버튼만 표시.
 export const SNOOZE_ENABLED = false;
+
+// ── iOS 반복 울림(보조 알림) 설정 ──────────────────────────────────────────
+// iOS는 알림 소리가 최대 30초이고 앱이 백그라운드에서 소리를 이어 울릴 수 없어, "끌 때까지 울림"을
+// 흉내내려면 같은 알림을 짧은 간격으로 여러 번 예약하는 수밖에 없다. 가장 가까운 알람에는 긴 묶음을,
+// 나머지에는 짧은 묶음을 준다(iOS 대기 알림 64개 한도 — 넘치면 먼 것부터 버려지므로 가까운 것이 우선).
+// 알람이 울리고 사용자가 끄기/닫기를 하면 응답 리스너가 재예약을 돌려 다음 알람이 긴 묶음을 받는다.
+export const IOS_REP_INTERVAL_SEC   = 30;  // 보조 알림 간격
+export const IOS_REP_COUNT_NEAREST  = 10;  // 가장 가까운 알람: 30초 × 10회 = 5분
+export const IOS_REP_COUNT_OTHERS   = 2;   // 그 외 알람
+export const ANDROID_REP_COUNT      = 2;   // Android는 네이티브 AlarmService가 끌 때까지 울리므로 Expo 보조는 예전처럼 +1/+2분
+export const REP_MAX                = 10;  // 취소 루프 상한 — 위 값 중 최대와 같아야 한다
 export type AlarmType  = typeof TYPES[number]['id'];
 // 'pattern' = 근무 시간대 로테이션 알람 전용 반복방식. REPEAT 상수엔 안 넣음 —
 // 일반 반복방식 선택기에는 안 뜨고, "근무 시간대" 게이트를 통해서만 만들어짐.

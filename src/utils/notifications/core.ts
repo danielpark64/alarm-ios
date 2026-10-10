@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
-import { Alarm, DayOverrides, ShiftPeriod } from '../../constants';
+import { Platform } from 'react-native';
+import { Alarm, DayOverrides, ShiftPeriod, IOS_REP_INTERVAL_SEC, ANDROID_REP_COUNT } from '../../constants';
 import { getType, pad, getNextFireDate, lunarToSolarInYear, effectiveShift, effectiveTime, dayWorkFor, isOverridableAlarm, isHolidaySkipped, skipsStatutoryHoliday } from '../index';
 import { isStatutoryHoliday } from '../../constants/holidays';
 import { roleLabel } from '../workPattern';
@@ -12,6 +13,18 @@ function getVibrationPattern(vib: string): number[] | undefined {
   if (vib === 'none') return undefined;
   return [0, 200, 150, 200, 150, 200];
 }
+
+// 알림 소리 — ⚠️ iOS는 소리가 없는 알림엔 진동도 하지 않는다(진동은 소리 재생에 붙어 온다).
+// 그래서 "진동만"은 iOS에서 0.5초 무음 파일(silent_short.wav)을 소리로 붙여 iOS가 "소리를 재생했다"고
+// 보고 진동을 울리게 한다 — 실제 소리는 안 난다(2026-10-10, 진동만 모드가 iOS에서 무음 배너로만 뜨던 문제).
+// Android는 vibrate 패턴을 따로 주므로 소리 없음 = undefined 그대로.
+function notifSound(soundOn: boolean): string | boolean | undefined {
+  if (soundOn) return __DEV__ ? true : 'alarm_long.wav';
+  return Platform.OS === 'ios' ? 'silent_short.wav' : undefined;
+}
+// iOS 시간 민감 알림 — 집중 모드·방해금지를 뚫고 뜬다(app.entitlements time-sensitive 필요).
+const iosInterruption: Partial<Notifications.NotificationContentInput> =
+  Platform.OS === 'ios' ? { interruptionLevel: 'timeSensitive' } : {};
 
 function makeId(alarmId: number, suffix: string): string {
   return `alarm_${alarmId}_${suffix}`;
@@ -75,10 +88,13 @@ async function schedulePatternAlarmTriggers(alarm: Alarm, overrides: DayOverride
     const bodyText = `${pad(t.hour)}:${pad(t.min)} 알람`;
     const content = {
       title, body: bodyText,
-      sound: soundOn ? (__DEV__ ? true : 'alarm_long.wav') : undefined,
+      sound: notifSound(soundOn),
       vibrate: getVibrationPattern(alarm.vib),
-      data: { alarmId: alarm.id, rm: alarm.rm, groupKey: `${alarm.hour}_${alarm.min}` },
+      // ⚠️ pattern 알람은 groupKey를 넣지 않는다 — 보조 알림이 그룹(grp_*)이 아니라 알람별(alarm_{id}_rep*)로
+      // 걸리므로, 응답 리스너가 groupKey 분기로 가면 엉뚱한 식별자를 취소하고 실제 보조 알림은 남는다.
+      data: { alarmId: alarm.id, rm: alarm.rm },
       categoryIdentifier: 'alarm',
+      ...iosInterruption,
       ...(threadIdentifier ? { threadIdentifier } : {}),
     } as Notifications.NotificationContentInput;
 
@@ -112,10 +128,11 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
 
   const baseContent = {
     title, body: bodyText,
-    sound: soundOn ? (__DEV__ ? true : 'alarm_long.wav') : undefined,
+    sound: notifSound(soundOn),
     vibrate: getVibrationPattern(alarm.vib),
     data: { alarmId: alarm.id, rm: alarm.rm, groupKey: `${alarm.hour}_${alarm.min}` },
     categoryIdentifier: 'alarm',
+    ...iosInterruption,
     ...(threadIdentifier ? { threadIdentifier } : {}),
   } as Notifications.NotificationContentInput;
 
@@ -248,15 +265,34 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
   }
 }
 
-// ── 같은 시간대 알람 묶음 rep 슬롯 예약 (+1분/+2분) ───────────────────
-export async function scheduleGroupReps(group: Alarm[], overrides: DayOverrides = {}, gen?: number) {
-  const active = group.filter(a => a.active);
-  if (!active.length) return;
+// ── 보조 알림(반복 울림) 공통 — 식별자 `${idBase}_rep{i}` (i=1..count), 간격은 플랫폼별.
+// iOS: 30초 간격(소리가 30초라 끊김 없이 이어짐), Android: 60초 간격(네이티브가 이미 끌 때까지 울리므로 보조일 뿐).
+// 64개 한도 검사는 하지 않는다 — iOS는 넘치면 "발화 시각이 먼 것"부터 버리는데, 보조 알림은 가장 가까운
+// 알림이라 살아남고, 버려진 먼 메인 슬롯은 다음 재예약(앱 열기·알람 울림 뒤 응답) 때 다시 채워진다.
+// 예전엔 "60개 넘으면 보조 포기"였는데 그건 더 중요한 쪽을 우리가 먼저 버리는 거꾸로 된 순서였다.
+async function scheduleRepSeries(
+  idBase: string, base: Notifications.NotificationContentInput, data: Record<string, unknown>,
+  next: Date, count: number, gen?: number,
+) {
+  const intervalMs = (Platform.OS === 'ios' ? IOS_REP_INTERVAL_SEC : 60) * 1000;
+  for (let i = 1; i <= count; i++) {
+    if (isStaleGen(gen)) return;
+    await Notifications.scheduleNotificationAsync({
+      identifier: `${idBase}_rep${i}`,
+      content: { ...base, data: { ...data, isRepeat: true, repIndex: i, isLast: i === count } },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: new Date(next.getTime() + i * intervalMs),
+      },
+    });
+  }
+}
 
-  // 슬롯 여유 확인
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  if (isStaleGen(gen)) return;
-  if (scheduled.length + 2 > 62) return;
+// ── 같은 시간대 알람 묶음 보조 알림 ───────────────────────────────────
+// count: 이 묶음에 줄 보조 알림 수(rescheduleAll이 가장 가까운 묶음엔 많이, 나머지엔 적게 준다)
+export async function scheduleGroupReps(group: Alarm[], overrides: DayOverrides = {}, gen?: number, count = ANDROID_REP_COUNT) {
+  const active = group.filter(a => a.active);
+  if (!active.length || count <= 0) return;
 
   const [first] = active;
   const gkey = `${first.hour}_${first.min}`;
@@ -275,33 +311,39 @@ export async function scheduleGroupReps(group: Alarm[], overrides: DayOverrides 
   const repBase = {
     title: `⏰ ${label}`,
     body: `${pad(first.hour)}:${pad(first.min)} 알람`,
-    sound: hasSound ? (__DEV__ ? true : 'alarm_long.wav') : undefined,
+    sound: notifSound(hasSound),
     vibrate: hasVib ? [0,200,150,200,150,200] : undefined,
     categoryIdentifier: 'alarm',
     threadIdentifier: `grp_${gkey}`,
+    ...iosInterruption,
   } as Notifications.NotificationContentInput;
 
-  for (const offset of [1, 2]) {
-    if (isStaleGen(gen)) return;
-    await Notifications.scheduleNotificationAsync({
-      identifier: `grp_${gkey}_rep${offset}`,
-      content: {
-        ...repBase,
-        data: {
-          alarmIds: active.map(a => a.id),
-          // 단일 알람이면 alarmId도 넣는다 — 수신 리스너의 '한 번' 알람 rep2 자동 비활성화가
-          // data.alarmId를 보는데, alarmIds만 있으면 그 조건이 항상 거짓이라 불발됐다.
-          alarmId: active.length === 1 ? active[0].id : undefined,
-          groupKey: gkey,
-          isRepeat: true,
-          repIndex: offset,
-          rm: active.length === 1 ? active[0].rm : 'group',
-        },
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: new Date(next.getTime() + offset * 60 * 1000),
-      },
-    });
-  }
+  await scheduleRepSeries(`grp_${gkey}`, repBase, {
+    alarmIds: active.map(a => a.id),
+    // 단일 알람이면 alarmId도 넣는다 — 수신 리스너의 '한 번' 알람 마지막 보조 자동 비활성화가
+    // data.alarmId를 보는데, alarmIds만 있으면 그 조건이 항상 거짓이라 불발됐다.
+    alarmId: active.length === 1 ? active[0].id : undefined,
+    groupKey: gkey,
+    rm: active.length === 1 ? active[0].rm : 'group',
+  }, next, count, gen);
+}
+
+// ── 근무표 로테이션(rm==='pattern') 알람 보조 알림 — iOS 전용 ─────────────
+// 로테이션 알람은 날짜마다 시각이 달라 hour_min 묶음에 못 넣어 보조 알림이 아예 없었다(= iOS에서
+// 교대 근무자의 출퇴근 알람이 한 번 30초 울리고 끝). 알람별로 다음 발화 기준 묶음을 건다.
+// Android는 네이티브가 끌 때까지 울리고, 네이티브 끄기 경로의 Expo 취소(cancelExpoGroupReps)가
+// grp_* 식별자만 알기 때문에 여기 alarm_{id}_rep*는 Android에선 걸지 않는다.
+export async function schedulePatternAlarmReps(alarm: Alarm, overrides: DayOverrides = {}, gen?: number, count = 0) {
+  if (Platform.OS !== 'ios' || !alarm.active || count <= 0) return;
+  const next = getNextFireDate(alarm, overrides);
+  if (!next) return;
+  const type = getType(alarm.typeId);
+  const repBase = {
+    title: `⏰ ${alarm.label || type.label}`,
+    body: `${pad(next.getHours())}:${pad(next.getMinutes())} 알람`,
+    sound: notifSound(alarm.snd === 'default'),
+    categoryIdentifier: 'alarm',
+    ...iosInterruption,
+  } as Notifications.NotificationContentInput;
+  await scheduleRepSeries(`alarm_${alarm.id}`, repBase, { alarmId: alarm.id, rm: alarm.rm }, next, count, gen);
 }

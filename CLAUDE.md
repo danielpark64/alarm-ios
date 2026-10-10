@@ -21,7 +21,13 @@ Expo만 취소하고 AlarmManager를 빠뜨리면 알람이 비활성화해도 �
 - [ ] **재진입**: `rescheduleAll`/`scheduleAlarmTriggers`에 새 `await`를 넣었다면 그 뒤에
       `if (isStaleGen(gen)) return;`이 있는가? (겹쳐 돈 앞 호출이 꺼진 알람을 다시 예약하는 경쟁 방지)
 - [ ] **네이티브 끄기 뒷정리**: 새 끄기 경로(알림 버튼·커버·워치 등)는 `AlarmService.ACTION_STOP`을
-      거치는가? 그래야 `notifyStopped` → JS `alarmStopped`로 Expo +1/+2분 재알림 취소가 된다.
+      거치는가? 그래야 `notifyStopped` → JS `alarmStopped`로 Expo 재알림 취소가 된다.
+- [ ] **보조 알림(반복 울림) 단일 진입점**: 예약은 `scheduleRepSeries`, 취소는 `cancelRepSeries`만 쓴다.
+      `grp_*_rep1`/`rep2`를 직접 지우는 코드를 새로 넣지 말 것 — iOS는 묶음이 최대 `REP_MAX`개라
+      일부만 지우면 나머지가 계속 울린다. "같은 뒷정리를 여러 호출부가 각자 구현"하는 패턴이
+      이 프로젝트에서 세 번 재발했다(`.claude/bugs.md` 2026-09-12 / 10-09 / 10-10).
+- [ ] **iOS 알림엔 소리가 있어야 진동이 온다**: 진동만 모드도 `notifSound()`가 무음 파일을 붙인다.
+      iOS용 content에 `sound: undefined`를 보내는 새 경로를 만들지 말 것.
 
 # TDD 원칙 — 버그 수정·회귀 방지 로직 추가 시
 

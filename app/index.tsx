@@ -7,6 +7,8 @@ import { Text } from '../src/components/common/AppText';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
+import * as Linking from 'expo-linking';
+import * as Notifications from 'expo-notifications';
 import { useAlarms } from '../src/hooks/useAlarms';
 import { useDayOverrides } from '../src/hooks/useDayOverrides';
 import { useAlarmNotifications } from '../src/hooks/useAlarmNotifications';
@@ -218,6 +220,59 @@ export default function App() {
   useEffect(() => {
     if (loaded && alarms.length === 0) setTab('alarms');
   }, [loaded]);
+
+  // ── 개발용 딥링크: alarmapp://?testAlarm=<분>[&snd=default] ────────────────────────
+  // N분 뒤 울리는 '한 번' 테스트 알람을 만든다(기본 진동만). iPhone은 adb처럼 화면을 자동 조작할
+  // 수단이 없어, 반복 울림·진동 테스트를 돌릴 때 터미널에서 알람을 만들 유일한 통로다:
+  //   xcrun devicectl device process launch --device <id> --payload-url "alarmapp://?testAlarm=3" com.danielpark.alarmapp
+  // 같은 URL은 한 번만 처리하고, 로드 전엔 기다린다(알람 목록이 비어 있을 때 저장하면 덮어쓴다).
+  const url = Linking.useURL();
+  const handledUrlRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!loaded || !url || handledUrlRef.current === url) return;
+    handledUrlRef.current = url;
+    const q = Linking.parse(url).queryParams ?? {};
+    // alarmapp://?dumpPending=1 — 지금 iOS/Expo에 걸려 있는 대기 알림을 발화 시각순으로 띄운다(진단용).
+    // iOS는 64개를 넘으면 조용히 버리므로 "무엇이 실제로 남았는지"는 이 방법으로만 볼 수 있다.
+    if (q.dumpPending != null) {
+      (async () => {
+        const all = await Notifications.getAllScheduledNotificationsAsync();
+        const p2 = (n: number) => String(n).padStart(2, '0');
+        const rows = all.map(n => {
+          // iOS의 Expo 트리거는 {type:'calendar', dateComponents:{...}} 또는 {type:'date', value} 등 형태가 섞여 있다.
+          const tr = n.trigger as any;
+          const dc = tr?.dateComponents;
+          let t = Infinity, label = JSON.stringify(tr ?? null).slice(0, 36);
+          // iOS에서 DATE 트리거는 UNTimeIntervalNotificationTrigger({type:'timeInterval', seconds})로 돌아온다.
+          if (tr?.type === 'timeInterval' && typeof tr?.seconds === 'number') { const d = new Date(Date.now() + tr.seconds * 1000); t = d.getTime(); label = `≈${d.getMonth()+1}/${d.getDate()} ${p2(d.getHours())}:${p2(d.getMinutes())}`; }
+          else if (typeof tr?.value === 'number') { const d = new Date(tr.value); t = d.getTime(); label = `${d.getMonth()+1}/${d.getDate()} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`; }
+          else if (dc && dc.year != null) { const d = new Date(dc.year, (dc.month ?? 1) - 1, dc.day ?? 1, dc.hour ?? 0, dc.minute ?? 0, dc.second ?? 0); t = d.getTime(); label = `${d.getMonth()+1}/${d.getDate()} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`; }
+          else if (dc && dc.weekday != null) { label = `매주${dc.weekday} ${p2(dc.hour ?? 0)}:${p2(dc.minute ?? 0)}`; }
+          return { id: n.identifier, t, label };
+        }).sort((a, b) => a.t - b.t);
+        Alert.alert(`대기 알림 ${all.length}개`, rows.slice(0, 28).map(r => `${r.label}  ${r.id}`).join('\n'));
+      })();
+      return;
+    }
+    // alarmapp://?clearTestAlarms=1 — 위 testAlarm으로 만든 '테스트 알람'을 전부 삭제(정리용).
+    if (q.clearTestAlarms != null) {
+      const ids = new Set(alarms.filter(a => a.label === '테스트 알람').map(a => a.id));
+      if (ids.size) deleteAlarms(ids);
+      setTab('alarms');
+      return;
+    }
+    if (q.testAlarm == null) return;
+    const mins = Math.max(1, parseInt(String(q.testAlarm), 10) || 3);
+    const t = new Date(Date.now() + mins * 60_000);
+    const p2 = (n: number) => String(n).padStart(2, '0');
+    addAlarm({
+      typeId: 'commute', label: '테스트 알람', hour: t.getHours(), min: t.getMinutes(),
+      rm: 'once', days: [], cd: 3, rd: 1,
+      snd: q.snd === 'default' ? 'default' : 'none', vib: 'pulse',
+      sd: `${t.getFullYear()}-${p2(t.getMonth() + 1)}-${p2(t.getDate())}`,
+    });
+    setTab('alarms');
+  }, [url, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 앱을 처음 설치하고 켰을 때만 한 번 튜토리얼을 권유 (설정 배너만으로는 발견하기 어려움)
   const TUTORIAL_PROMPT_KEY = '@tutorial_prompt_shown';

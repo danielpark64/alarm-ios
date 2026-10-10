@@ -69,12 +69,31 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
       let factory = appDelegate.reactNativeFactory
     else { return }
 
+    // 콜드 스타트 딥링크 — UIScene 수명주기에선 앱을 띄운 URL이 launchOptions[.url]이 아니라
+    // connectionOptions.urlContexts로 온다. RN의 Linking.getInitialURL()은 launchOptions[.url]을
+    // 읽으므로 여기서 옮겨 심어 준다(안 하면 alarmapp:// 링크로 앱을 켜도 JS가 URL을 못 본다).
+    var launchOptions = appDelegate.launchOptions ?? [:]
+    if let url = connectionOptions.urlContexts.first?.url {
+      launchOptions[.url] = url
+    }
     let window = UIWindow(windowScene: windowScene)
     factory.startReactNative(
       withModuleName: "main",
       in: window,
-      launchOptions: appDelegate.launchOptions)
+      launchOptions: launchOptions)
     self.window = window
+  }
+
+  // 실행 중 딥링크 — AppDelegate.application(_:open:)은 UIScene 앱에선 호출되지 않는다.
+  func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+    for context in URLContexts {
+      _ = RCTLinkingManager.application(UIApplication.shared, open: context.url, options: [:])
+    }
+  }
+
+  // 유니버설 링크(https://…) — 같은 이유로 SceneDelegate에서 받아 RN에 넘긴다.
+  func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+    _ = RCTLinkingManager.application(UIApplication.shared, continue: userActivity) { _ in }
   }
 }
 `;

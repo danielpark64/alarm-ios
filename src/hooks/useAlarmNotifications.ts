@@ -3,7 +3,7 @@ import { Platform, AppState, NativeModules, DeviceEventEmitter } from 'react-nat
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
 import { Alarm } from '../constants';
-import { requestNotificationPermission, registerNotificationCategories, rescheduleAll, cancelExpoGroupReps } from '../utils/notifications';
+import { requestNotificationPermission, registerNotificationCategories, rescheduleAll, refreshRepsOnly, cancelExpoGroupReps, cancelRepSeries } from '../utils/notifications';
 import { getAlarmDefaults } from './useAlarmDefaults';
 import { getDayOverridesCache } from '../utils/dayOverrideStore';
 import { todayStr } from '../utils';
@@ -120,12 +120,12 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
         });
       }
       const isRepeat = n.request.content.data?.isRepeat as boolean | undefined;
-      const repIndex = n.request.content.data?.repIndex as number | undefined;
+      const isLast   = n.request.content.data?.isLast as boolean | undefined;
       const rm       = n.request.content.data?.rm as string | undefined;
       const firedId  = n.request.content.data?.alarmId as number | undefined;
 
-      // '한 번' 알람의 마지막 반복(+2분)까지 울렸으면 자동 비활성화
-      if (isRepeat && repIndex === 2 && rm === 'once' && firedId != null) {
+      // '한 번' 알람의 마지막 보조 알림까지 울렸으면 자동 비활성화 (묶음 길이가 플랫폼·알람마다 달라 isLast로 판정)
+      if (isRepeat && isLast && rm === 'once' && firedId != null) {
         await updateAlarmRef.current(firedId, { active: false });
       }
       setTick(t => t + 1);
@@ -137,14 +137,9 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       const groupKey = data?.groupKey as string | undefined;
       const rm       = data?.rm       as string | undefined;
 
-      // 그룹 또는 개별 rep 슬롯 취소 (Expo 쪽)
-      if (groupKey) {
-        await Notifications.cancelScheduledNotificationAsync(`grp_${groupKey}_rep1`);
-        await Notifications.cancelScheduledNotificationAsync(`grp_${groupKey}_rep2`);
-      } else if (alarmId != null) {
-        await Notifications.cancelScheduledNotificationAsync(`alarm_${alarmId}_rep1`);
-        await Notifications.cancelScheduledNotificationAsync(`alarm_${alarmId}_rep2`);
-      }
+      // 그룹 또는 개별 보조 알림 전부 취소 (Expo 쪽) — 워치/잠금화면의 "알람 끄기"·닫기가 여기로 온다
+      if (groupKey) await cancelRepSeries(`grp_${groupKey}`);
+      else if (alarmId != null) await cancelRepSeries(`alarm_${alarmId}`);
 
       // 네이티브 쪽 rep도 같이 취소 — Expo 알림의 액션 버튼으로 껐을 때 네이티브
       // AlarmManager가 발화 시점에 독립적으로 걸어둔 +1/+2분 예약이 안 지워지면
@@ -167,6 +162,15 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
         if (rm === 'once' && alarmId != null) {
           await updateAlarmRef.current(alarmId, { active: false });
         }
+      }
+      // iOS: 응답 처리로 앱이 (백그라운드로라도) 깨어난 지금 보조 알림만 다시 걸어 다음 알람이 긴 묶음을
+      // 받게 한다. 앱을 열지 않고 잠금화면/워치에서만 끄는 사용자는 이게 없으면 다음 알람이 짧은 묶음만
+      // 받는다. 전체 재예약(rescheduleAll)은 쓰지 않는다 — 백그라운드 실행 시간이 수 초뿐이라 중간에
+      // 멈추면 메인 예약이 빈 채 남을 수 있다(refreshRepsOnly 주석 참고). 다음 포그라운드 복귀 때
+      // 키를 비워 전체 재예약이 한 번 돌게 한다. 로드 전(alarms가 [])이면 건너뛴다.
+      if (Platform.OS === 'ios' && loadedRef.current) {
+        lastRescheduleKeyRef.current = null;
+        await refreshRepsOnly(alarmsRef.current, getDayOverridesCache());
       }
     });
     return () => { s1.remove(); s2.remove(); };
@@ -243,11 +247,9 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       // 취소는 멱등이고 '한 번' 비활성화는 active 검사로 한 번만 적용된다.
       await afterNativeStop(ringing.body, ringing.baseAlarmId);
     } else if (ringing?.groupKey) {
-      await Notifications.cancelScheduledNotificationAsync(`grp_${ringing.groupKey}_rep1`);
-      await Notifications.cancelScheduledNotificationAsync(`grp_${ringing.groupKey}_rep2`);
+      await cancelRepSeries(`grp_${ringing.groupKey}`);
     } else if (ringing?.alarmId != null) {
-      await Notifications.cancelScheduledNotificationAsync(`alarm_${ringing.alarmId}_rep1`);
-      await Notifications.cancelScheduledNotificationAsync(`alarm_${ringing.alarmId}_rep2`);
+      await cancelRepSeries(`alarm_${ringing.alarmId}`);
     }
     setRinging(null);
   };
@@ -261,11 +263,9 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
     }
     if (AlarmModule) AlarmModule.stopAlarm(ringing?.alarmId ?? -1);
     if (ringing?.groupKey) {
-      await Notifications.cancelScheduledNotificationAsync(`grp_${ringing.groupKey}_rep1`);
-      await Notifications.cancelScheduledNotificationAsync(`grp_${ringing.groupKey}_rep2`);
+      await cancelRepSeries(`grp_${ringing.groupKey}`);
     } else if (ringing?.alarmId != null) {
-      await Notifications.cancelScheduledNotificationAsync(`alarm_${ringing.alarmId}_rep1`);
-      await Notifications.cancelScheduledNotificationAsync(`alarm_${ringing.alarmId}_rep2`);
+      await cancelRepSeries(`alarm_${ringing.alarmId}`);
     }
     if (ringing)
       Notifications.scheduleNotificationAsync({

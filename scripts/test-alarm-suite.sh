@@ -441,6 +441,58 @@ else
   ok ""
 fi
 
+# ⑬ iOS "진동만" = 무음 사운드(2026-10-10) — iOS는 소리 없는 알림엔 진동도 안 하므로 silent_short.wav를
+#    붙여야 진동이 온다. 파일이 iOS 번들(pbxproj Resources)·android raw·app.json 셋 다 등록돼야 한다.
+printf "  iOS 진동만 → silent_short.wav 소리 부착 + 리소스 등록 ... "
+if ! grep -q "silent_short.wav" "$ROOT/src/utils/notifications/core.ts" 2>/dev/null; then
+  fail "core.ts notifSound가 iOS 진동만에 silent_short.wav를 안 붙임 — iOS에서 진동이 안 옴"
+elif [ -d "$ROOT/ios" ] && { ! grep -q "silent_short.wav in Resources" "$ROOT/ios/app.xcodeproj/project.pbxproj" 2>/dev/null || [ ! -f "$ROOT/ios/app/silent_short.wav" ]; }; then
+  # ios/는 gitignore(prebuild 산출물)라 있을 때만 검사 — 새 체크아웃은 prebuild가 app.json sounds로 등록한다
+  fail "silent_short.wav가 Xcode Resources에 없음 — iOS 알림이 소리를 못 찾아 기본음/무진동"
+elif ! grep -q "silent_short.wav" "$ROOT/app.json" 2>/dev/null; then
+  fail "app.json expo-notifications sounds에 silent_short.wav 없음 — prebuild 시 누락됨"
+else
+  ok ""
+fi
+
+# ⑭ 보조 알림(반복 울림)을 메인 트리거보다 먼저 예약하고, 60개 한도 검사로 포기하지 않는지.
+#    iOS는 64개 넘으면 먼 것부터 버리므로 가까운 보조를 먼저 걸어야 한다.
+printf "  보조 알림을 메인보다 먼저 예약 + 60개 한도 포기 없음 ... "
+_IDX="$ROOT/src/utils/notifications/index.ts"
+_L_REP=$(grep -n "await scheduleGroupReps(group" "$_IDX" 2>/dev/null | head -1 | cut -d: -f1)
+_L_MAIN=$(grep -n "await scheduleAlarmTriggers(alarm" "$_IDX" 2>/dev/null | head -1 | cut -d: -f1)
+if grep -q "scheduled.length + 2 > 62" "$ROOT/src/utils/notifications/core.ts" 2>/dev/null; then
+  fail "scheduleGroupReps에 60개 한도 포기 검사가 되살아남 — 가장 가까운 보조 알림을 우리가 먼저 버림"
+elif [ -z "$_L_REP" ] || [ -z "$_L_MAIN" ] || [ "$_L_REP" -gt "$_L_MAIN" ]; then
+  fail "rescheduleAll에서 보조 알림(scheduleGroupReps)이 메인(scheduleAlarmTriggers)보다 뒤에 예약됨"
+else
+  ok ""
+fi
+
+# ⑮ 보조 알림 취소는 cancelRepSeries(REP_MAX까지)로만 — rep1/rep2 두 개만 지우면 iOS 긴 묶음이 남아 계속 울린다.
+printf "  보조 알림 취소가 cancelRepSeries를 거치는지(rep1/rep2 직접 취소 없음) ... "
+if grep -rn "_rep1\`\|_rep2\`" "$ROOT/src/hooks" "$ROOT/src/utils/notifications/index.ts" "$ROOT/app" 2>/dev/null | grep -v "^\s*//" | grep -q "cancelScheduledNotificationAsync"; then
+  fail "rep1/rep2만 직접 취소하는 코드가 있음 — cancelRepSeries로 바꿀 것"
+elif ! grep -q "REP_MAX" "$_IDX" 2>/dev/null; then
+  fail "cancelRepSeries가 REP_MAX 상한을 안 씀"
+else
+  ok ""
+fi
+
+# ⑯ iOS 시간 민감 알림 권한 — entitlements와 content interruptionLevel이 짝으로 있어야 집중 모드를 뚫는다.
+printf "  iOS interruptionLevel timeSensitive 요청 ... "
+grep -q "timeSensitive" "$ROOT/src/utils/notifications/core.ts" 2>/dev/null \
+  && ok "" || { fail "core.ts에 interruptionLevel timeSensitive 없음"; }
+# entitlement 키는 유료 계정 프로필에서만 가능하므로 여기선 강제하지 않는다(app.entitlements 주석 참고).
+
+# ⑰ iOS 딥링크(2026-10-10) — UIScene 셔임(withIosSceneDelegate)에서 URL을 RN Linking으로 넘기는 두 경로
+#    (콜드 스타트 launchOptions[.url] 주입, 실행 중 openURLContexts)가 플러그인에 있어야 한다.
+#    없으면 alarmapp:// 링크(테스트 알람 딥링크 포함)가 iOS 27 빌드에서 조용히 버려진다.
+printf "  iOS SceneDelegate 딥링크 전달(openURLContexts + launchOptions[.url]) ... "
+grep -q "openURLContexts" "$ROOT/plugins/withIosSceneDelegate.js" 2>/dev/null \
+  && grep -q "launchOptions\[.url\] = url" "$ROOT/plugins/withIosSceneDelegate.js" 2>/dev/null \
+  && ok "" || { fail "withIosSceneDelegate.js에 딥링크 전달 코드 없음 — iOS에서 딥링크 전부 무시됨"; }
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

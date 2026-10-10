@@ -220,32 +220,13 @@ export function getNextFireDate(alarm: Alarm, overrides: DayOverrides = {}): Dat
   return null;
 }
 
-// 반복 울림(rep) 슬롯을 받지 못하는 알람 ID 집합 계산
-export function getRepLimitedIds(alarms: Alarm[]): Set<number> {
-  const active = alarms.filter(a => a.active);
-
-  // 메인 트리거 슬롯 수 추정
-  let mainSlots = 0;
-  const groups = new Map<string, Alarm[]>();
-  for (const a of active) {
-    const key = `${a.hour}_${a.min}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(a);
-    mainSlots += a.rm === 'wdcustom' ? Math.max(1, a.days?.length || 1) : 2;
-  }
-
-  const maxRepGroups = Math.floor(Math.max(0, 62 - mainSlots) / 2);
-
-  // 다음 발화 기준 오름차순 정렬 → 가까운 알람 우선 rep 배정
-  const sorted = [...groups.values()].sort((a, b) => {
-    const tA = Math.min(...a.map(x => getNextFireDate(x)?.getTime() ?? Infinity));
-    const tB = Math.min(...b.map(x => getNextFireDate(x)?.getTime() ?? Infinity));
-    return tA - tB;
-  });
-
-  const limited = new Set<number>();
-  sorted.slice(maxRepGroups).forEach(group => group.forEach(a => limited.add(a.id)));
-  return limited;
+// 반복 울림(보조 알림)을 받지 못하는 알람 ID 집합 — 2026-10-10부터 항상 빈 집합.
+// 예전엔 "메인 슬롯 추정 + 60개 한도"로 보조를 포기한 묶음을 "⚠ 1회만"으로 표시했는데, 추정이
+// 부정확했고(날짜 기반 알람을 2슬롯으로 계산, 실제 최대 14) 이제 rescheduleAll이 보조 알림을
+// 메인보다 먼저 걸어 한도 때문에 보조가 빠지는 경우가 없다. 호출부(AlarmCard 배지)는 그대로 두고
+// 빈 집합을 돌려 배지가 뜨지 않게 한다 — 나중에 실제 예약 결과로 다시 살릴 수 있게 시그니처 유지.
+export function getRepLimitedIds(_alarms: Alarm[]): Set<number> {
+  return new Set();
 }
 
 // 해당 날짜에 울리는 알람 목록 계산
