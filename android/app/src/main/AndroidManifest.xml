@@ -77,7 +77,13 @@
       </intent-filter>
       <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_large_info"/>
     </receiver>
-    <activity android:name=".MainActivity" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|smallestScreenSize" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:theme="@style/Theme.App.SplashScreen" android:exported="true" android:screenOrientation="portrait">
+    <!-- android:screenOrientation="portrait"는 일부러 뺐다(2026-10-09). Android 16부터 태블릿·펼친
+         폴더블 같은 대형 화면에서는 이 제한이 무시되고, Play Console이 "대형 화면 기기 지원 — 크기 조절
+         및 방향 제한 삭제" 경고를 띄운다. 폰 크기 화면의 세로 고정은 MainActivity.onCreate에서
+         smallestScreenWidthDp < 600일 때만 requestedOrientation으로 건다.
+         ⚠️ app.json의 "orientation": "portrait"는 iOS용으로 남겨 둔다 — expo prebuild를 다시 돌리면
+         이 속성이 되살아나므로 test-alarm-suite.sh 정적 체크가 그걸 잡는다. -->
+    <activity android:name=".MainActivity" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|smallestScreenSize" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:theme="@style/Theme.App.SplashScreen" android:exported="true">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>

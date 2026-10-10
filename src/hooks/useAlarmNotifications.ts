@@ -7,6 +7,7 @@ import { requestNotificationPermission, registerNotificationCategories, reschedu
 import { getAlarmDefaults } from './useAlarmDefaults';
 import { getDayOverridesCache } from '../utils/dayOverrideStore';
 import { todayStr } from '../utils';
+import { getHolidayVersion } from '../constants/holidays';
 
 const { AlarmModule } = NativeModules;
 
@@ -88,7 +89,8 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (next) => {
       if (appStateRef.current.match(/inactive|background/) && next === 'active' && loadedRef.current) {
-        const key = `${todayStr()}|${JSON.stringify(alarmsRef.current)}|${JSON.stringify(getDayOverridesCache())}`;
+        // 공휴일 버전도 키에 넣는다 — API로 임시공휴일이 새로 들어온 날 그 공휴일 스킵이 다음 복귀 때 예약에 반영되게.
+        const key = `${todayStr()}|${getHolidayVersion()}|${JSON.stringify(alarmsRef.current)}|${JSON.stringify(getDayOverridesCache())}`;
         if (key !== lastRescheduleKeyRef.current) {
           lastRescheduleKeyRef.current = key;
           await rescheduleAll(alarmsRef.current, getDayOverridesCache());

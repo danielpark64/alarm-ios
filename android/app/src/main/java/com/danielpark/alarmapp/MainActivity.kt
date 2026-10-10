@@ -1,6 +1,8 @@
 package com.danielpark.alarmapp
 
 import android.content.Intent
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
@@ -19,12 +21,33 @@ class MainActivity : ReactActivity() {
     // This is required for expo-splash-screen.
     setTheme(R.style.AppTheme);
     super.onCreate(null)
+    lockPortraitOnPhones()
     applyRingingWindowFlags(intent)
+  }
+
+  // 폰 크기 화면(smallestScreenWidthDp < 600)에서만 세로 고정. 매니페스트의 screenOrientation 대신
+  // 여기서 거는 이유는 AndroidManifest.xml의 MainActivity 주석 참고 — 대형 화면(태블릿·펼친 폴더블)은
+  // Android 16부터 어차피 제한이 무시되므로 처음부터 걸지 않아 Play 대형 화면 경고를 없앤다.
+  // 화면들이 세로 기준으로 설계돼 있어 폰에서는 기존과 동일하게 세로만 허용한다.
+  private fun lockPortraitOnPhones() {
+    val sw = resources.configuration.smallestScreenWidthDp
+    requestedOrientation = if (sw < 600)
+      ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+    else
+      ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
   }
 
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     applyRingingWindowFlags(intent)
+  }
+
+  // configChanges에 smallestScreenSize가 있어 폴더블을 접고 펼쳐도 액티비티가 재생성되지 않는다.
+  // 펼친 상태(대형 화면, 제한 없음)로 켠 뒤 접으면 커버 화면이 폰 크기인데도 가로 회전이 허용돼
+  // 버리므로, 구성이 바뀔 때마다 현재 화면 크기 기준으로 다시 건다. super 호출은 필수(RN 전달).
+  override fun onConfigurationChanged(newConfig: Configuration) {
+    super.onConfigurationChanged(newConfig)
+    lockPortraitOnPhones()
   }
 
   // 알람 울림으로 실행된 경우 잠금화면 위에 끄기 팝업을 띄우고 화면을 켬

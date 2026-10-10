@@ -1,0 +1,14 @@
+<!-- Android 15(API 35) 이상 전용 테마 — values/styles.xml과 같되 android:statusBarColor /
+     android:navigationBarColor 두 항목을 뺐다. API 35에서 지원 중단된 속성이라 Play Console이
+     "더 넓은 화면용으로 지원 중단된 API" 경고를 띄운다(2026-10-09). edge-to-edge가 켜진 상태라
+     (gradle.properties edgeToEdgeEnabled=true) RN이 실행 시 두 바를 투명으로 직접 설정하므로
+     여기서 빼도 보이는 결과는 같다. 15 미만은 values/styles.xml이 그대로 적용된다. -->
+<resources xmlns:tools="http://schemas.android.com/tools">
+  <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+    <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+    <item name="colorPrimary">@color/colorPrimary</item>
+  </style>
+  <style name="Theme.App.SplashScreen" parent="AppTheme">
+    <item name="android:windowBackground">@drawable/splashscreen_logo</item>
+  </style>
+</resources>

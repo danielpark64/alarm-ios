@@ -432,6 +432,10 @@ class AlarmService : Service() {
             // 갤럭시 Z 플립 커버 화면의 축소 알림 뷰는 액션이 2개면 커스텀 액션 대신
             // 기본 "앱 열기" 버튼만 보여주는 것으로 보여, 액션을 "끄기" 1개로 줄여 테스트
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "끄기", stopPi)
+            // ⚠️ setOngoing(true)인 알림은 Wear OS로 브릿지되지 않는다(공식 문서: ongoing/localOnly 제외).
+            // 즉 워치에서 보이는 건 이 알림이 아니라 Expo 쪽 알림("알람 끄기" 액션, notifications/index.ts
+            // registerNotificationCategories)이다. 워치에서 그 액션을 누르면 Expo 응답 리스너 →
+            // AlarmModule.stopAlarm → 여기 ACTION_STOP으로 들어와 같은 뒷정리(notifyStopped)를 거친다.
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)

@@ -70,12 +70,49 @@ export const HOLIDAYS: Record<string, string> = {
   '2027-10-11': '대체공휴일',
   '2027-12-25': '크리스마스',
   '2027-12-27': '대체공휴일',
+  // 2028 — 2026-10-09 추가. 음력(설날·부처님오신날·추석)은 korean-lunar-calendar로 계산.
+  // 신정(토)은 법상 대체공휴일 대상이 아니라 없음. 추석(10/3)이 개천절과 겹쳐 10/5(목) 대체공휴일.
+  // 정부가 추후 지정하는 임시공휴일·대체공휴일 변경은 API 갱신이 덮어쓴다(apiHolidays 우선).
+  '2028-01-01': '신정',
+  '2028-01-26': '설날 연휴',
+  '2028-01-27': '설날',
+  '2028-01-28': '설날 연휴',
+  '2028-03-01': '삼일절',
+  '2028-04-12': '국회의원선거일',
+  '2028-05-01': '근로자의날',
+  '2028-05-02': '부처님오신날',
+  '2028-05-05': '어린이날',
+  '2028-06-06': '현충일',
+  '2028-07-17': '제헌절',
+  '2028-08-15': '광복절',
+  '2028-10-02': '추석 연휴',
+  '2028-10-03': '추석·개천절',
+  '2028-10-04': '추석 연휴',
+  '2028-10-05': '대체공휴일',
+  '2028-10-09': '한글날',
+  '2028-12-25': '크리스마스',
 };
 
 // 공공데이터포털 API로 받아온 최신 공휴일(임시공휴일 포함) — 내장 표보다 우선한다.
 // 앱 시작 시 useHolidaySync가 캐시를 불러와 채우고, 30일마다 백그라운드로 갱신한다.
 let apiHolidays: Record<string, string> = {};
-export function setApiHolidays(map: Record<string, string>) { apiHolidays = map; }
+
+// 공휴일 데이터 변경 신호 — API 캐시가 앱 시작 뒤 비동기로 채워지거나 30일 주기 갱신이
+// 달력을 보는 중에 끝나면, 모듈 변수만 바뀌고 React는 모른다. 그러면 집계 줄·셀 공휴일 표기가
+// 월을 넘기기 전까지 이전 데이터로 남는다. 버전 번호를 올리고 구독자에게 알려 그 자리에서
+// 다시 그리게 한다(useHolidayVersion 훅).
+let holidayVersion = 0;
+const listeners = new Set<() => void>();
+export const getHolidayVersion = () => holidayVersion;
+export function subscribeHolidays(fn: () => void): () => void {
+  listeners.add(fn);
+  return () => { listeners.delete(fn); };
+}
+export function setApiHolidays(map: Record<string, string>) {
+  apiHolidays = map;
+  holidayVersion++;
+  listeners.forEach(fn => { try { fn(); } catch {} });
+}
 
 export const getHoliday = (dateStr: string): string | undefined => apiHolidays[dateStr] ?? HOLIDAYS[dateStr];
 
@@ -120,6 +157,8 @@ const HOLIDAY_SHORT: Record<string, string> = {
   '근로자의날': '근로자',
   '어린이날·부처님오신날': '어린이날',
   '지방선거일': '선거일',
+  '국회의원선거일': '선거일',
+  '추석·개천절': '추석',
   '크리스마스': '성탄절',
 };
 

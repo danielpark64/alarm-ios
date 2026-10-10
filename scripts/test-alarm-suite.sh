@@ -402,6 +402,45 @@ printf "  하루 근무 변경 보관 기간이 10년 이상인지 ... "
 grep -qE "getFullYear\(\) - (1[0-9]|[2-9][0-9])\}-01-01" "$ROOT/src/hooks/useDayOverrides.ts" 2>/dev/null \
   && ok "" || { fail "useDayOverrides keepFrom이 10년 미만 — 지난 날짜 편집 기록이 다음 실행 때 지워질 수 있음"; }
 
+# ⑨ 공휴일 API 갱신 신호(2026-10-09) — setApiHolidays가 버전을 올리고, 달력이 그 버전을 구독해야
+#    네트워크 갱신이 달력을 보는 중에 끝나도 집계·셀이 그 자리에서 다시 그려진다.
+printf "  공휴일 갱신 → 달력 재계산 신호(useHolidayVersion) ... "
+grep -A3 "export function setApiHolidays" "$ROOT/src/constants/holidays.ts" 2>/dev/null | grep -q "holidayVersion++" \
+  && grep -q "useHolidayVersion()" "$ROOT/src/components/Home/CalendarView.tsx" 2>/dev/null \
+  && grep -q "holidayVersion={holidayVersion}" "$ROOT/src/components/Home/CalendarView.tsx" 2>/dev/null \
+  && ok "" || { fail "공휴일 갱신 신호가 끊김 — setApiHolidays 버전 증가 또는 CalendarView 구독 누락"; }
+
+# ⑩ 내장 공휴일 표가 내년까지 있는지 — API 실패·키 만료 시 마지막 방어선. 매년 갱신 루틴.
+NEXT_YEAR=$(( $(date +%Y) + 1 ))
+printf "  내장 공휴일 표에 내년(${NEXT_YEAR}) 데이터가 있는지 ... "
+grep -q "'${NEXT_YEAR}-01-01'" "$ROOT/src/constants/holidays.ts" 2>/dev/null \
+  && ok "" || { fail "holidays.ts에 ${NEXT_YEAR}년 표 없음 — 내년 공휴일을 추가할 것"; }
+
+# ⑪ Play 대형 화면 경고(2026-10-09) — 매니페스트 MainActivity에 screenOrientation을 두지 않고
+#    MainActivity.kt가 폰 크기에서만 런타임으로 세로 고정한다. expo prebuild를 다시 돌리면 app.json의
+#    orientation:"portrait"가 매니페스트 속성을 되살리므로 여기서 잡는다.
+printf "  매니페스트 screenOrientation 없음 + 런타임 세로 고정 ... "
+_MF="$ROOT/android/app/src/main/AndroidManifest.xml"
+if grep -A3 'android:name=".MainActivity"' "$_MF" 2>/dev/null | grep -q "screenOrientation"; then
+  fail "MainActivity에 android:screenOrientation이 다시 생김 — prebuild 결과면 제거하고 MainActivity 런타임 고정 유지"
+elif ! grep -q "lockPortraitOnPhones()" "$ROOT/android/app/src/main/java/com/danielpark/alarmapp/MainActivity.kt" 2>/dev/null; then
+  fail "MainActivity.lockPortraitOnPhones 호출 없음 — 폰에서 가로 회전이 허용됨"
+else
+  ok ""
+fi
+
+# ⑫ Play edge-to-edge 지원중단 속성(2026-10-09) — API 35+ 테마(values-v35)에는 statusBarColor /
+#    navigationBarColor가 없어야 하고, 15 미만용 values/에는 남아 있어야 보이는 결과가 같다.
+printf "  values-v35 테마에 지원중단 상태바 속성 없음 ... "
+_V35="$ROOT/android/app/src/main/res/values-v35/styles.xml"
+if [ ! -f "$_V35" ]; then
+  fail "values-v35/styles.xml 없음 — prebuild로 지워졌으면 복구할 것"
+elif grep -qE '<item name="android:(statusBarColor|navigationBarColor)"' "$_V35"; then
+  fail "values-v35/styles.xml에 statusBarColor/navigationBarColor가 있음"
+else
+  ok ""
+fi
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

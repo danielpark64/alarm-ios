@@ -8,6 +8,7 @@ import { useFontScale } from '../../hooks/useFontScale';
 import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, isOverridableAlarm, isHolidayOffWithOverride, isHolidayWorkDay, shiftForDate, isOffDay, shiftToneIndexMap, shiftPeriodLabel, shiftPeriodId, effectiveShift, effectiveTime, dayWorkFor, lunarDateText, lunarShortText, dayOverrideDisplay, overrideLabel } from '../../utils';
 import { roleLabel } from '../../utils/workPattern';
 import { getHoliday, getHolidayShort, statutoryHolidaysInYear } from '../../constants/holidays';
+import { useHolidayVersion } from '../../hooks/useHolidayVersion';
 import { getSolarTerm } from '../../constants/solarTerms';
 import { OverrideTimeModal } from './OverrideTimeModal';
 
@@ -74,6 +75,9 @@ interface MonthGridProps {
   cv: ReturnType<typeof makeStyles>;
   cellH: number; itemHeight: number;
   overrides: DayOverrides;
+  // 셀 안의 getHoliday(ds) 표기는 모듈 변수를 직접 읽어 memo가 변화를 모른다 — 공휴일 데이터
+  // 버전을 prop으로 받아 API 갱신 시 memo가 깨지게 한다(값 자체는 쓰지 않는다).
+  holidayVersion: number;
   onSelectDate: (ds: string) => void;
 }
 
@@ -319,6 +323,8 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
     : null;
   const selOverride = selDate ? overrides[selDate] : undefined;
   const selOv = dayOverrideDisplay(selOverride);
+  // 공휴일 API 캐시 갱신 신호 — tally deps와 MonthGrid prop에 넣어 그 자리에서 다시 그린다.
+  const holidayVersion = useHolidayVersion();
 
   // 팝업이 새 날짜로 열릴 때마다 선택 중이던 종류/메모 초안을 리셋 — 어제 고르던 게 남아 보이면 안 된다.
   useEffect(() => {
@@ -446,7 +452,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
     return Array.from(byKind.values())
       .filter(x => x.month > 0 || x.year > 0)
       .sort((a, b) => order.indexOf(a.label) - order.indexOf(b.label));
-  }, [overrides, alarms, year, month, today]);
+  }, [overrides, alarms, year, month, today, holidayVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pages = useMemo(() => Array.from({ length: RANGE * 2 + 1 }, (_, i) => i), []);
 
@@ -496,7 +502,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
           keyExtractor={(i) => String(i)}
           renderItem={({ item }) => {
             const { year: y, month: m } = indexToYearMonth(item);
-            return <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} itemHeight={itemHeight} overrides={overrides} onSelectDate={setSelDate} />;
+            return <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} itemHeight={itemHeight} overrides={overrides} holidayVersion={holidayVersion} onSelectDate={setSelDate} />;
           }}
           getItemLayout={(_, index) => ({ length: winWidth, offset: winWidth * index, index })}
           initialScrollIndex={RANGE}
