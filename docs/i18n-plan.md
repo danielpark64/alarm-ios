@@ -11,7 +11,7 @@
 이 파일 체크 → feat/i18n에 커밋(푸시는 브랜치만 가능). 작업 중엔 `touch .claude/i18n.lock`으로 활동 표시.
 
 ## 단계
-- [ ] 1. 자정 넘는 근무(야간·24시간) + 야간(night) 근무조 추가 — 로직 변경, 가장 위험. alarm-logic 리뷰 필수
+- [x] 1. 자정 넘는 근무(야간·24시간) + 야간(night) 근무조 추가 — 로직 변경, 가장 위험. alarm-logic 리뷰 필수
 - [ ] 2. 번역 틀(src/i18n: lang.ts, index.tsx, dicts.ts) + 설정 화면 언어 선택 + 언어 변경 시 재예약
 - [ ] 3. 화면·알림 문구를 t()로 감싸기 (한국어 표시는 그대로여야 함)
 - [ ] 4. 8개 언어 사전 작성 (en ja zh-Hans zh-Hant es fr de pt)
@@ -22,3 +22,15 @@
 
 ## 진행 메모
 (단계별로 무엇을 했고 무엇이 남았는지 여기에 적는다)
+
+### 1단계 완료 (2026-10-13)
+- isOvernight/overnightFrom/pruneSkips/workDateOfFire(utils), effectiveTime·dayWorkFor의 dayOffset, 예약 루프 2곳 + getNextFireDate 반영.
+- night 근무조: SHIFTS, DEFAULT_SHIFT_TIMES, colors, AddShiftModal BUTTON_ORDER.
+- scripts/logic-tests(시각 고정 시나리오 테스트 33개) 신설, 정적 체크 ⑱⑲⑳.
+- alarm-logic·verify-fix 리뷰 반영. 남긴 것(낮음): getNextFireDate는 근무가 서로 겹칠 때만 순서 역전 가능(현실 패턴엔 없음),
+  WorkPatternBuilder(수정 화면)에는 "다음날" 안내 없음, 퇴근이 실제로 울리는 날(근무일 다음 날)의 달력 팝업엔 그 알람이 안 보임(근무일 기준 표시).
+  레거시 cycle/rest로 따로 만든 야간 퇴근 알람은 출근 시각을 몰라 보정 안 됨 → 근무표(로테이션)로 다시 만들어야 함.
+- 사용자 지시: 테스트는 32(RF9R3049REV)·노트(R3CM909QRGK) 둘 다, 테스트 알람은 전부 진동만, 두 기기의 기존 앱은 지우고 새로 설치.
+- 개발용 딥링크는 잠금 키 필요: alarmapp://?k=<src/constants의 DEV_LINK_KEY>&testAlarm=3 | testPattern=night | clearAll=1 | dumpPending=1 | clearTestAlarms=1
+  (같은 URL은 한 번만 처리되므로 반복 시 &n=<숫자>를 붙일 것). Android: adb shell am start -a android.intent.action.VIEW -d "<url>" com.danielpark.alarmapp
+- src/i18n/(lang.ts, translate.ts, index.tsx, dicts.ts, locales/*.ts 빈 사전)는 2단계 뼈대로 만들어 둠 — 아직 어디에도 연결 안 됨.

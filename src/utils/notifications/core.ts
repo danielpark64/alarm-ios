@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { Alarm, DayOverrides, ShiftPeriod, IOS_REP_INTERVAL_SEC, ANDROID_REP_COUNT } from '../../constants';
-import { getType, pad, getNextFireDate, lunarToSolarInYear, effectiveShift, effectiveTime, dayWorkFor, isOverridableAlarm, isHolidaySkipped, skipsStatutoryHoliday } from '../index';
+import { getType, pad, getNextFireDate, lunarToSolarInYear, effectiveShift, effectiveTime, dayWorkFor, isOverridableAlarm, isHolidaySkipped, skipsStatutoryHoliday, overnightFrom } from '../index';
 import { isStatutoryHoliday } from '../../constants/holidays';
 import { roleLabel } from '../workPattern';
 import { scheduleNative } from './android';
@@ -55,7 +55,10 @@ async function schedulePatternAlarmTriggers(alarm: Alarm, overrides: DayOverride
   const p2 = (n: number) => String(n).padStart(2, '0');
   const today = new Date(); today.setHours(0, 0, 0, 0);
   let nativeIdx = 0;
-  for (let i = 0; i < 14; i++) {
+  // ds는 "근무일"이다. 퇴근 알람은 어제 근무일(i=-1)부터 본다 — 어젯밤 야간 근무의 퇴근이 오늘 아침에
+  // 울려야 하기 때문(overnightFrom). 네이티브 슬롯은 알람당 14개(cancelNativeAlarms가 idx 0~13만 지움)라
+  // 15번째가 생기지 않게 nativeIdx로 끊는다.
+  for (let i = overnightFrom(alarm); i < 14 && nativeIdx < 14; i++) {
     const date = new Date(today); date.setDate(today.getDate() + i);
     const ds = `${date.getFullYear()}-${p2(date.getMonth()+1)}-${p2(date.getDate())}`;
     if (alarm.sd && ds < alarm.sd) continue;
@@ -67,10 +70,10 @@ async function schedulePatternAlarmTriggers(alarm: Alarm, overrides: DayOverride
     // 한쪽만 순서가 다르면 "달력엔 대근인데 이 알람만 안 울린다" 같은 불일치가 생긴다.
     const dw = dayWorkFor(alarm, overrides[ds]);
     let shiftInfo: { shift: ShiftPeriod; shiftCustom?: string } | null;
-    let t: { hour: number; min: number } | null;
+    let t: { hour: number; min: number; dayOffset?: number } | null;
     if (dw) {
       if (!dw.fires) continue;
-      t = dw.time ?? null;
+      t = dw.time ? { ...dw.time, dayOffset: dw.dayOffset } : null;
       if (!t) continue;
       shiftInfo = dw.shift ? { shift: dw.shift } : effectiveShift(alarm, ds);
     } else {
@@ -82,6 +85,7 @@ async function schedulePatternAlarmTriggers(alarm: Alarm, overrides: DayOverride
     }
 
     const ft = new Date(date); ft.setHours(t.hour, t.min, 0, 0);
+    if (t.dayOffset) ft.setDate(ft.getDate() + t.dayOffset); // 자정 넘는 근무의 퇴근 — 근무일 다음 날
     if (ft <= new Date()) continue;
 
     const title    = `${type.icon} ${shiftInfo ? roleLabel(shiftInfo, role) : type.label}`;
@@ -147,8 +151,12 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
   // override가 있어도 이 알람과 무관하므로 전환하지 않는다.
   const end13 = new Date(now0); end13.setDate(end13.getDate() + 13);
   const end13Ds = `${end13.getFullYear()}-${p2d(end13.getMonth()+1)}-${p2d(end13.getDate())}`;
+  // 퇴근 알람은 어제 날짜의 override도 본다 — 어제 야간으로 넣은 대근·특근의 퇴근이 오늘 아침이라,
+  // 어제 것을 빼면 WEEKLY 경로로 내려가 그 퇴근 알람이 예약되지 않는다.
+  const yday = new Date(now0); yday.setDate(yday.getDate() + overnightFrom(alarm));
+  const fromDs = `${yday.getFullYear()}-${p2d(yday.getMonth()+1)}-${p2d(yday.getDate())}`;
   const hasUpcomingOverride = isOverridableAlarm(alarm)
-    && Object.keys(overrides).some(ds => ds >= todayDs && ds <= end13Ds);
+    && Object.keys(overrides).some(ds => ds >= fromDs && ds <= end13Ds);
   // 법정공휴일도 같은 이유로 날짜 기반 전환이 필요한데, 이쪽은 이유가 하나 더 있다.
   // ⚠️ 네이티브(AlarmScheduling.nextWeeklyTrigger)는 recurrence='weekly' 예약을 JS와 무관하게
   // 자체 재계산해서 발화 때마다 스스로 다음 주를 다시 잡는다(AlarmReceiver). 그래서 WEEKLY
@@ -186,7 +194,9 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
   const p2 = (n: number) => String(n).padStart(2, '0');
   const today = new Date(); today.setHours(0, 0, 0, 0);
   let nativeIdx = 0;
-  for (let i = 0; i < 14; i++) {
+  // 퇴근 알람은 어제 근무일(i=-1)부터 — 로테이션 루프와 같은 이유(overnightFrom). 어제 날짜에서 실제로
+  // 예약되는 건 "자정 넘는 override 퇴근"뿐이고, 나머지는 발화 시각이 이미 지나 아래 ft<=now에서 걸러진다.
+  for (let i = overnightFrom(alarm); i < 14 && nativeIdx < 14; i++) {
     const date = new Date(today); date.setDate(today.getDate() + i);
     const ds = `${date.getFullYear()}-${p2(date.getMonth()+1)}-${p2(date.getDate())}`;
     if (alarm.sd && ds < alarm.sd) continue;
@@ -242,6 +252,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
     if (!fires) continue;
 
     const ft = new Date(date); ft.setHours(hh, mm, 0, 0);
+    if (dw?.dayOffset) ft.setDate(ft.getDate() + dw.dayOffset); // 자정 넘는 override 퇴근 — 근무일 다음 날
     if (ft <= new Date()) continue;
 
     await Notifications.scheduleNotificationAsync({

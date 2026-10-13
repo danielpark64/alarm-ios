@@ -28,7 +28,7 @@ import { CycleAlarmTutorial, SpotlightRect } from '../src/components/Tutorial/Cy
 import { RotationTutorialEvent } from '../src/components/AlarmForm/RotationWizard';
 import { cycleTutorialStepsKo, rotationTutorialStepsKo } from '../src/content/tutorialSteps.ko';
 import { nextAlarmParts, getRepLimitedIds, getNextFireDate } from '../src/utils';
-import { Alarm, ShiftPeriod } from '../src/constants';
+import { Alarm, ShiftPeriod, DEV_LINK_KEY } from '../src/constants';
 import { Palette } from '../src/constants/colors';
 import { useColors, useThemeSetting } from '../src/hooks/useTheme';
 
@@ -221,10 +221,10 @@ export default function App() {
     if (loaded && alarms.length === 0) setTab('alarms');
   }, [loaded]);
 
-  // ── 개발용 딥링크: alarmapp://?testAlarm=<분>[&snd=default] ────────────────────────
+  // ── 개발용 딥링크: alarmapp://?k=<DEV_LINK_KEY>&testAlarm=<분>[&snd=default] ────────────────────────
   // N분 뒤 울리는 '한 번' 테스트 알람을 만든다(기본 진동만). iPhone은 adb처럼 화면을 자동 조작할
   // 수단이 없어, 반복 울림·진동 테스트를 돌릴 때 터미널에서 알람을 만들 유일한 통로다:
-  //   xcrun devicectl device process launch --device <id> --payload-url "alarmapp://?testAlarm=3" com.danielpark.alarmapp
+  //   xcrun devicectl device process launch --device <id> --payload-url "alarmapp://?k=<키>&testAlarm=3" com.danielpark.alarmapp
   // 같은 URL은 한 번만 처리하고, 로드 전엔 기다린다(알람 목록이 비어 있을 때 저장하면 덮어쓴다).
   const url = Linking.useURL();
   const handledUrlRef = useRef<string | null>(null);
@@ -232,6 +232,25 @@ export default function App() {
     if (!loaded || !url || handledUrlRef.current === url) return;
     handledUrlRef.current = url;
     const q = Linking.parse(url).queryParams ?? {};
+    if (q.k !== DEV_LINK_KEY) return; // 잠금 키가 없으면 무시(constants의 DEV_LINK_KEY 주석 참고)
+    // alarmapp://?k=…&testPattern=night — 오늘 시작 "야간 2일(22:00~다음날 06:00) → 비번 2일" 근무표(진동만)를 만든다.
+    // 자정 넘는 근무의 퇴근이 근무일 다음 날로 예약되는지 dumpsys alarm으로 확인하는 용도.
+    if (q.testPattern === 'night') {
+      const d = new Date(); const p2 = (n: number) => String(n).padStart(2, '0');
+      const sd = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+      submitWorkPattern(undefined, [
+        { blockId: 'tn1', shift: 'night', days: 2, commuteTime: { hour: 22, min: 0 }, hasOffwork: true, offworkTime: { hour: 6, min: 0 } },
+        { blockId: 'tn2', shift: 'none', days: 2, isRest: true, hasOffwork: false },
+      ], sd, 'none', 'pulse');
+      setTab('alarms');
+      return;
+    }
+    // alarmapp://?k=…&clearAll=1 — 알람 전부 삭제(테스트 정리용)
+    if (q.clearAll != null) {
+      if (alarms.length) deleteAlarms(new Set(alarms.map(a => a.id)));
+      setTab('alarms');
+      return;
+    }
     // alarmapp://?dumpPending=1 — 지금 iOS/Expo에 걸려 있는 대기 알림을 발화 시각순으로 띄운다(진단용).
     // iOS는 64개를 넘으면 조용히 버리므로 "무엇이 실제로 남았는지"는 이 방법으로만 볼 수 있다.
     if (q.dumpPending != null) {

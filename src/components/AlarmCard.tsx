@@ -5,7 +5,7 @@ import { Text } from './common/AppText';
 import { Alarm } from '../constants';
 import { Palette } from '../constants/colors';
 import { useColors } from '../hooks/useTheme';
-import { getType, getSound, getVib, repeatLabel, pad, todayStr, effectiveShift, effectiveTime } from '../utils';
+import { getType, getSound, getVib, repeatLabel, pad, todayStr, effectiveShift, effectiveTime, isOvernight } from '../utils';
 import { roleLabel } from '../utils/workPattern';
 import { VibIcon } from './VibIcon';
 
@@ -60,6 +60,8 @@ export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, sele
   const patternTime = alarm.rm === 'pattern' ? effectiveTime(alarm, resolveDate) : null;
   const dispHour = patternTime ? patternTime.hour : alarm.hour;
   const dispMin = patternTime ? patternTime.min : alarm.min;
+  // 자정 넘는 근무의 퇴근 — 접힌 카드에서도 시각이 근무일 다음 날임을 알린다
+  const nextDayMark = patternTime?.dayOffset === 1;
   // 그룹 펼치기 — 이 알람 하나만 봐선 "말번이 사라졌다"고 오인하기 쉬워서(오늘 세그먼트만 보이므로),
   // 눌러서 펼치면 이 알람의 역할(출근/퇴근)에 해당하는 전체 로테이션 세그먼트 시각을 다 보여준다.
   // alarm.pattern이 그룹 멤버 전원에 복제 저장돼 있어 이 알람 하나만으로 완결적으로 렌더링 가능.
@@ -71,8 +73,9 @@ export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, sele
         .map(seg => ({
           label: roleLabel(seg, role),
           time: role === 'offwork' ? seg.offworkTime : seg.commuteTime,
+          nextDay: role === 'offwork' && isOvernight(seg.commuteTime, seg.offworkTime), // 자정 넘는 근무의 퇴근
         }))
-        .filter((r): r is { label: string; time: { hour: number; min: number } } => !!r.time)
+        .filter((r): r is { label: string; time: { hour: number; min: number }; nextDay: boolean } => !!r.time)
     : [];
   const blink = useRef(new Animated.Value(1)).current;
 
@@ -122,7 +125,7 @@ export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, sele
           <Text style={[s.time, !alarm.active && s.dim]}>
             {pad(dispHour)}<Text style={s.timeColon}>:</Text>{pad(dispMin)}
           </Text>
-          <Text style={[s.label, { color: type.color }]} numberOfLines={1}>{displayLabel}</Text>
+          <Text style={[s.label, { color: type.color }]} numberOfLines={1}>{displayLabel}{nextDayMark ? ' · 다음날' : ''}</Text>
         </View>
         {/* 소리·진동 아이콘은 짧은 "…부터" 줄에 붙인다. 반복 문구 줄에 두면 그 줄의 가용 폭을
             가져가서, 글자크기 "크게"에서 "매년 음력 7월 29일 (양력 9월 10일)" 같은 긴 문구가
@@ -148,7 +151,7 @@ export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, sele
             {segRows.map((r, i) => (
               <View key={i} style={s.segRow}>
                 <Text style={s.segLabel}>{r.label}</Text>
-                <Text style={s.segTime}>{pad(r.time.hour)}:{pad(r.time.min)}</Text>
+                <Text style={s.segTime}>{r.nextDay ? '다음날 ' : ''}{pad(r.time.hour)}:{pad(r.time.min)}</Text>
               </View>
             ))}
           </View>

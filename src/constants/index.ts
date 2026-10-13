@@ -15,6 +15,8 @@ export const SHIFTS = [
   { id: 'early',  label: '초번', color: '#2F80ED' },
   { id: 'mid',    label: '중번', color: '#27AE60' },
   { id: 'late',   label: '말번', color: '#D98A4A' },
+  // 야간(2026-10-13) — 자정을 넘겨 다음 날 퇴근하는 근무. 해외(Night/夜勤/Nachtschicht)는 물론 한국 2교대·3교대에도 있다.
+  { id: 'night',  label: '야간', color: '#5B6BD6' },
   { id: 'custom', label: '기타', color: '#9B51E0' },
   { id: 'none',   label: '해당없음', color: '#9CA3AF' },
 ] as const;
@@ -23,6 +25,8 @@ export const SHIFTS = [
 export const DEFAULT_SHIFT_TIMES: Record<string, { commute: { hour: number; min: number }; offwork: { hour: number; min: number } }> = {
   early: { commute: { hour: 5,  min: 40 }, offwork: { hour: 15, min: 0 } },
   late:  { commute: { hour: 13, min: 40 }, offwork: { hour: 23, min: 0 } },
+  // 퇴근(06:00)이 출근(22:00)보다 이르다 = 다음 날 퇴근. isOvernight가 이걸 보고 퇴근 알람을 근무일 다음 날로 민다.
+  night: { commute: { hour: 22, min: 0 },  offwork: { hour: 6,  min: 0 } },
 };
 export const DEFAULT_SHIFT_TIME_FALLBACK = { commute: { hour: 8, min: 0 }, offwork: { hour: 17, min: 0 } };
 // 비번 색 — 달력(CalendarView)의 비번 표시 색과 동일하게 맞춰서, 위저드/블록편집기 미리보기 칩과
@@ -144,3 +148,7 @@ export type DayOverride = {
   };
 };
 export type DayOverrides = Record<string, DayOverride>; // key = 'YYYY-MM-DD'
+
+// 개발용 딥링크(alarmapp://?k=<키>&testAlarm=3 등) 잠금 키. 출시 빌드에도 들어가는 코드라, 키 없이 열면 아무 웹페이지나
+// 링크 하나로 사용자 폰에 알람을 만들 수 있다. 번들에서 꺼낼 수는 있어도 무심코 걸리는 남용은 막는다.
+export const DEV_LINK_KEY = '1ef80163d089870d';

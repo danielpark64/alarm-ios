@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alarm, WorkSegment, SoundMode, VibMode } from '../constants';
-import { todayStr } from '../utils';
+import { todayStr, pruneSkips } from '../utils';
 import { rescheduleAll } from '../utils/notifications';
 import { syncWidget } from '../utils/widgetSync';
 import { reconcileWorkPattern } from '../utils/workPattern';
@@ -14,9 +14,9 @@ const DEFAULT: Alarm[] = [];
 // daily/weekdays/weekends → wdcustom 마이그레이션 + 지난 "이날만 끄기" 날짜 정리
 function migrateAlarm(a: Alarm): Alarm {
   if (a.skips?.length) {
-    const today = todayStr();
-    const kept = a.skips.filter(s => s >= today);
-    if (kept.length !== a.skips.length) a = { ...a, skips: kept.length ? kept : undefined };
+    // 어제까지는 남긴다 — 자정 넘는 근무의 퇴근은 근무일 다음 날 울리기 때문(pruneSkips 주석).
+    const kept = pruneSkips(a.skips, todayStr());
+    if ((kept?.length ?? 0) !== a.skips.length) a = { ...a, skips: kept };
   }
   if (a.rm === 'daily')    return { ...a, rm: 'wdcustom', days: [0,1,2,3,4,5,6] };
   if (a.rm === 'weekdays') return { ...a, rm: 'wdcustom', days: [0,1,2,3,4] };

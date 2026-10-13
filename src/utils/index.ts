@@ -115,14 +115,62 @@ export function effectiveShift(a: Alarm, dateStr: string): { shift: ShiftPeriod;
   return null;
 }
 
+// ─── 자정을 넘는 근무(야간 22~06시, 24시간 근무 등) ─────────────────────────────
+// 퇴근 시각이 출근 시각보다 이르거나 같으면 그 근무는 다음 날 끝난다(근무가 시작 전에 끝날 수는 없으므로
+// 따로 "다음날" 플래그를 받지 않고 시각만으로 판정한다. 08:00→08:00은 24시간 근무).
+// 이 판정은 여기 한 곳에만 둔다 — effectiveTime/dayWorkFor가 dayOffset으로 돌려주고, 발화 시각을 만드는
+// 세 곳(core.ts 로테이션 루프·날짜기반 루프, 아래 getNextFireDate)이 그 값을 날짜에 더한다.
+export type ClockTime = { hour: number; min: number };
+export function isOvernight(start: ClockTime | undefined, end: ClockTime | undefined): boolean {
+  if (!start || !end) return false;
+  return end.hour * 60 + end.min <= start.hour * 60 + start.min;
+}
+// "이날만 끄기"(skips) 중 더 볼 필요 없는 지난 날짜를 걷어낸다. skips는 근무일 기준이고 자정 넘는 근무의
+// 퇴근은 근무일 다음 날 울리므로 "어제"까지는 남겨야 한다 — 오늘 이전을 전부 지우면, 어젯밤 근무분을 꺼둔
+// 사용자가 자정 뒤 앱을 열 때 skip이 사라져 오늘 아침 퇴근 알람이 다시 예약된다.
+export function pruneSkips(skips: string[] | undefined, today: string): string[] | undefined {
+  if (!skips?.length) return skips;
+  const [y, m, d] = today.split('-').map(Number);
+  const yd = new Date(y, m - 1, d - 1);
+  const keepFrom = `${yd.getFullYear()}-${pad(yd.getMonth() + 1)}-${pad(yd.getDate())}`;
+  const kept = skips.filter(x => x >= keepFrom);
+  return kept.length ? kept : undefined;
+}
+// 발화 시각 date가 속한 "근무일" — 자정 넘는 근무의 퇴근이면 하루 전, 아니면 발화일 그대로.
+// 헤더·위젯처럼 발화 시각에서 거꾸로 근무조 라벨을 만드는 곳이 쓴다(알림 제목은 예약 루프가 근무일로 직접 만든다).
+export function workDateOfFire(alarm: Alarm, date: Date, overrides: DayOverrides = {}): string {
+  const dsOf = (x: Date) => `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`;
+  const fireDs = dsOf(date);
+  if (overnightFrom(alarm) === 0) return fireDs;
+  const prev = new Date(date); prev.setDate(prev.getDate() - 1);
+  const prevDs = dsOf(prev);
+  const same = (t: { hour: number; min: number } | null | undefined) => !!t && t.hour === date.getHours() && t.min === date.getMinutes();
+  const dw = dayWorkFor(alarm, overrides[prevDs]);
+  if (dw) return dw.fires && dw.dayOffset === 1 && same(dw.time) ? prevDs : fireDs;
+  if (alarm.skips?.includes(prevDs)) return fireDs;
+  const t = effectiveTime(alarm, prevDs);
+  return t?.dayOffset === 1 && same(t) ? prevDs : fireDs;
+}
+// 발화 시각을 훑는 루프가 "며칠 전 근무일"부터 봐야 하는지 — 퇴근 알람은 어젯밤 근무의 퇴근이 오늘
+// 아침에 울릴 수 있으므로 어제(-1)부터, 그 외는 오늘(0)부터. 대상은 하루 근무 변경·로테이션이 닿는
+// 출퇴근 알람(isOverridableAlarm)의 퇴근 쪽뿐이라 나머지 알람 종류는 지금까지와 완전히 같다.
+export function overnightFrom(a: Alarm): number {
+  return a.typeId === 'offwork' && isOverridableAlarm(a) ? -1 : 0;
+}
+
 // 로테이션 알람이 dateStr에 실제로 울리는 시각(출근/퇴근 세그먼트별) — 휴식일이면 null.
 // 비로테이션 알람은 기존 alarm.hour/min을 그대로 반환(하위호환).
-export function effectiveTime(a: Alarm, dateStr: string): { hour: number; min: number } | null {
+// dayOffset=1이면 그 시각은 dateStr(근무일)의 "다음 날"이다 — 자정 넘는 근무의 퇴근(isOvernight).
+export function effectiveTime(a: Alarm, dateStr: string): { hour: number; min: number; dayOffset?: number } | null {
   if (a.rm === 'pattern' && a.pattern?.length) {
     const r = resolveSegment(a.pattern, a.sd, dateStr);
     if (!r || r.segment.isRest) return null;
-    const t = a.groupRole === 'offwork' ? r.segment.offworkTime : r.segment.commuteTime;
-    return t ?? null;
+    if (a.groupRole === 'offwork') {
+      const t = r.segment.offworkTime;
+      if (!t) return null;
+      return isOvernight(r.segment.commuteTime, t) ? { hour: t.hour, min: t.min, dayOffset: 1 } : t;
+    }
+    return r.segment.commuteTime ?? null;
   }
   return { hour: a.hour, min: a.min };
 }
@@ -134,7 +182,8 @@ export function getNextFireDate(alarm: Alarm, overrides: DayOverrides = {}): Dat
   // 매년(음력 포함) 알람은 1년 가까이 뒤일 수 있어 "다음 알람" 미리보기가 놓치지 않도록 넉넉히 훑는다.
   // (실제 OS 알림 예약은 별도로 14일 창만 쓰므로 여기 범위 확장은 성능에 영향 없음)
   const searchDays = alarm.rm === 'yearly' ? 400 : 14;
-  for (let ahead = 0; ahead <= searchDays; ahead++) {
+  // 퇴근 알람은 어제 근무일부터 본다 — 어젯밤 야간 근무의 퇴근이 오늘 아침일 수 있다(overnightFrom).
+  for (let ahead = overnightFrom(alarm); ahead <= searchDays; ahead++) {
     const cand = new Date(now);
     cand.setDate(cand.getDate() + ahead);
     const cs = `${cand.getFullYear()}-${pad(cand.getMonth()+1)}-${pad(cand.getDate())}`;
@@ -148,6 +197,7 @@ export function getNextFireDate(alarm: Alarm, overrides: DayOverrides = {}): Dat
       if (!dw.fires) continue;
       if (!dw.time) continue;
       cand.setHours(dw.time.hour, dw.time.min, 0, 0);
+      if (dw.dayOffset) cand.setDate(cand.getDate() + dw.dayOffset); // 자정 넘는 근무의 퇴근
       if (cand <= now) continue;
       return cand;
     }
@@ -162,6 +212,7 @@ export function getNextFireDate(alarm: Alarm, overrides: DayOverrides = {}): Dat
       const t = effectiveTime(alarm, cs);
       if (!t) continue;
       cand.setHours(t.hour, t.min, 0, 0);
+      if (t.dayOffset) cand.setDate(cand.getDate() + t.dayOffset); // 자정 넘는 근무의 퇴근
       if (cand <= now) continue;
       return cand;
     }
@@ -432,7 +483,7 @@ export function dayOverrideDisplay(ov: DayOverride | undefined): { label: string
 //                          fires:true — 원래 그날 안 울리던 알람(비번)도 이 경로로 새로 울릴 수 있다
 export function dayWorkFor(
   alarm: Alarm, ov: DayOverride | undefined
-): { fires: boolean; time?: { hour: number; min: number }; shift?: ShiftPeriod } | null {
+): { fires: boolean; time?: { hour: number; min: number }; shift?: ShiftPeriod; dayOffset?: number } | null {
   if (!ov || !isKnownKind(ov.kind)) return null;
   // 출근/퇴근 알람이 아니면 override는 이 알람에 아무 영향을 주지 않는다 — 연차를 걸어도
   // 운동·식사·생일 같은 알람은 그대로 둔다. isWorkAlarm이 아니라 더 넓은 isOverridableAlarm을
@@ -442,7 +493,9 @@ export function dayWorkFor(
   if (!ov.work) return { fires: false };
   const time = alarm.typeId === 'offwork' ? ov.work.end : ov.work.start;
   if (!time) return { fires: false };
-  return { fires: true, time, shift: ov.work.shift };
+  // 대근·특근을 야간으로 넣은 날(예: 22:00~06:00) — 퇴근은 그 날짜의 다음 날 아침이다.
+  const dayOffset = alarm.typeId === 'offwork' && isOvernight(ov.work.start, ov.work.end) ? 1 : undefined;
+  return { fires: true, time, shift: ov.work.shift, dayOffset };
 }
 
 // 양력 날짜(YYYY-MM-DD) → 음력 "M월 D일" 문자열. 지원 범위(1000~2050년) 밖이면 빈 문자열.
@@ -500,7 +553,9 @@ export const nextAlarmParts = (
   // (AlarmCard는 patternTime으로 이미 고쳤지만 이 헤더 문구가 빠져 있었음)
   // 로테이션 알람의 alarm.label은 첫 블록 기준 레거시 값이라, 그날 세그먼트의 근무조로 다시 만든다
   // (workPattern.roleLabel과 같은 규칙 — 그 모듈이 이 파일을 import해서 순환을 피하려고 직접 조립).
-  const ds = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+  // 근무조는 "근무일" 기준 — 자정 넘는 근무의 퇴근은 발화일이 근무일 다음 날이라 발화일로 찾으면
+  // 다른 블록(또는 비번)을 보게 된다(workDateOfFire).
+  const ds = workDateOfFire(alarm, date, overrides);
   const seg = alarm.rm === 'pattern' ? effectiveShift(alarm, ds) : null;
   const label = seg
     ? `${shiftPrefixFor(seg.shift, seg.shiftCustom)}${alarm.groupRole === 'offwork' ? '퇴근' : '출근'}`

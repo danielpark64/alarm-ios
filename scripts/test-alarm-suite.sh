@@ -493,6 +493,39 @@ grep -q "openURLContexts" "$ROOT/plugins/withIosSceneDelegate.js" 2>/dev/null \
   && grep -q "launchOptions\[.url\] = url" "$ROOT/plugins/withIosSceneDelegate.js" 2>/dev/null \
   && ok "" || { fail "withIosSceneDelegate.js에 딥링크 전달 코드 없음 — iOS에서 딥링크 전부 무시됨"; }
 
+# ⑱ 자정을 넘는 근무(야간 22~06시, 24시간 근무)(2026-10-13) — 퇴근 시각이 출근 시각보다 이르거나 같으면
+#    퇴근 알람은 근무일 "다음 날"에 울려야 한다. 판정은 isOvernight 한 곳, effectiveTime/dayWorkFor가
+#    dayOffset을 돌려주고, 발화 시각을 만드는 세 곳(core.ts 두 예약 루프 + getNextFireDate)이 전부 그걸 더해야 한다.
+#    한 곳이라도 빠지면 "다음 알람 문구는 내일 06시인데 실제 예약은 오늘 06시(이미 지남 → 안 울림)"가 된다.
+printf "  자정 넘는 근무: dayOffset이 예약 루프 2곳 + getNextFireDate에 반영 ... "
+_U="$ROOT/src/utils/index.ts"; _C="$ROOT/src/utils/notifications/core.ts"
+if ! grep -q "export function isOvernight" "$_U" 2>/dev/null; then
+  fail "isOvernight 헬퍼 없음"
+elif ! grep -q "if (t.dayOffset) ft.setDate" "$_C" 2>/dev/null || ! grep -q "if (dw?.dayOffset) ft.setDate" "$_C" 2>/dev/null; then
+  fail "core.ts 예약 루프가 dayOffset을 반영하지 않음(로테이션·날짜기반 두 루프 모두 필요)"
+elif ! awk '/export function getNextFireDate/,/^}/' "$_U" | grep -q "dayOffset"; then
+  fail "getNextFireDate가 dayOffset을 반영하지 않음 — 다음 알람 문구·보조 알림 시각이 실제 예약과 어긋남"
+elif [ "$(grep -c "overnightFrom(alarm)" "$_C" 2>/dev/null)" -lt 2 ]; then
+  fail "core.ts 예약 루프가 어제 근무분(i=-1)부터 훑지 않음 — 어젯밤 야간 근무의 오늘 아침 퇴근 알람 누락"
+else
+  ok ""
+fi
+
+# ⑲ 야간(night) 근무조 — SHIFTS와 테마 색상표(다크/라이트) 양쪽에 있어야 배지가 빈 색으로 뜨지 않는다.
+# (OVERRIDE_KINDS에도 id:'night'(야근)가 있어 파일 전체 grep은 거짓 통과한다 — SHIFTS 블록만 잘라 본다.
+#  "+" 근무 추가 팝업(AddShiftModal BUTTON_ORDER)은 목록이 하드코딩이라 거기에도 있어야 고를 수 있다.)
+printf "  야간(night) 근무조가 SHIFTS·다크·라이트 색상표·근무 추가 팝업에 모두 있는지 ... "
+grep -q "BUTTON_ORDER.*'night'" "$ROOT/src/components/AlarmForm/AddShiftModal.tsx" 2>/dev/null || { fail "AddShiftModal BUTTON_ORDER에 night 없음 — 근무표에 야간 블록을 추가할 수 없음"; }
+awk '/^export const SHIFTS/,/as const/' "$ROOT/src/constants/index.ts" 2>/dev/null | grep -q "id: 'night'" \
+  && [ "$(grep -c "^  night:" "$ROOT/src/constants/colors.ts" 2>/dev/null)" -ge 2 ] \
+  && ok "" || { fail "night 근무조가 SHIFTS 또는 colors.ts(DARK_SHIFT/LIGHT_SHIFT)에 없음"; }
+
+# ⑳ 순수 로직 시나리오 테스트(scripts/logic-tests) — 시각을 고정해 getNextFireDate·effectiveTime·dayWorkFor 등을
+#    실제로 실행한다. grep 체크가 못 잡는 "값이 틀림"을 잡는 용도(자정 넘는 근무 등).
+printf "  로직 시나리오 테스트(node scripts/logic-tests/run.js) ... "
+_LT=$(cd "$ROOT" && node scripts/logic-tests/run.js 2>&1)
+if echo "$_LT" | grep -q "/ 0 실패"; then ok "$(echo "$_LT" | tail -1)"; else fail "로직 테스트 실패"; echo "$_LT" | grep -E "FAIL|Error" | head -8; fi
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

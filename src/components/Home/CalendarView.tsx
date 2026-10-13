@@ -5,7 +5,7 @@ import { Alarm, DAYS, DAYS_DISPLAY, DayOverride, DayOverrides, OverrideKind, OVE
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
 import { useFontScale } from '../../hooks/useFontScale';
-import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, isOverridableAlarm, isHolidayOffWithOverride, isHolidayWorkDay, shiftForDate, isOffDay, shiftToneIndexMap, shiftPeriodLabel, shiftPeriodId, effectiveShift, effectiveTime, dayWorkFor, lunarDateText, lunarShortText, dayOverrideDisplay, overrideLabel } from '../../utils';
+import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, isOverridableAlarm, isHolidayOffWithOverride, isHolidayWorkDay, shiftForDate, isOffDay, isOvernight, shiftToneIndexMap, shiftPeriodLabel, shiftPeriodId, effectiveShift, effectiveTime, dayWorkFor, lunarDateText, lunarShortText, dayOverrideDisplay, overrideLabel } from '../../utils';
 import { roleLabel } from '../../utils/workPattern';
 import { getHoliday, getHolidayShort, statutoryHolidaysInYear } from '../../constants/holidays';
 import { useHolidayVersion } from '../../hooks/useHolidayVersion';
@@ -363,8 +363,11 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
     // 역할이 없다"(hasOffwork:false 등)는 뜻이다 — 알람 최상위 hour/min으로 폴백하면 없어야
     // 할 퇴근 알람이 유령으로 생긴다. 그 폴백은 비로테이션 알람에서만 의미가 있는데, 비로테이션
     // 알람은 effectiveTime이 애초에 null을 안 돌려주므로 폴백 자체가 필요 없다 — 그냥 뺀다.
-    const ct = commuteAlarm ? (effectiveTime(commuteAlarm, selDate) ?? undefined) : undefined;
-    const ot = offworkAlarm ? (effectiveTime(offworkAlarm, selDate) ?? undefined) : undefined;
+    // effectiveTime은 자정 넘는 퇴근에 dayOffset을 붙여 돌려준다 — override에는 시각만 저장한다
+    // (다음날 여부는 dayWorkFor가 start/end로 다시 판정하므로 저장하면 정보가 이중이 된다).
+    const hm = (x: { hour: number; min: number } | null) => (x ? { hour: x.hour, min: x.min } : undefined);
+    const ct = commuteAlarm ? hm(effectiveTime(commuteAlarm, selDate)) : undefined;
+    const ot = offworkAlarm ? hm(effectiveTime(offworkAlarm, selDate)) : undefined;
     const id = resolved ? shiftPeriodId(a!, resolved) : null;
     return { shift: id ?? undefined, start: ct, end: ot };
   };
@@ -748,7 +751,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
                         <View style={{flex:1, minWidth:0}}>
                           <Text style={cv.modalAlarmTime}>{pad(ovWork.end.hour)}:{pad(ovWork.end.min)}</Text>
                           <Text style={cv.modalAlarmLabel} numberOfLines={1}>
-                            {roleLabel({ shift: ovWork.shift ?? 'none' }, 'offwork')} · {selOv!.label}
+                            {roleLabel({ shift: ovWork.shift ?? 'none' }, 'offwork')} · {selOv!.label}{isOvernight(ovWork.start, ovWork.end) ? ' · 다음날' : ''}
                           </Text>
                         </View>
                       </View>
@@ -757,9 +760,13 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
                   {selInfo && selInfo.alarms
                     .slice()
                     .sort((a,b) => {
-                      const ta = (selOverride && dayWorkFor(a, selOverride)?.time) ?? (a.rm === 'pattern' && selDate ? effectiveTime(a, selDate) : null) ?? { hour: a.hour, min: a.min };
-                      const tb = (selOverride && dayWorkFor(b, selOverride)?.time) ?? (b.rm === 'pattern' && selDate ? effectiveTime(b, selDate) : null) ?? { hour: b.hour, min: b.min };
-                      return ta.hour - tb.hour || ta.min - tb.min;
+                      // 자정 넘는 근무의 퇴근(다음날 06:00)이 출근(22:00)보다 위에 오지 않게 dayOffset을 정렬 키에 더한다.
+                      const key = (x: Alarm) => {
+                        const dw = selOverride ? dayWorkFor(x, selOverride) : null;
+                        const tt = dw?.time ? { ...dw.time, dayOffset: dw.dayOffset } : ((x.rm === 'pattern' && selDate ? effectiveTime(x, selDate) : null) ?? { hour: x.hour, min: x.min, dayOffset: 0 });
+                        return (tt.dayOffset ?? 0) * 1440 + tt.hour * 60 + tt.min;
+                      };
+                      return key(a) - key(b);
                     })
                     .map((al, ai) => {
                       const alType = getType(al.typeId);
@@ -789,7 +796,10 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
                       // 건드리지 않으므로, 이 목록도 dayWorkFor로 그날 조정된 시각을 우선 반영해야
                       // 한다 — 안 그러면 예약(core.ts)은 조정된 시각으로 울리는데 목록엔 원래
                       // 시각이 보이는 불일치가 생긴다(실제 겪은 버그).
-                      const ovTime = selOverride ? dayWorkFor(al, selOverride)?.time : undefined;
+                      const ovDw = selOverride ? dayWorkFor(al, selOverride) : null;
+                      const ovTime = ovDw?.time;
+                      // 자정 넘는 근무의 퇴근 — 이 목록은 "근무일" 기준이라 시각만 보면 그날 아침으로 오해한다.
+                      const nextDay = (ovTime ? ovDw?.dayOffset : patternTime?.dayOffset) === 1;
                       // 법정공휴일이라 안 울리는 날. 단 특근·대근을 걸어둔 날은 실제로 울리므로
                       // 꺼진 것처럼 보이면 안 된다.
                       const holidayOff = !!selDate && isHolidayOffWithOverride(al, selDate, selOverride);
@@ -809,7 +819,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
                             <View style={{flex:1, minWidth:0}}>
                               <Text style={cv.modalAlarmTime}>{pad(dispHour)}:{pad(dispMin)}</Text>
                               <Text style={cv.modalAlarmLabel} numberOfLines={1}>
-                                {dispLabel}{overriddenOff ? ` · ${selOv!.label}로 꺼짐` : (skipped ? ' · 이날 꺼짐' : (holidayOff ? ' · 공휴일이라 꺼짐' : ''))}
+                                {dispLabel}{nextDay ? ' · 다음날' : ''}{overriddenOff ? ` · ${selOv!.label}로 꺼짐` : (skipped ? ' · 이날 꺼짐' : (holidayOff ? ' · 공휴일이라 꺼짐' : ''))}
                               </Text>
                             </View>
                           </TouchableOpacity>

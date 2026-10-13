@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { Text } from '../common/AppText';
+import { isOvernight } from '../../utils';
 import { SHIFTS, ShiftPeriod, WorkSegment, DEFAULT_SHIFT_TIMES, DEFAULT_SHIFT_TIME_FALLBACK, REST_COLOR } from '../../constants';
 import { useColors } from '../../hooks/useTheme';
 import { newBlockId, mergeOrAppendSegment } from '../../utils/workPattern';
@@ -331,6 +332,10 @@ export function RotationWizard({
             <Text style={s.wpTimePillText}>{pad(flow.offworkTime.hour)}:{pad(flow.offworkTime.min)}</Text>
             <Text style={s.wpTimePillSub}>탭해서 변경</Text>
           </TouchableOpacity>
+          {/* 퇴근이 출근보다 이르면 자정을 넘는 근무 — 퇴근 알람이 다음 날 울린다는 걸 그 자리에서 알려준다 */}
+          {isOvernight(flow.commuteTime, flow.offworkTime) && (
+            <Text style={[s.wpTimePillSub, { marginTop: 8, textAlign: 'center' }]}>출근보다 이른 시각이라 다음날 퇴근으로 울려요</Text>
+          )}
           <View style={[s.wzActionRow, { marginTop: 20 }]}>
             <TouchableOpacity ref={nextBtnRef} style={s.wzPrimaryBtn} onPress={() => { finishFlow(flow); onTutorialEvent?.('offworkDone'); }}>
               <Text style={s.wzPrimaryText}>완료</Text>
