@@ -175,7 +175,9 @@ export function useAlarmFormState(
   const setLabelGuarded = (text: string) => {
     const shiftPre = shiftPrefixFor(shift, shiftCustom);
     const requiredPrefix = typeId === 'custom' ? shiftPre : shiftPre + tr(getType(typeId).label);
-    setLabel(prev => text.startsWith(requiredPrefix) ? text : prev);
+    // 접두어 가드는 "지금 라벨이 그 접두어로 시작할 때"만 건다. 다른 언어로 만든 알람("출근 준비"를 영어에서 편집)은
+    // 현재 언어의 접두어("Clock in")로 시작하지 않으므로, 무조건 걸면 모든 입력이 거부돼 입력칸이 잠긴다.
+    setLabel(prev => (!prev.startsWith(requiredPrefix) || text.startsWith(requiredPrefix)) ? text : prev);
   };
 
   const toggleDay = (i: number) =>

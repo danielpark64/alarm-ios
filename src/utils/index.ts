@@ -1,7 +1,7 @@
 import KoreanLunarCalendar from 'korean-lunar-calendar';
 import { Alarm, TYPES, SOUNDS, VIBS, DAYS, MONTH_KEYS, SHIFTS, ShiftPeriod, WorkSegment, DayOverride, DayOverrides, OverrideKind, OVERRIDE_KINDS } from '../constants';
 import { t, translate } from '../i18n/translate';
-import { LANGS } from '../i18n/lang';
+import { LANGS, N } from '../i18n/lang';
 import { isStatutoryHoliday } from '../constants/holidays';
 export const pad = (n: number) => String(n).padStart(2, '0');
 export const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
@@ -54,18 +54,29 @@ function buildDefaultLabelIndex() {
   for (const lang of LANGS) {
     for (const ty of TYPES) {
       idx.set(translate(lang, ty.label), { typeLabel: ty.label });
-      for (const sh of shifts) idx.set(`${translate(lang, sh.label)} ${translate(lang, ty.label)}`, { typeLabel: ty.label, shiftLabel: sh.label });
+      for (const sh of shifts) {
+        const shl = translate(lang, sh.label);
+        // 폼이 조립하는 꼴("<근무조> <타입>")과, 근무표 알람·위젯이 쓰는 문장 키 꼴 둘 다 기본 라벨로 인정한다.
+        idx.set(`${shl} ${translate(lang, ty.label)}`, { typeLabel: ty.label, shiftLabel: sh.label });
+        const key = ROLE_KEYS[ty.id];
+        if (key) idx.set(translate(lang, key, { shift: shl }), { typeLabel: ty.label, shiftLabel: sh.label });
+      }
     }
   }
   return idx;
 }
+// 출근·퇴근은 언어마다 어순이 달라 문장 키로 만든다(workPattern.roleLabel과 같은 키) — 같은 알람이 카드와 위젯에서
+// 다른 이름으로 보이지 않게 한다. 그 외 타입은 "<근무조> <타입>".
+const ROLE_KEYS: Record<string, string> = { commute: N('{shift} 출근'), offwork: N('{shift} 퇴근') };
 export function localizeDefaultLabel(label: string | undefined | null): string {
   const raw = (label ?? '').trim();
   if (!raw) return '';
   if (!defaultLabelIndex) defaultLabelIndex = buildDefaultLabelIndex();
   const hit = defaultLabelIndex.get(raw);
   if (!hit) return label as string;
-  return hit.shiftLabel ? `${t(hit.shiftLabel)} ${t(hit.typeLabel)}` : t(hit.typeLabel);
+  if (!hit.shiftLabel) return t(hit.typeLabel);
+  const roleKey = ROLE_KEYS[TYPES.find(x => x.label === hit.typeLabel)?.id ?? ''];
+  return roleKey ? t(roleKey, { shift: t(hit.shiftLabel) }) : `${t(hit.shiftLabel)} ${t(hit.typeLabel)}`;
 }
 /** 화면·알림에 보여 줄 알람 이름 — 저장된 라벨(기본 라벨이면 현재 언어로), 없으면 타입 이름. */
 export function alarmLabel(a: Pick<Alarm, 'label' | 'typeId'>): string {

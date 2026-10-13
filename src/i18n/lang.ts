@@ -23,16 +23,29 @@ export function langFromLocale(locale: string | undefined | null): Lang | null {
   return null;
 }
 
+// 기기 언어를 읽는 방법은 플랫폼 쪽(index.tsx)이 등록한다. 이 파일은 순수 모듈이라 react-native를 import하지 않는다.
+// ⚠️ Intl만 믿으면 안 된다: iOS의 Intl 로캘은 "앱이 지원한다고 선언한 언어"(CFBundleLocalizations) 안에서 정해져서,
+// 선언이 영어뿐이면 한국어 iPhone에서도 en이 나온다 → 앱이 영어로 뜨고 공휴일 건너뛰기까지 꺼진다.
+// 그래서 iOS는 AppleLanguages, Android는 I18nManager의 로캘을 직접 읽고(index.tsx), Intl은 마지막 폴백으로만 쓴다.
+let localeProvider: (() => string | null | undefined) | null = null;
+export function setSystemLocaleProvider(fn: () => string | null | undefined) {
+  localeProvider = fn;
+  if (followingSystem) setCurrentLang(systemLang());
+}
 /** 기기 언어. 지원하지 않는 언어면 영어, 읽기 실패면 한국어(기존 사용자 보호). */
 export function systemLang(): Lang {
   try {
-    // Hermes 내장 Intl로 읽는다(expo-localization 없이). 예: "ko-KR", "en-US"
+    const native = localeProvider?.();
+    if (native) return langFromLocale(native.replace(/_/g, '-')) ?? 'en';
     const locale = Intl.DateTimeFormat().resolvedOptions().locale ?? 'ko';
     return langFromLocale(locale) ?? 'en';
   } catch {
     return 'ko';
   }
 }
+// 아직 저장된 언어 설정을 적용하기 전(= 기기 언어를 따르는 중)인지 — 그동안에는 로캘 제공자가 등록되면 바로 반영한다.
+let followingSystem = true;
+export function markLanguageResolved() { followingSystem = false; }
 
 // 저장된 설정을 읽기 전에도 기기 언어로 시작한다 — 한국어 기기는 처음부터 한국어.
 let currentLang: Lang = systemLang();

@@ -28,10 +28,10 @@ function dayInfo(alarms: Alarm[], ds: string, toneIdxOf: Record<number, number>,
   // 달력 셀과 반드시 같은 순서로 확인해야 "홈엔 있는데 달력엔 없다"는 불일치가 안 생긴다.
   const ov = dayOverrideDisplay(overrides[ds]);
   if (ov) {
-    if (ov.isOff) return { label: ov.label, bg: C.offBg, fg: C.offFg, border: C.offBorder };
+    if (ov.isOff) return { label: t(ov.label), bg: C.offBg, fg: C.offFg, border: C.offBorder };
     const id = ov.shift ?? null;
     const tone = id ? C.shift[id] : C.shiftAuto[0];
-    return { label: ov.label, bg: tone.bg, fg: tone.fg, border: null };
+    return { label: t(ov.label), bg: tone.bg, fg: tone.fg, border: null };
   }
   // 비번은 달력과 같은 "파란 테두리 박스" — 채운 알약으로 그리면 근무조와 같은 비중으로 읽힌다
   if (isOffDay(alarms, ds)) return { label: t('비번'), bg: C.offBg, fg: C.offFg, border: C.offBorder };

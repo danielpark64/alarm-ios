@@ -39,7 +39,8 @@ module.exports = ((prev) => (U, M) => {
     check(`${lang}: 근무조 이름이 서로 다름`, new Set(['초번','중번','말번','주간','야간'].map(k => translate(lang, k))).size === 5);
   }
   setLang('en');
-  check('en: alarmLabel 기본 라벨 현지화(한국어로 저장된 "초번 출근")', U.alarmLabel({ label: '초번 출근', typeId: 'commute' }) === 'Early Clock in', U.alarmLabel({ label: '초번 출근', typeId: 'commute' }));
+  check('en: alarmLabel 기본 라벨 현지화(한국어로 저장된 "초번 출근")', U.alarmLabel({ label: '초번 출근', typeId: 'commute' }) === translate('en', '{shift} 출근', { shift: translate('en', '초번') }), U.alarmLabel({ label: '초번 출근', typeId: 'commute' }));
+  check('en: 기본 라벨에 한글이 남지 않음', !/[가-힣]/.test(U.alarmLabel({ label: '초번 출근', typeId: 'commute' })));
   check('en: alarmLabel 사용자 라벨 유지', U.alarmLabel({ label: '아침 약 먹기', typeId: 'custom' }) === '아침 약 먹기');
   const pattern = [{ blockId: 'a', shift: 'night', days: 2, commuteTime: T(22), hasOffwork: true, offworkTime: T(6) }, { blockId: 'b', shift: 'none', days: 2, isRest: true, hasOffwork: false }];
   const off = { id: 2, typeId: 'offwork', groupRole: 'offwork', label: '', rm: 'pattern', days: [], cd: 2, rd: 2, snd: 'none', vib: 'pulse', sd: '2026-10-12', active: true, pattern, hour: 6, min: 0 };
@@ -52,4 +53,5 @@ module.exports = ((prev) => (U, M) => {
   check('ja: alarmLabel(영어로 저장된 기본 라벨도 현재 언어로)', U.alarmLabel({ label: 'Clock in', typeId: 'commute' }) === translate('ja', '출근'), U.alarmLabel({ label: 'Clock in', typeId: 'commute' }));
   setLang('ko');
   check('ko: alarmLabel(영어로 저장된 기본 라벨 → 한국어)', U.alarmLabel({ label: 'Early Clock in', typeId: 'commute' }) === '초번 출근', U.alarmLabel({ label: 'Early Clock in', typeId: 'commute' }));
+  check('ko: 문장 키 꼴 기본 라벨(영어) → 한국어', U.alarmLabel({ label: translate('en', '{shift} 출근', { shift: translate('en', '야간') }), typeId: 'commute' }) === '야간 출근');
 })(module.exports);

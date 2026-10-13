@@ -199,7 +199,17 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
               <PresetModal
                 visible={showPresets}
                 onClose={() => setShowPresets(false)}
-                onPick={(p) => { setShowPresets(false); form.applyPreset(presetToSegments(p, newBlockId)); }}
+                onPick={(p) => {
+                  setShowPresets(false);
+                  const apply = () => form.applyPreset(presetToSegments(p, newBlockId));
+                  // 근무조 칩으로 전환할 때와 같은 확인 — 입력해 둔 일반 알람 설정이 사라진다
+                  if (form.isDirty()) {
+                    Alert.alert(t('교대근무 전환'), t('입력한 반복/시간 설정이 초기화됩니다. 계속할까요?'), [
+                      { text: t('취소'), style: 'cancel' },
+                      { text: t('계속'), style: 'destructive', onPress: apply },
+                    ]);
+                  } else apply();
+                }}
               />
             </View>
 

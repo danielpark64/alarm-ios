@@ -71,3 +71,13 @@
 - 개발 딥링크 추가: alarmapp://?k=<키>&lang=en&tab=calendar (언어 전환 + 탭 이동, 스크린샷용).
 - 번역 에이전트들이 공통으로 짚은 것(7단계에서 실기기로 확인): 독일어 탭 "Einstellungen", 근무 변경 종류 칩(de/fr/es/pt가 김), 근무조 칩(es "Intermedio", pt "Intermediário"),
   "{date}부터"의 MM.DD 고정 순서, 복수형 미지원("1 days" → 칩은 "d"/"j"/"Tg." 약어로 회피), 권한 안내문 속 앱 이름.
+
+### 7단계 진행 (2026-10-13)
+- verify-fix(전체) + android-build(32·노트 언어별 스크린샷) 결과 반영:
+  기기 언어 네이티브 읽기(setSystemLocaleProvider: iOS Settings AppleLanguages / Android I18nManager) + app.json·Info.plist CFBundleLocalizations,
+  언어 설정 없는 기존 설치는 'ko' 고정(loadLanguageSetting, 값 즉시 저장), 라벨 접두어 가드 완화(다른 언어로 만든 알람 편집 시 입력칸 잠김),
+  registerNotificationCategories·refreshHolidays 전에 loadLanguageSetting, ko로 바꾸면 refreshHolidays, next/tally memo에 lang,
+  TodayShiftRow t(ov.label), 달력 칩 alarmLabel, localizeDefaultLabel이 출퇴근을 문장 키('{shift} 출근')로 조립, AddShiftModal 스크롤, 프리셋 적용 전 확인창.
+- 잘림 수정(사전): '{label} · 다음날' 단축(+1d 등), '알람 추가'(de/fr/es/pt/en), 경조사 메모 placeholder 단축, es/pt 중번, de 기타·출근·퇴근.
+- 정적 체크 ㉕. 딥링크 tab=… 단독 사용 가능.
+- 남은 일: 32·노트 재설치 후 잘림 재확인, iPhone 빌드·한국어 표시 확인(시스템 언어일 때 한국어인지), bug-tracker 기록, 최종 보고.

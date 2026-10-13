@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setApiHolidays } from '../constants/holidays';
 import { isKoreanLocale } from '../i18n/lang';
+import { loadLanguageSetting } from '../i18n';
 import { fetchHolidaysForYear } from '../utils/holidayApi';
 import { HOLIDAY_API_KEY } from '../constants/holidayApiKey';
 
@@ -16,7 +17,7 @@ async function loadCacheIntoMemory() {
 
 // 실패하면 fetchedAt을 갱신하지 않으므로, 인터넷이 안 되는 날엔 계속 실패하다가
 // 앱을 여는 어느 날 인터넷이 되면 그날 조용히 성공한다 — 사용자는 아무것도 몰라도 됨
-async function refreshHolidays() {
+export async function refreshHolidays() {
   if (!HOLIDAY_API_KEY) return;
   if (!isKoreanLocale()) return; // 한국 공휴일은 한국어일 때만 쓴다 — 해외에서는 받아올 이유가 없다
 
@@ -47,6 +48,7 @@ export function useHolidaySync() {
   useEffect(() => {
     (async () => {
       await loadCacheIntoMemory();
+      await loadLanguageSetting(); // 한국어 게이트(isKoreanLocale)는 저장된 언어 설정을 읽은 뒤에 판단해야 한다
       refreshHolidays();
     })();
   }, []);

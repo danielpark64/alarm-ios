@@ -16,7 +16,7 @@ import { useAlarms } from '../src/hooks/useAlarms';
 import { useDayOverrides } from '../src/hooks/useDayOverrides';
 import { useAlarmNotifications } from '../src/hooks/useAlarmNotifications';
 import { useSelectMode } from '../src/hooks/useSelectMode';
-import { useHolidaySync } from '../src/hooks/useHolidaySync';
+import { useHolidaySync, refreshHolidays } from '../src/hooks/useHolidaySync';
 import { ClockHeader } from '../src/components/Home/ClockHeader';
 import { TodayShiftRow } from '../src/components/Home/TodayShiftRow';
 import { NextAlarmLine } from '../src/components/Home/NextAlarmLine';
@@ -229,6 +229,7 @@ export default function App() {
     langRef.current = lang;
     // 알림 액션 버튼('알람 끄기')도 등록 시점 언어로 굳으므로 카테고리부터 다시 등록한다.
     registerNotificationCategories().catch(() => {});
+    if (lang === 'ko') refreshHolidays().catch(() => {}); // 한국어로 바꾼 순간 공휴일 표를 최신으로(게이트 때문에 그동안 건너뛰었을 수 있다)
     syncWidget(alarms, overrides);
     rescheduleAll(alarms, overrides);
   }, [lang, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -256,6 +257,7 @@ export default function App() {
       if (typeof q.tab === 'string' && ['calendar', 'alarms', 'settings', 'add'].includes(q.tab)) setTab(q.tab as any);
       return;
     }
+    if (typeof q.tab === 'string' && ['calendar', 'alarms', 'settings', 'add'].includes(q.tab)) { setTab(q.tab as any); return; }
     // alarmapp://?k=…&testPattern=night — 오늘 시작 "야간 2일(22:00~다음날 06:00) → 비번 2일" 근무표(진동만)를 만든다.
     // 자정 넘는 근무의 퇴근이 근무일 다음 날로 예약되는지 dumpsys alarm으로 확인하는 용도.
     if (q.testPattern === 'night') {
@@ -436,7 +438,7 @@ export default function App() {
   }, [alarms, tick]);
   const repLimitedIds = useMemo(() => getRepLimitedIds(alarms), [alarms]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const next = useMemo(() => nextAlarmParts(alarms, overrides), [alarms, overrides, tick]);
+  const next = useMemo(() => nextAlarmParts(alarms, overrides), [alarms, overrides, tick, lang]); // lang: 문구와 공휴일 게이트가 언어를 따른다
 
   if (!loaded)
     return <View style={s.loading}><Text style={s.loadingT}>⏰</Text></View>;

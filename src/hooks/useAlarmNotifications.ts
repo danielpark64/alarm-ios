@@ -7,6 +7,7 @@ import { requestNotificationPermission, registerNotificationCategories, reschedu
 import { getAlarmDefaults } from './useAlarmDefaults';
 import { getDayOverridesCache } from '../utils/dayOverrideStore';
 import { todayStr } from '../utils';
+import { loadLanguageSetting } from '../i18n';
 import { getHolidayVersion } from '../constants/holidays';
 // 문구가 리스너 콜백 안에 있어 훅(useT)이 아니라 순수 번역 함수를 쓴다. 지역 변수 t와 겹치지 않게 tr로 가져온다
 import { t as tr } from '../i18n/translate';
@@ -52,6 +53,7 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
     (async () => {
       const ok = await requestNotificationPermission();
       setNotifGranted(ok);
+      await loadLanguageSetting(); // 알림 버튼('알람 끄기')은 등록 시점 언어로 굳는다 — 저장된 언어 설정을 먼저 읽는다
       await registerNotificationCategories();
 
       // 알림 권한 다이얼로그가 완전히 닫힌 뒤에 오버레이 권한 체크를 시작 —

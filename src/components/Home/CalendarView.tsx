@@ -201,7 +201,7 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
                   numberOfLines={1}
                   adjustsFontSizeToFit
                   minimumFontScale={0.7}
-                >{al.label}</Text>
+                >{alarmLabel(al)}</Text>
               );
             })}
             {chips.length > 2 && (
@@ -464,7 +464,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
     return Array.from(byKind.values())
       .filter(x => x.month > 0 || x.year > 0)
       .sort((a, b) => order.indexOf(a.label) - order.indexOf(b.label));
-  }, [overrides, alarms, year, month, today, holidayVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [overrides, alarms, year, month, today, holidayVersion, lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pages = useMemo(() => Array.from({ length: RANGE * 2 + 1 }, (_, i) => i), []);
 

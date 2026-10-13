@@ -553,6 +553,20 @@ grep -q 'NativeStrings.get(this, "stop"' "$_J/AlarmService.kt" 2>/dev/null \
   && grep -q "saveNativeStrings" "$ROOT/src/utils/widgetSync.ts" 2>/dev/null \
   && ok "" || { fail "AlarmService 끄기 버튼 또는 saveNativeStrings 연결이 없음"; }
 
+# ㉕ 기존 한국어 사용자 보호(2026-10-13 verify-fix) — (a) 기기 언어는 네이티브 값(iOS AppleLanguages / Android I18nManager)을
+#    먼저 읽는다: iOS의 Intl 로캘은 앱이 선언한 언어 안에서만 정해져 한국어 iPhone에서도 en이 나올 수 있다.
+#    (b) iOS가 지원 언어를 선언한다(CFBundleLocalizations). (c) 언어 설정이 없는 기존 설치(알람 데이터 있음)는 'ko'로 고정한다 —
+#    폰을 영어로 쓰는 기존 사용자가 업데이트 뒤 영어로 바뀌며 공휴일 건너뛰기가 조용히 꺼지는 것을 막는다.
+printf "  기기 언어 네이티브 읽기 + iOS 언어 선언 + 기존 설치 한국어 고정 ... "
+_IX="$ROOT/src/i18n/index.tsx"
+if ! grep -q "setSystemLocaleProvider(" "$_IX" 2>/dev/null || ! grep -q "AppleLanguages" "$_IX" 2>/dev/null; then
+  fail "i18n/index.tsx가 네이티브 로캘 제공자를 등록하지 않음 — 한국어 iPhone이 영어로 뜰 수 있음"
+elif ! grep -q "CFBundleLocalizations" "$ROOT/app.json" 2>/dev/null; then
+  fail "app.json ios.infoPlist에 CFBundleLocalizations 없음"
+elif ! grep -q "existing ? 'ko' : 'system'" "$_IX" 2>/dev/null; then
+  fail "기존 설치를 'ko'로 고정하는 첫 실행 판별이 없음(loadLanguageSetting)"
+else ok ""; fi
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

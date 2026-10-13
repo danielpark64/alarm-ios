@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, Modal } from 'react-native';
+import { View, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { Text } from '../common/AppText';
 import { SHIFTS, ShiftPeriod, REST_COLOR } from '../../constants';
 import { useColors } from '../../hooks/useTheme';
@@ -31,6 +31,8 @@ export function AddShiftModal({ visible, onClose, onPick, itemRefs }: Props) {
       <View style={s.modalOverlay}>
         <View style={s.modalContent}>
           <Text style={s.wpMenuTitle}>{t('어떤 근무를 추가할까요?')}</Text>
+          {/* 버튼이 7개라 작은 화면·글자 크게에서 넘칠 수 있다 — 목록만 스크롤 */}
+          <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
           {BUTTON_ORDER.map(id => id === 'REST' ? (
             <TouchableOpacity key="REST" ref={itemRefs?.REST} style={s.wpMenuBtn} onPress={() => onPick('REST')}>
               <Text style={[s.wpMenuBtnText, { color: REST_COLOR }]}>{t('비번')}</Text>
@@ -40,6 +42,7 @@ export function AddShiftModal({ visible, onClose, onPick, itemRefs }: Props) {
               <Text style={s.wpMenuBtnText}>{t(BLOCK_SHIFTS.find(sh => sh.id === id)!.label)}</Text>
             </TouchableOpacity>
           ))}
+          </ScrollView>
           <TouchableOpacity style={s.wpMenuCancelBtn} onPress={onClose}>
             <Text style={s.wpMenuCancelText}>{t('취소')}</Text>
           </TouchableOpacity>
