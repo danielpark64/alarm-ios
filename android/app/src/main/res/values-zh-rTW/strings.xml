@@ -1,4 +1,4 @@
 <resources>
-  <!-- 홈 화면 앱 이름(기기 언어 기준). 기본값(values/)은 교대알람 -->
-  <string name="app_name">輪班鬧鐘</string>
+  <!-- 앱 이름은 전 세계 공통 ShiftWake(한국어만 values-ko에서 교대알람) -->
+  <string name="app_name">ShiftWake</string>
 </resources>

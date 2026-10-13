@@ -533,6 +533,15 @@ if awk '/export async function schedulePatternAlarmReps/,/^}/' "$ROOT/src/utils/
   && awk '/export async function schedulePatternAlarmReps/,/^}/' "$ROOT/src/utils/notifications/core.ts" 2>/dev/null | grep -q "workDateOfFire("; then ok ""
 else fail "schedulePatternAlarmReps 제목이 근무일 근무조(roleLabel+workDateOfFire)를 쓰지 않음"; fi
 
+# 앱 이름(2026-10-14) — 한국어 기기만 "교대알람", 그 외 모든 언어는 "ShiftWake" 하나로 통일.
+#    언어별로 다른 이름(Shift Alarm, Schichtwecker …)이 다시 들어오면 브랜드가 갈라진다.
+printf "  앱 이름: 한국어=교대알람, 그 외=ShiftWake ... "
+_RES="$ROOT/android/app/src/main/res"
+_BADNAME=$(grep -l "app_name" "$_RES"/values*/strings.xml 2>/dev/null | grep -v "/values-ko/" | xargs grep -L '<string name="app_name">ShiftWake</string>' 2>/dev/null)
+if [ -z "$_BADNAME" ] && grep -q '<string name="app_name">교대알람</string>' "$_RES/values-ko/strings.xml" 2>/dev/null \
+  && grep -q '"CFBundleDisplayName": "ShiftWake"' "$ROOT/app.json" && grep -q '교대알람' "$ROOT/locales/ko.json" 2>/dev/null; then ok ""
+else fail "앱 이름 규칙 위반: $_BADNAME"; fi
+
 # ㉑ 다국어(2026-10-13) — 순수 모듈(utils·constants)은 i18n 인덱스(React·AsyncStorage)를 import하면 안 된다
 #    (scripts/logic-tests가 node에서 못 돈다). 번역은 '../i18n/translate', 표식은 '../i18n/lang'만.
 printf "  utils·constants가 i18n 인덱스를 import하지 않는지 ... "

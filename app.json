@@ -35,7 +35,17 @@
           "fetch",
           "remote-notification"
         ],
-        "CFBundleLocalizations": ["ko", "en", "ja", "zh-Hans", "zh-Hant", "es", "fr", "de", "pt"],
+        "CFBundleLocalizations": [
+          "ko",
+          "en",
+          "ja",
+          "zh-Hans",
+          "zh-Hant",
+          "es",
+          "fr",
+          "de",
+          "pt"
+        ],
         "CFBundleAllowMixedLocalizations": true,
         "NSUserNotificationsUsageDescription": "알람을 울리기 위해 알림 권한이 필요합니다.",
         "UIApplicationSceneManifest": {
@@ -48,7 +58,8 @@
               }
             ]
           }
-        }
+        },
+        "CFBundleDisplayName": "ShiftWake"
       }
     },
     "plugins": [
@@ -60,7 +71,7 @@
           "color": "#000000",
           "sounds": [
             "./assets/alarm_long.wav",
-          "./assets/silent_short.wav"
+            "./assets/silent_short.wav"
           ]
         }
       ],
@@ -77,6 +88,9 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "locales": {
+      "ko": "./locales/ko.json"
     }
   }
 }

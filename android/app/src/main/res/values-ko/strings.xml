@@ -1,0 +1,4 @@
+<resources>
+  <!-- 한국어 기기의 홈 화면 앱 이름. 스토어 제목은 "교대알람(ShiftWake)" -->
+  <string name="app_name">교대알람</string>
+</resources>
