@@ -14,7 +14,9 @@ interface Props {
 export function HelpScreen({ onClose, onStartRotationTutorial }: Props) {
   const C = useColors();
   const s = makeStyles(C);
-  const { t } = useT();
+  const { t, lang } = useT();
+  // 한국 전용 기능(음력·한국 공휴일) 설명은 한국어일 때만 보인다
+  const entries = lang === 'ko' ? ENTRIES : ENTRIES.filter(e => e.kind !== 'item' || !e.krOnly);
 
   return (
     <View style={s.root}>
@@ -35,7 +37,7 @@ export function HelpScreen({ onClose, onStartRotationTutorial }: Props) {
           <Text style={s.tutorialBannerArrow}>›</Text>
         </TouchableOpacity>
 
-        {ENTRIES.map((entry, i) => {
+        {entries.map((entry, i) => {
           if (entry.kind === 'section') {
             return (
               <View key={i} style={s.sectionHeader}>
@@ -60,7 +62,7 @@ export function HelpScreen({ onClose, onStartRotationTutorial }: Props) {
                 )}
                 <Text style={s.cardTitle}>{t(entry.title)}</Text>
               </View>
-              <Text style={s.cardBody}>{t(entry.body)}</Text>
+              <Text style={s.cardBody}>{t(lang !== 'ko' && entry.bodyIntl ? entry.bodyIntl : entry.body)}</Text>
             </View>
           );
         })}

@@ -1,3 +1,4 @@
+import { isKoreanLocale } from '../i18n/lang';
 // 24절기 근사 계산 — 태양 황경(순간 천문 이벤트) 기준이라 음력 변환 라이브러리로는 못 구한다.
 // 1900-01-06 05:05(KST)를 기준 삼아 회귀년(365.24219878일) 길이만큼 누적하고, 절기별 오프셋
 // (sTermInfo, 분 단위)을 더하는 선형 근사식 — 1900~2100년 범위에서 실제 절기와 대부분 하루
@@ -74,6 +75,7 @@ function buildYear(year: number) {
 }
 
 export function getSolarTerm(dateStr: string): string | undefined {
+  if (!isKoreanLocale()) return undefined; // 24절기는 한국어일 때만 표시
   const year = parseInt(dateStr.slice(0, 4), 10);
   if (!builtYears.has(year)) { buildYear(year); builtYears.add(year); }
   return cache[dateStr];

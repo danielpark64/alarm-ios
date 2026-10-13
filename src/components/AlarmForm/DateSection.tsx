@@ -23,7 +23,7 @@ export function DateSection({
   rm, lastDay, setLastDay, lunar, setLunar, setShowCal, dateLabel, dateLocked, isLeapDay, lunarSolarPreview,
 }: Props) {
   const s = makeStyles(useColors());
-  const { t } = useT();
+  const { t, lang } = useT();
   return (
     <>
       <Text style={s.sLabel}>{t('시작 일자')}</Text>
@@ -47,7 +47,8 @@ export function DateSection({
             <Text style={[s.lastDayText, lastDay && { color: '#fff' }]}>{t('말일')}</Text>
           </TouchableOpacity>
         )}
-        {rm === 'yearly' && (
+        {/* 음력 반복은 한국 전용 — 한국어일 때만 고를 수 있다. 이미 음력으로 저장된 알람은 켜진 상태라 끌 수 있게 계속 보인다 */}
+        {rm === 'yearly' && (lang === 'ko' || lunar) && (
           <TouchableOpacity
             style={[s.lastDayBtn, lunar && s.lastDayBtnActive]}
             onPress={() => setLunar(v => !v)}

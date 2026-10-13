@@ -219,7 +219,7 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
 
 export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, onUpdateAlarm }: Props) {
   const C = useColors();
-  const { t } = useT();
+  const { t, lang } = useT();
   // cv는 MonthGrid(React.memo)에 prop으로 내려간다 — 렌더마다 새 객체를 만들면 memo가
   // 절대 bail-out 못 해 스와이프/팝업마다 3개 그리드 × 42셀이 전부 재렌더된다
   const cv = useMemo(() => makeStyles(C), [C]);
@@ -237,7 +237,9 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
   const [ovPickingShiftFor, setOvPickingShiftFor] = useState<OverrideKind | null>(null);
   const [ovTimeEditFor, setOvTimeEditFor] = useState<{ kind: OverrideKind; shift?: ShiftPeriod; start?: { hour: number; min: number }; end?: { hour: number; min: number } } | null>(null);
   const [ovFamilyDraft, setOvFamilyDraft] = useState('');
-  const [showLunar, setShowLunar] = useState(false);
+  const [showLunarRaw, setShowLunar] = useState(false);
+  const isKR = lang === 'ko';
+  const showLunar = showLunarRaw && isKR; // 음력 표기는 한국어일 때만
   const [showYearPicker, setShowYearPicker] = useState(false);
   const listRef = useRef<FlatList>(null);
   // AppText와 같은 배율표 — 칸 높이를 글자 배율에 맞춰 키우기 위해 읽는다
@@ -477,12 +479,15 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
               <Text style={cv.yearChevron}>▾</Text>
             </TouchableOpacity>
             <Text style={cv.navTitle}> {t(MONTH_KEYS[month])}</Text>
+            {/* 음력·24절기는 한국 전용 — 언어가 한국어일 때만 토글을 보인다 */}
+            {isKR && (
             <TouchableOpacity
               style={[cv.lunarToggle, showLunar && cv.lunarToggleActive]}
               onPress={() => setShowLunar(v => !v)}
             >
               <Text style={[cv.lunarToggleText, showLunar && cv.lunarToggleTextActive]}>{t('음력')}</Text>
             </TouchableOpacity>
+            )}
           </View>
           <TouchableOpacity onPress={nextMonth} style={cv.navBtn}>
             <Text style={cv.navArrow}>›</Text>
@@ -591,7 +596,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
                 {t('{month} {d}일 ({dow})', { month: t(MONTH_KEYS[selDateObj.getMonth()]), d: selDateObj.getDate(), dow: t(DAYS[(selDateObj.getDay()+6)%7]) })}
               </Text>
             )}
-            {selDate && (
+            {selDate && isKR && (
               <Text style={cv.modalLunar}>{lunarDateText(selDate)}</Text>
             )}
             {selDate && getHoliday(selDate) && (

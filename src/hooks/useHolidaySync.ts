@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setApiHolidays } from '../constants/holidays';
+import { isKoreanLocale } from '../i18n/lang';
 import { fetchHolidaysForYear } from '../utils/holidayApi';
 import { HOLIDAY_API_KEY } from '../constants/holidayApiKey';
 
@@ -17,6 +18,7 @@ async function loadCacheIntoMemory() {
 // 앱을 여는 어느 날 인터넷이 되면 그날 조용히 성공한다 — 사용자는 아무것도 몰라도 됨
 async function refreshHolidays() {
   if (!HOLIDAY_API_KEY) return;
+  if (!isKoreanLocale()) return; // 한국 공휴일은 한국어일 때만 쓴다 — 해외에서는 받아올 이유가 없다
 
   const raw = await AsyncStorage.getItem(KEY_CACHE);
   if (raw) {

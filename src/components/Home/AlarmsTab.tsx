@@ -31,7 +31,7 @@ export function AlarmsTab({
   const C = useColors();
   const homeStyles = makeHomeStyles(C);
   const s = makeStyles(C);
-  const { t } = useT();
+  const { t, lang } = useT();
   return (
     <ScrollView style={homeStyles.scroll} contentContainerStyle={homeStyles.scrollC} showsVerticalScrollIndicator={false}>
       {selectMode && (
@@ -66,7 +66,8 @@ export function AlarmsTab({
           repLimited={repLimitedIds.has(al.id)}
         />
       ))}
-      <PromoBanner />
+      {/* 유튜브 채널·계좌 후원은 한국 사용자 대상 — 한국어일 때만 */}
+      {lang === 'ko' && <PromoBanner />}
     </ScrollView>
   );
 }
