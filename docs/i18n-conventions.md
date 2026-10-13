@@ -30,6 +30,12 @@
 - 알림 본문 `` `${pad(h)}:${pad(m)} 알람` `` → `t('{time} 알람', { time: `${pad(h)}:${pad(m)}` })`.
   ⚠️ 이 본문은 네이티브 끄기 경로가 **맨 앞의 HH:MM**을 정규식으로 읽으므로(`cancelExpoGroupReps`), 키는 반드시 `{time}`으로 시작해야 한다.
 
+- 같은 한국어가 뜻이 다른 곳에 쓰이면 키 뒤에 `##문맥`을 붙인다(한국어 출력에서는 떼어진다): 요일은 `DAYS`의 `'일'` 그대로,
+  날짜 단위 한 글자는 `t('일##단위')`, 시간 단위는 `t('시##단위')`, `t('분##단위')`. 요일 한 글자('월'~'일')와 겹치는
+  한 글자 키는 반드시 이렇게 구분한다. 가능하면 한 글자 키 대신 `t('{n}일', { n })`처럼 문장 키를 쓴다.
+- `src/constants/index.ts`의 라벨은 이미 `N('…')`으로 감싸 뒀다(TYPES·SHIFTS·REPEAT·SOUNDS·VIBS·OVERRIDE_KINDS·DAYS·DAYS_DISPLAY·MONTH_KEYS).
+  이 파일은 고치지 말고, 그 라벨을 **화면에 표시하는 곳에서 `t(x.label)`** 로 감싸기만 하면 된다.
+
 ## 건드리지 않는 것
 - 주석, 로그, AsyncStorage 키, 식별자, 테스트용 문자열, 정적 체크가 grep하는 코드 구조.
   ⚠️ `scripts/test-alarm-suite.sh`가 특정 코드 문자열을 grep한다 — 감싼 뒤 `./scripts/test-alarm-suite.sh --static`이

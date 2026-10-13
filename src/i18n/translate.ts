@@ -9,8 +9,11 @@ export function resolveLang(setting: LanguageSetting): Lang {
 
 export type Params = Record<string, string | number>;
 
+// 같은 한국어가 뜻이 다른 두 곳에 쓰이면(예: 요일 '일' vs 날짜 단위 '일') 키 뒤에 '##문맥'을 붙여 구분한다:
+// t('일##단위'). 한국어 출력과 폴백에서는 '##' 뒤를 떼어 낸다.
 export function translate(lang: Lang, key: string, params?: Params): string {
-  let s = lang === 'ko' ? key : (DICTS[lang]?.[key] ?? EN[key] ?? key);
+  const base = key.includes('##') ? key.slice(0, key.indexOf('##')) : key;
+  let s = lang === 'ko' ? base : (DICTS[lang]?.[key] ?? EN[key] ?? base);
   if (params) for (const [k, v] of Object.entries(params)) s = s.split(`{${k}}`).join(String(v));
   return s;
 }
