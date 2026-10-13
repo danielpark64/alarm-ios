@@ -29,12 +29,37 @@ Expo만 취소하고 AlarmManager를 빠뜨리면 알람이 비활성화해도 �
 - [ ] **iOS 알림엔 소리가 있어야 진동이 온다**: 진동만 모드도 `notifSound()`가 무음 파일을 붙인다.
       iOS용 content에 `sound: undefined`를 보내는 새 경로를 만들지 말 것.
 
+# 근무일과 발화일 — 자정 넘는 근무 (2026-10-13)
+
+야간(22~06)·24시간 근무는 퇴근 알람이 **근무일 다음 날** 울린다(`isOvernight`: 퇴근 시각 ≤ 출근 시각).
+- `skips`("이날 끄기")·하루 근무 변경(override)·Expo 식별자(`alarm_{id}_date_{ds}`)·달력 표시는 전부 **근무일 기준**이다.
+- 발화 시각을 만드는 곳은 세 곳(core.ts 로테이션 루프·날짜기반 루프, utils `getNextFireDate`) — `dayOffset`을 셋 다 더해야 한다.
+- 퇴근 알람은 어제 근무일(`overnightFrom` = -1)부터 훑는다. 지난 날짜를 정리하는 코드는 "어제"까지 남겨야 한다(`pruneSkips`).
+- 발화 시각에서 근무조 라벨을 거꾸로 만들 땐 `workDateOfFire`를 쓴다.
+
+# 다국어 (2026-10-13) — 문구를 추가·수정할 때
+
+방식은 세이람과 같다: **한국어 원문이 번역 키** `t('알람 추가')`. 자세한 규칙은 `docs/i18n-conventions.md`.
+- 컴포넌트는 `useT()`(`src/i18n`), 순수 모듈(`src/utils/**`, `src/constants/**`, 알림·위젯)은 `src/i18n/translate`의 `t`만.
+  utils·constants가 `src/i18n` 인덱스를 import하면 `scripts/logic-tests`가 깨진다(정적 체크 ㉑).
+- 모듈 최상위 상수 라벨은 `N('…')` 표식 + 표시할 때 `t(x.label)`. 값이 끼는 문구는 `t('{n}일', { n })` — 템플릿 보간 금지.
+- 문구를 추가했으면 `node scripts/i18n-keys.js`(키 재추출) → 8개 사전(`src/i18n/locales/*.ts`)에 번역 추가 →
+  `node scripts/i18n-keys.js --check`가 "누락 없음"이어야 한다(정적 체크 ㉒).
+- 알림 본문 키는 `{time}`으로 시작해야 한다(네이티브 끄기 경로가 본문 맨 앞 HH:MM을 읽는다).
+- **한국 전용 기능**(법정공휴일 건너뛰기·휴일근무 집계·음력·24절기·후원 배너)은 언어가 한국어일 때만 동작한다
+  (`isKoreanLocale`, 게이트는 `holidays.getHoliday` 한 곳). ⚠️ 언어 판정이 틀리면 알람 동작이 바뀐다 —
+  기기 언어는 네이티브 값을 먼저 읽고(`setSystemLocaleProvider`), 언어 설정이 없는 기존 설치는 'ko'로 고정한다(정적 체크 ㉕).
+- 저장되는 `alarm.label`은 만든 시점의 언어로 굳는다. 표시는 `alarmLabel(alarm)`, 폼 초기값·비교는 `localizeDefaultLabel`.
+- 네이티브가 직접 그리는 문구(알림 "끄기"·위젯 라벨)는 `widgetSync.ts` → `WidgetModule.saveNativeStrings` → `NativeStrings.kt`.
+
 # TDD 원칙 — 버그 수정·회귀 방지 로직 추가 시
 
 이 프로젝트엔 Jest 같은 유닛 테스트 프레임워크가 없다. 대신 `scripts/test-alarm-suite.sh`의
 정적 검사(파일 내용에 대한 정규식/패턴 기반 assertion)를 유닛 테스트처럼 취급해 TDD를 적용한다.
 
 **순서 — 버그를 고치거나 "이 조건에서 반드시 이래야 한다"는 규칙을 코드에 넣을 때:**
+0. 값이 맞는지 따질 수 있는 순수 로직(다음 발화 시각, 라벨, 번역)은 `scripts/logic-tests/*.test.js`에 시각을 고정한
+   시나리오 테스트를 먼저 쓴다(`node scripts/logic-tests/run.js`, 정적 스위트 ⑳이 함께 돌린다) — grep 체크보다 우선.
 1. 먼저 `scripts/test-alarm-suite.sh`의 `[1] 정적 코드 분석` 섹션에 그 규칙을 검증하는
    새 체크 항목을 추가한다 (기존 항목들처럼 grep/패턴 매칭으로 관련 파일에서 규칙 준수 여부 확인)
 2. 스크립트를 돌려 **새 체크가 FAIL하는지 확인**한다 (아직 코드를 못 고쳤으니 당연히 실패해야 함 — 이게 "레드")
@@ -54,7 +79,8 @@ Expo만 취소하고 AlarmManager를 빠뜨리면 알람이 비활성화해도 �
 알람 관련 파일(`AlarmReceiver.kt` / `AlarmModule.kt` / `android.ts` / `useAlarms.ts` / `widgetSync.ts` / `core.ts` / `notifications/index.ts`) 수정 시:
 
 1. **커밋 전** — `./scripts/test-alarm-suite.sh --static` 실행, FAIL 있으면 먼저 수정
-2. **빌드·설치 후** — `./scripts/test-alarm-suite.sh RF9R3049REV` 실행, 결과를 사용자에게 보고
+2. **빌드·설치 후** — `./scripts/test-alarm-suite.sh RF9R3049REV`(32)와 `./scripts/test-alarm-suite.sh R3CM909QRGK`(노트) 실행, 결과를 사용자에게 보고.
+   테스트 알람은 전부 진동만. 화면을 손으로 조작하는 대신 개발 딥링크(`docs/i18n-plan.md` 참고, 잠금 키 `DEV_LINK_KEY`)를 쓸 수 있다
 3. **3환경 수동 테스트 필요 시** — 스크립트 마지막에 출력되는 체크리스트를 사용자에게 안내
 
 # 작업 완료 후 규칙
