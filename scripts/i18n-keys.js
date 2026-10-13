@@ -32,7 +32,9 @@ function loadDict(lang) {
 }
 if (process.argv.includes('--check')) {
   let bad = 0;
-  for (const lang of LOCALES) {
+  // --lang <코드> 를 주면 그 언어만 검사하고 누락 키를 전부 출력한다(사전 작성 중 확인용).
+  const only = process.argv.includes('--lang') ? process.argv[process.argv.indexOf('--lang') + 1] : null;
+  for (const lang of (only ? [only] : LOCALES)) {
     const d = loadDict(lang); if (!d) { console.log(`${lang}: 사전 파일 없음`); bad++; continue; }
     const missing = list.filter(k => !(k in d));
     // {name} 자리표시자가 번역에서 빠지면 값이 화면에서 사라진다 — 같이 검사.
@@ -41,7 +43,8 @@ if (process.argv.includes('--check')) {
     const timeFirst = list.filter(k => k.startsWith('{time}') && k in d && !d[k].startsWith('{time}'));
     if (missing.length || broken.length || timeFirst.length) { bad++;
       console.log(`${lang}: 누락 ${missing.length} / 자리표시자 깨짐 ${broken.length} / 시각이 맨 앞이 아님 ${timeFirst.length}`);
-      for (const k of [...missing.slice(0, 5), ...broken.slice(0, 5), ...timeFirst]) console.log('   · ' + JSON.stringify(k).slice(0, 90)); }
+      for (const k of [...(only ? missing : missing.slice(0, 5)), ...(only ? broken : broken.slice(0, 5)), ...timeFirst]) console.log('   · ' + JSON.stringify(k).slice(0, only ? 400 : 90)); }
+    const extra = Object.keys(d).filter(k => !keys.has(k)); if (only && extra.length) console.log(`${lang}: 코드에 없는 남는 키 ${extra.length}개(지워도 됨): ` + extra.slice(0, 8).map(k => JSON.stringify(k).slice(0, 40)).join(', '));
   }
   console.log(`i18n: 키 ${list.length}개, 언어 ${LOCALES.length}개 — ${bad ? bad + '개 언어에 문제' : '누락 없음'}`);
   process.exit(bad ? 1 : 0);
