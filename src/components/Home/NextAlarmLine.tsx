@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TextStyle, LayoutChangeEvent } from 'react-native';
 import { Text } from '../common/AppText';
+import { useT } from '../../i18n';
 
 type Next = { icon: string; label: string; when: string };
 
@@ -12,6 +13,7 @@ const MIN_SCALE = 0.7;
 const LABEL_MIN_RATIO = 0.25;
 
 export function NextAlarmLine({ next, textStyle }: { next: Next | null; textStyle: TextStyle }) {
+  const { t } = useT();
   const [rowW, setRowW] = useState(0);
   // 배율 1 기준으로 환산한 "다음 🚇 " / " · 날짜 시각" 폭 — 측정 시점 배율로 나눠서 저장해야
   // 배율을 바꿀 때마다 다시 재도 값이 흔들리지 않는다.
@@ -32,12 +34,12 @@ export function NextAlarmLine({ next, textStyle }: { next: Next | null; textStyl
     <View style={s.row} onLayout={e => setRowW(e.nativeEvent.layout.width)}>
       {next ? (
         <>
-          <Text style={style} onLayout={measure(setPrefixW)}>다음 {next.icon} </Text>
+          <Text style={style} onLayout={measure(setPrefixW)}>{t('다음 {icon}', { icon: next.icon })}{' '}</Text>
           <Text style={[style, s.label]} numberOfLines={1}>{next.label}</Text>
           <Text style={style} onLayout={measure(setWhenW)}> · {next.when}</Text>
         </>
       ) : (
-        <Text style={textStyle} numberOfLines={1}>예정된 알람 없음</Text>
+        <Text style={textStyle} numberOfLines={1}>{t('예정된 알람 없음')}</Text>
       )}
     </View>
   );

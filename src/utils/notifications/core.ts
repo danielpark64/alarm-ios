@@ -1,13 +1,15 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { Alarm, DayOverrides, ShiftPeriod, IOS_REP_INTERVAL_SEC, ANDROID_REP_COUNT } from '../../constants';
-import { getType, pad, getNextFireDate, lunarToSolarInYear, effectiveShift, effectiveTime, dayWorkFor, isOverridableAlarm, isHolidaySkipped, skipsStatutoryHoliday } from '../index';
+import { getType, pad, getNextFireDate, lunarToSolarInYear, effectiveShift, effectiveTime, dayWorkFor, isOverridableAlarm, isHolidaySkipped, skipsStatutoryHoliday, overnightFrom, alarmLabel, workDateOfFire } from '../index';
 import { isStatutoryHoliday } from '../../constants/holidays';
 import { roleLabel } from '../workPattern';
 import { scheduleNative } from './android';
 import { weekdaySlotId, mainNativeId } from './alarmIds';
 import { isStaleGen } from './rescheduleGen';
 import { getAlarmDefaults } from '../../hooks/useAlarmDefaults';
+// ⚠️ 이 파일엔 지역 변수 t(시각 객체)가 있어 번역 함수는 tr로 가져온다
+import { t as tr } from '../../i18n/translate';
 
 function getVibrationPattern(vib: string): number[] | undefined {
   if (vib === 'none') return undefined;
@@ -55,7 +57,10 @@ async function schedulePatternAlarmTriggers(alarm: Alarm, overrides: DayOverride
   const p2 = (n: number) => String(n).padStart(2, '0');
   const today = new Date(); today.setHours(0, 0, 0, 0);
   let nativeIdx = 0;
-  for (let i = 0; i < 14; i++) {
+  // ds는 "근무일"이다. 퇴근 알람은 어제 근무일(i=-1)부터 본다 — 어젯밤 야간 근무의 퇴근이 오늘 아침에
+  // 울려야 하기 때문(overnightFrom). 네이티브 슬롯은 알람당 14개(cancelNativeAlarms가 idx 0~13만 지움)라
+  // 15번째가 생기지 않게 nativeIdx로 끊는다.
+  for (let i = overnightFrom(alarm); i < 14 && nativeIdx < 14; i++) {
     const date = new Date(today); date.setDate(today.getDate() + i);
     const ds = `${date.getFullYear()}-${p2(date.getMonth()+1)}-${p2(date.getDate())}`;
     if (alarm.sd && ds < alarm.sd) continue;
@@ -67,10 +72,10 @@ async function schedulePatternAlarmTriggers(alarm: Alarm, overrides: DayOverride
     // 한쪽만 순서가 다르면 "달력엔 대근인데 이 알람만 안 울린다" 같은 불일치가 생긴다.
     const dw = dayWorkFor(alarm, overrides[ds]);
     let shiftInfo: { shift: ShiftPeriod; shiftCustom?: string } | null;
-    let t: { hour: number; min: number } | null;
+    let t: { hour: number; min: number; dayOffset?: number } | null;
     if (dw) {
       if (!dw.fires) continue;
-      t = dw.time ?? null;
+      t = dw.time ? { ...dw.time, dayOffset: dw.dayOffset } : null;
       if (!t) continue;
       shiftInfo = dw.shift ? { shift: dw.shift } : effectiveShift(alarm, ds);
     } else {
@@ -82,10 +87,11 @@ async function schedulePatternAlarmTriggers(alarm: Alarm, overrides: DayOverride
     }
 
     const ft = new Date(date); ft.setHours(t.hour, t.min, 0, 0);
+    if (t.dayOffset) ft.setDate(ft.getDate() + t.dayOffset); // 자정 넘는 근무의 퇴근 — 근무일 다음 날
     if (ft <= new Date()) continue;
 
-    const title    = `${type.icon} ${shiftInfo ? roleLabel(shiftInfo, role) : type.label}`;
-    const bodyText = `${pad(t.hour)}:${pad(t.min)} 알람`;
+    const title    = `${type.icon} ${shiftInfo ? roleLabel(shiftInfo, role) : tr(type.label)}`;
+    const bodyText = tr('{time} 알람', { time: `${pad(t.hour)}:${pad(t.min)}` });
     const content = {
       title, body: bodyText,
       sound: notifSound(soundOn),
@@ -120,8 +126,8 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
   }
 
   const type     = getType(alarm.typeId);
-  const title    = `${type.icon} ${alarm.label || type.label}`;
-  const bodyText = `${pad(alarm.hour)}:${pad(alarm.min)} 알람`;
+  const title    = `${type.icon} ${alarmLabel(alarm)}`;
+  const bodyText = tr('{time} 알람', { time: `${pad(alarm.hour)}:${pad(alarm.min)}` });
   const soundOn  = alarm.snd === 'default';
   const vibOn    = alarm.vib === 'pulse';
   const volume   = getAlarmDefaults().volume;
@@ -147,8 +153,12 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
   // override가 있어도 이 알람과 무관하므로 전환하지 않는다.
   const end13 = new Date(now0); end13.setDate(end13.getDate() + 13);
   const end13Ds = `${end13.getFullYear()}-${p2d(end13.getMonth()+1)}-${p2d(end13.getDate())}`;
+  // 퇴근 알람은 어제 날짜의 override도 본다 — 어제 야간으로 넣은 대근·특근의 퇴근이 오늘 아침이라,
+  // 어제 것을 빼면 WEEKLY 경로로 내려가 그 퇴근 알람이 예약되지 않는다.
+  const yday = new Date(now0); yday.setDate(yday.getDate() + overnightFrom(alarm));
+  const fromDs = `${yday.getFullYear()}-${p2d(yday.getMonth()+1)}-${p2d(yday.getDate())}`;
   const hasUpcomingOverride = isOverridableAlarm(alarm)
-    && Object.keys(overrides).some(ds => ds >= todayDs && ds <= end13Ds);
+    && Object.keys(overrides).some(ds => ds >= fromDs && ds <= end13Ds);
   // 법정공휴일도 같은 이유로 날짜 기반 전환이 필요한데, 이쪽은 이유가 하나 더 있다.
   // ⚠️ 네이티브(AlarmScheduling.nextWeeklyTrigger)는 recurrence='weekly' 예약을 JS와 무관하게
   // 자체 재계산해서 발화 때마다 스스로 다음 주를 다시 잡는다(AlarmReceiver). 그래서 WEEKLY
@@ -186,7 +196,9 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
   const p2 = (n: number) => String(n).padStart(2, '0');
   const today = new Date(); today.setHours(0, 0, 0, 0);
   let nativeIdx = 0;
-  for (let i = 0; i < 14; i++) {
+  // 퇴근 알람은 어제 근무일(i=-1)부터 — 로테이션 루프와 같은 이유(overnightFrom). 어제 날짜에서 실제로
+  // 예약되는 건 "자정 넘는 override 퇴근"뿐이고, 나머지는 발화 시각이 이미 지나 아래 ft<=now에서 걸러진다.
+  for (let i = overnightFrom(alarm); i < 14 && nativeIdx < 14; i++) {
     const date = new Date(today); date.setDate(today.getDate() + i);
     const ds = `${date.getFullYear()}-${p2(date.getMonth()+1)}-${p2(date.getDate())}`;
     if (alarm.sd && ds < alarm.sd) continue;
@@ -242,13 +254,14 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
     if (!fires) continue;
 
     const ft = new Date(date); ft.setHours(hh, mm, 0, 0);
+    if (dw?.dayOffset) ft.setDate(ft.getDate() + dw.dayOffset); // 자정 넘는 override 퇴근 — 근무일 다음 날
     if (ft <= new Date()) continue;
 
     await Notifications.scheduleNotificationAsync({
       identifier: makeId(alarm.id, `date_${ds}`),
       // override로 시각이 바뀐 날만 알림 배너 문구도 그 시각으로 — 아니면 알림엔 원래 시각이
       // 뜨는데 실제로는 다른 시각에 울리는 불일치가 생긴다.
-      content: dw?.time ? { ...baseContent, body: `${pad(hh)}:${pad(mm)} 알람` } : baseContent,
+      content: dw?.time ? { ...baseContent, body: tr('{time} 알람', { time: `${pad(hh)}:${pad(mm)}` }) } : baseContent,
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: ft },
     });
     if (isStaleGen(gen)) return;
@@ -303,14 +316,14 @@ export async function scheduleGroupReps(group: Alarm[], overrides: DayOverrides 
 
   // 묶음 라벨: 알람이 여러 개면 합침
   const label = active.length === 1
-    ? (active[0].label || getType(active[0].typeId).label)
-    : active.map(a => a.label || getType(a.typeId).label).join(' · ');
+    ? alarmLabel(active[0])
+    : active.map(a => alarmLabel(a)).join(' · ');
   const hasSound = active.some(a => a.snd === 'default');
   const hasVib   = active.some(a => a.vib === 'pulse');
 
   const repBase = {
     title: `⏰ ${label}`,
-    body: `${pad(first.hour)}:${pad(first.min)} 알람`,
+    body: tr('{time} 알람', { time: `${pad(first.hour)}:${pad(first.min)}` }),
     sound: notifSound(hasSound),
     vibrate: hasVib ? [0,200,150,200,150,200] : undefined,
     categoryIdentifier: 'alarm',
@@ -337,10 +350,19 @@ export async function schedulePatternAlarmReps(alarm: Alarm, overrides: DayOverr
   if (Platform.OS !== 'ios' || !alarm.active || count <= 0) return;
   const next = getNextFireDate(alarm, overrides);
   if (!next) return;
-  const type = getType(alarm.typeId);
+  // 제목은 본 알림과 같은 규칙 — "근무일"의 근무조로 만든다(자정 넘는 퇴근은 발화일이 근무일 다음 날).
+  // alarmLabel만 쓰면 본 알림은 "야간 출근"인데 30초 뒤 보조는 "출근"으로 달라진다.
+  let label = alarmLabel(alarm);
+  if (alarm.rm === 'pattern') {
+    const ds = workDateOfFire(alarm, next, overrides);
+    const dw = dayWorkFor(alarm, overrides[ds]);
+    const shiftInfo = dw?.shift ? { shift: dw.shift } : effectiveShift(alarm, ds);
+    // 근무조를 못 찾으면 본 알림과 같은 폴백(타입 이름)
+    label = shiftInfo ? roleLabel(shiftInfo, alarm.groupRole ?? 'commute') : tr(getType(alarm.typeId).label);
+  }
   const repBase = {
-    title: `⏰ ${alarm.label || type.label}`,
-    body: `${pad(next.getHours())}:${pad(next.getMinutes())} 알람`,
+    title: `⏰ ${label}`,
+    body: tr('{time} 알람', { time: `${pad(next.getHours())}:${pad(next.getMinutes())}` }),
     sound: notifSound(alarm.snd === 'default'),
     categoryIdentifier: 'alarm',
     ...iosInterruption,

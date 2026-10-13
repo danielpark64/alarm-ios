@@ -5,6 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { Text } from '../common/AppText';
 import { useColors } from '../../hooks/useTheme';
 import { Palette } from '../../constants/colors';
+import { useT } from '../../i18n';
 // 인앱결제(IAP) 방식은 스토어 정책상 나중에 다시 필요해질 수 있어 useCoffeeTip 훅은 지우지
 // 않고 남겨둔다 — 지금은 계좌 후원 방식으로 운영(2026-07-29 계좌 확정).
 // import { useCoffeeTip } from '../../hooks/useCoffeeTip';
@@ -16,6 +17,7 @@ const ACCOUNT_HOLDER = '장미향';
 export function CoffeeTipScreen({ onClose }: { onClose: () => void }) {
   const C = useColors();
   const s = makeStyles(C);
+  const { t } = useT();
   const [copied, setCopied] = useState(false);
 
   // 계좌번호는 은행 앱에 붙여넣어야 하므로 한 번에 복사되는 게 중요하다.
@@ -30,34 +32,32 @@ export function CoffeeTipScreen({ onClose }: { onClose: () => void }) {
   return (
     <View style={s.root}>
       <View style={s.topBar}>
-        <Text style={s.topBarTitle}>개발자 응원하기</Text>
+        <Text style={s.topBarTitle}>{t('개발자 응원하기')}</Text>
         <TouchableOpacity style={s.closeBtn} onPress={onClose}>
-          <Text style={s.closeBtnText}>닫기</Text>
+          <Text style={s.closeBtnText}>{t('닫기')}</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={s.body} showsVerticalScrollIndicator={false}>
         <Text style={s.emoji}>💜</Text>
         <Text style={s.desc}>
-          알람앱이 마음에 드셨다면{'\n'}
-          아래 계좌로 작은 후원을 보내주세요{'\n'}
-          큰 힘이 됩니다 🙏
+          {t('알람앱이 마음에 드셨다면\n아래 계좌로 작은 후원을 보내주세요\n큰 힘이 됩니다 🙏')}
         </Text>
 
         <View style={s.accountCard}>
           <Text style={s.accountBank}>{BANK_NAME}</Text>
           <Text style={s.accountNumber} selectable>{ACCOUNT_NUMBER}</Text>
-          <Text style={s.accountHolder}>예금주 {ACCOUNT_HOLDER}</Text>
+          <Text style={s.accountHolder}>{t('예금주 {name}', { name: ACCOUNT_HOLDER })}</Text>
           <TouchableOpacity
             style={[s.copyBtn, copied && s.copyBtnDone]}
             onPress={handleCopy}
             activeOpacity={0.8}
           >
-            <Text style={s.copyBtnText}>{copied ? '✓ 복사됐어요' : '계좌번호 복사'}</Text>
+            <Text style={s.copyBtnText}>{copied ? t('✓ 복사됐어요') : t('계좌번호 복사')}</Text>
           </TouchableOpacity>
         </View>
 
-        <Text style={s.note}>자발적인 후원이며, 앱 이용에는 아무 영향이 없어요</Text>
+        <Text style={s.note}>{t('자발적인 후원이며, 앱 이용에는 아무 영향이 없어요')}</Text>
       </ScrollView>
     </View>
   );

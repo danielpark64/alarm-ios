@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Alert } from 'react-native';
-import { Alarm, ShiftPeriod, WorkSegment, SoundMode, VibMode } from '../constants';
-import { getType, pad, todayStr, lunarToSolarInYear, shiftPrefixFor } from '../utils';
+import { Alarm, ShiftPeriod, WorkSegment, SoundMode, VibMode, MONTH_KEYS } from '../constants';
+import { getType, pad, todayStr, lunarToSolarInYear, shiftPrefixFor, localizeDefaultLabel } from '../utils';
+import { t as tr } from '../i18n/translate';
 import { newBlockId } from '../utils/workPattern';
 import { fmtDisplayDate } from '../components/common/CalendarPicker';
+import { useT } from '../i18n';
 
 function defaultBlock(seed?: { shift?: ShiftPeriod; hour?: number; min?: number; days?: number }): WorkSegment {
   return {
@@ -57,14 +59,17 @@ export function useAlarmFormState(
   onSubmitPattern?: (groupId: number | undefined, pattern: WorkSegment[], sd: string, snd: SoundMode, vib: VibMode) => void,
   onRepeatConfigClose?: () => void,
 ) {
+  const { t } = useT();
   const [typeId,   setTypeId]  = useState(initial.typeId  ?? 'commute');
   const [hour,     setHour]    = useState(initial.hour    ?? 7);
   const [min,      setMin]     = useState(initial.min     ?? 0);
   // 라벨: 저장된 값이 없으면 타입 이름으로 초기화 (기타는 비움)
   const [label,    setLabel]   = useState(
+    // 저장된 라벨이 기본 라벨(어느 언어로든)이면 현재 언어로 바꿔 채운다 — 아래 접두어 가드·비교가 전부 현재 언어 기준이라
+    // 이전 언어의 "초번 출근"이 그대로 들어오면 접두어를 못 떼거나 지울 수 없는 글자로 남는다.
     () => (initial.label && initial.label.trim())
-      ? initial.label
-      : (initial.typeId === 'custom' ? '' : getType(initial.typeId ?? 'commute').label),
+      ? localizeDefaultLabel(initial.label)
+      : (initial.typeId === 'custom' ? '' : tr(getType(initial.typeId ?? 'commute').label)),
   );
   const [rm,       setRm]      = useState<string>(() => normalizeRm(initial.rm as string | undefined));
   const [days,     setDays]    = useState<number[]>(() => normalizeDays(initial.rm as string | undefined, initial.days));
@@ -128,8 +133,8 @@ export function useAlarmFormState(
   // 타입 버튼 → 라벨 앞부분만 교체 (근무 시간대 접두어·뒤 커스텀 텍스트는 보존)
   const handleTypeChange = (newTypeId: Alarm['typeId']) => {
     const shiftPre = shiftPrefixFor(shift, shiftCustom);
-    const oldName = getType(typeId).label;
-    const newName = getType(newTypeId).label;
+    const oldName = tr(getType(typeId).label);
+    const newName = tr(getType(newTypeId).label);
     setTypeId(newTypeId);
     setLabel(prevFull => {
       const prev = prevFull.startsWith(shiftPre) ? prevFull.slice(shiftPre.length) : prevFull;
@@ -169,8 +174,10 @@ export function useAlarmFormState(
   // 접두어를 건드린 편집은 무시하고, 뒷부분만 자유롭게 수정 가능. 기타는 타입 이름 부분만 자유.
   const setLabelGuarded = (text: string) => {
     const shiftPre = shiftPrefixFor(shift, shiftCustom);
-    const requiredPrefix = typeId === 'custom' ? shiftPre : shiftPre + getType(typeId).label;
-    setLabel(prev => text.startsWith(requiredPrefix) ? text : prev);
+    const requiredPrefix = typeId === 'custom' ? shiftPre : shiftPre + tr(getType(typeId).label);
+    // 접두어 가드는 "지금 라벨이 그 접두어로 시작할 때"만 건다. 다른 언어로 만든 알람("출근 준비"를 영어에서 편집)은
+    // 현재 언어의 접두어("Clock in")로 시작하지 않으므로, 무조건 걸면 모든 입력이 거부돼 입력칸이 잠긴다.
+    setLabel(prev => (!prev.startsWith(requiredPrefix) || text.startsWith(requiredPrefix)) ? text : prev);
   };
 
   const toggleDay = (i: number) =>
@@ -178,8 +185,8 @@ export function useAlarmFormState(
 
   // isDirty — 초기값과 현재값 비교
   const initialLabel = (initial.label && initial.label.trim())
-    ? initial.label
-    : (initial.typeId === 'custom' ? '' : getType(initial.typeId ?? 'commute').label);
+    ? localizeDefaultLabel(initial.label)
+    : (initial.typeId === 'custom' ? '' : tr(getType(initial.typeId ?? 'commute').label));
 
   const checkDirty = (): boolean => {
     const initRm   = normalizeRm(initial.rm as string | undefined);
@@ -224,7 +231,7 @@ export function useAlarmFormState(
     } else {
       setShowWizard(false);
       setTypeId('commute');
-      setLabel(getType('commute').label);
+      setLabel(tr(getType('commute').label));
       setRm('wdcustom');
       setDays([0, 1, 2, 3, 4]);
       setCd(2); setRd(1);
@@ -241,6 +248,16 @@ export function useAlarmFormState(
     setBlocks(result);
     setShowWizard(false);
   };
+  // "자주 쓰는 근무표" 프리셋 적용 — 위저드를 거치지 않고 블록을 한 번에 채운 뒤 블록카드 화면으로 간다.
+  // 근무조 게이트(shift)는 첫 근무 블록의 값으로 맞춘다(isPatternMode = shift !== 'none').
+  const applyPreset = (segs: WorkSegment[]) => {
+    const first = segs.find(b => !b.isRest);
+    if (!first) return;
+    setShift(first.shift);
+    setShiftCustom(first.shiftCustom ?? '');
+    setBlocks(segs);
+    setShowWizard(false);
+  };
   // 위저드 취소 → 게이트를 해당없음으로 되돌림(입력한 게 없으니 확인창 없이 바로)
   const cancelWizard = () => {
     setShowWizard(false);
@@ -253,10 +270,10 @@ export function useAlarmFormState(
         // 근무 블록이 하나도 없으면 알람이 안 생기니 저장 불가 — 조용히 무시하면 사용자가
         // 저장이 왜 안 되는지 알 수 없으므로 이유와 다음 행동을 안내한다
         Alert.alert(
-          '근무 블록이 필요해요',
+          t('근무 블록이 필요해요'),
           initial.id != null
-            ? '비번만으로는 알람이 울릴 수 없어요.\n근무 블록을 추가하거나, 이 근무표를 없애려면 아래 "이 알람 삭제"를 눌러주세요.'
-            : '비번만으로는 알람이 울릴 수 없어요.\n＋ 버튼으로 근무 블록을 추가해주세요.',
+            ? t('비번만으로는 알람이 울릴 수 없어요.\n근무 블록을 추가하거나, 이 근무표를 없애려면 아래 "이 알람 삭제"를 눌러주세요.')
+            : t('비번만으로는 알람이 울릴 수 없어요.\n＋ 버튼으로 근무 블록을 추가해주세요.'),
         );
         return;
       }
@@ -268,7 +285,7 @@ export function useAlarmFormState(
       : days;
     onSubmit({
       typeId, hour, min,
-      label: label.trim() || type.label,
+      label: label.trim() || tr(type.label),
       rm: rm as Alarm['rm'], days: effectiveDays, cd, rd, snd, vib, sd,
       lastDay: rm === 'monthly' ? lastDay : false,
       lunar: rm === 'yearly' ? lunar : false,
@@ -293,8 +310,8 @@ export function useAlarmFormState(
   const [, sdM, sdD] = sd.split('-').map(Number);
   // 매년+음력이면 달력에서 고른 월/일을 "음력 M월 D일"로 해석 — 연도는 무의미하므로 표시 안 함
   const dateLabel  = (rm === 'yearly' && lunar)
-    ? `음력 ${sdM}월 ${sdD}일`
-    : isToday ? `오늘 · ${fmtDisplayDate(sd)}` : `${fmtDisplayDate(sd)}부터`;
+    ? t('음력 {month} {d}일', { month: t(MONTH_KEYS[sdM - 1]), d: sdD })
+    : isToday ? t('오늘 · {date}', { date: fmtDisplayDate(sd) }) : t('{date}부터', { date: fmtDisplayDate(sd) });
   const dateLocked = rm === 'monthly' && lastDay;
   const isLeapDay  = !lunar && sd.endsWith('-02-29');
   // 음력 기준일 때 올해(선택한 연도) 기준 실제 양력 날짜 미리보기
@@ -304,16 +321,19 @@ export function useAlarmFormState(
 
   // 매월/매년/N일 주기/N일 후 휴식 반복 요약 텍스트 — cycle/rest는 팝업이 닫혀있는 동안
   // 폼에 아무 요약도 안 남으면 지금 설정이 뭔지 알 수 없으므로 여기서 요약 한 줄을 채워준다.
+  const hhmm = `${pad(hour)}:${pad(min)}`;
   const repeatSummary = rm === 'monthly'
     ? (lastDay
-      ? `🗓️ 매월 말일 ${pad(hour)}:${pad(min)}`
-      : `🗓️ 매월 ${sdD}일 ${pad(hour)}:${pad(min)}`)
+      ? `🗓️ ${t('매월 말일 {time}', { time: hhmm })}`
+      : `🗓️ ${t('매월 {d}일 {time}', { d: sdD, time: hhmm })}`)
     : rm === 'yearly'
-      ? `🗓️ 매년 ${lunar ? '음력 ' : ''}${sdM}월 ${sdD}일 ${pad(hour)}:${pad(min)}`
+      ? (lunar
+        ? `🗓️ ${t('매년 음력 {month} {d}일 {time}', { month: t(MONTH_KEYS[sdM - 1]), d: sdD, time: hhmm })}`
+        : `🗓️ ${t('매년 {month} {d}일 {time}', { month: t(MONTH_KEYS[sdM - 1]), d: sdD, time: hhmm })}`)
       : rm === 'cycle'
-        ? `🔁 ${cd}일마다 반복`
+        ? `🔁 ${t('{n}일마다 반복', { n: cd })}`
         : rm === 'rest'
-          ? `🔁 ${cd}일 알람 → ${rd}일 휴식 반복`
+          ? `🔁 ${t('{cd}일 알람 → {rd}일 휴식 반복', { cd, rd })}`
           : '';
 
   // ── 소리+진동 3-way ──
@@ -334,6 +354,6 @@ export function useAlarmFormState(
     type, isToday, dateLabel, dateLocked, isLeapDay, lunarSolarPreview, repeatSummary,
     sndVibMode, setSndVibMode,
     blocks, setBlocks, isPatternMode, applyShiftGate,
-    showWizard, completeWizard, cancelWizard, wizardInitialShift,
+    showWizard, completeWizard, cancelWizard, wizardInitialShift, applyPreset, isNewPatternEntry,
   };
 }

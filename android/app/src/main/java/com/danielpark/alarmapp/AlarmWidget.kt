@@ -43,7 +43,10 @@ fun updateWidget(ctx: Context, mgr: AppWidgetManager, widgetId: Int, layout: Int
     views.setOnClickPendingIntent(R.id.widget_root, pi)
 
     views.setTextViewText(R.id.widget_alarm_time, nextAlarm)
-    views.setTextViewText(R.id.widget_shift_name, if (isOffToday) "비번" else shiftName)
+    // 고정 라벨은 앱 언어로(NativeStrings) — 레이아웃 XML의 한국어는 저장된 값이 없을 때의 기본값일 뿐이다.
+    val offLabel = NativeStrings.get(ctx, "off", "비번")
+    views.setTextViewText(R.id.widget_alarm_label, NativeStrings.get(ctx, "nextAlarm", "⏰ 다음 알람"))
+    views.setTextViewText(R.id.widget_shift_name, if (isOffToday) offLabel else shiftName)
 
     val dotColor = if (isOffToday) "#f06565" else shiftColor
     views.setTextColor(R.id.widget_shift_dot, Color.parseColor(dotColor))
@@ -51,9 +54,9 @@ fun updateWidget(ctx: Context, mgr: AppWidgetManager, widgetId: Int, layout: Int
 
     // 비번 D-day (중/대 공통)
     val offText = when {
-        isOffToday       -> "오늘 비번! 🎉"
-        daysUntilOff > 0 -> "비번 ${daysUntilOff}일 후"
-        else             -> "비번 없음"
+        isOffToday       -> NativeStrings.get(ctx, "offToday", "오늘 비번! 🎉")
+        daysUntilOff > 0 -> NativeStrings.get(ctx, "offIn", "비번 {n}일 후").replace("{n}", daysUntilOff.toString())
+        else             -> NativeStrings.get(ctx, "noOff", "비번 없음")
     }
     views.setTextViewText(R.id.widget_off_text, offText)
     views.setTextViewText(R.id.widget_off_icon, if (isOffToday) "🎉" else "🔴")

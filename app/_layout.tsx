@@ -8,6 +8,8 @@ import { LogBox } from 'react-native';
 import { ThemeProvider } from '../src/hooks/useTheme';
 import { AlarmDefaultsProvider } from '../src/hooks/useAlarmDefaults';
 import { FontScaleProvider } from '../src/hooks/useFontScale';
+import { LanguageProvider } from '../src/i18n';
+import { WeekStartProvider } from '../src/hooks/useWeekStart';
 LogBox.ignoreAllLogs();
 SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
@@ -17,7 +19,11 @@ export default function RootLayout() {
       <ThemeProvider>
         <AlarmDefaultsProvider>
           <FontScaleProvider>
-            <SafeAreaProvider><Stack screenOptions={{ headerShown: false }} /></SafeAreaProvider>
+            <LanguageProvider>
+              <WeekStartProvider>
+                <SafeAreaProvider><Stack screenOptions={{ headerShown: false }} /></SafeAreaProvider>
+              </WeekStartProvider>
+            </LanguageProvider>
           </FontScaleProvider>
         </AlarmDefaultsProvider>
       </ThemeProvider>

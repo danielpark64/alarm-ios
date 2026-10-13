@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { View, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { Text } from '../common/AppText';
+import { isOvernight } from '../../utils';
 import { SHIFTS, ShiftPeriod, WorkSegment, DEFAULT_SHIFT_TIMES, DEFAULT_SHIFT_TIME_FALLBACK, REST_COLOR } from '../../constants';
 import { useColors } from '../../hooks/useTheme';
 import { newBlockId, mergeOrAppendSegment } from '../../utils/workPattern';
 import { makeStyles } from './styles';
 import { BlockTimeModal } from './BlockTimeModal';
 import { AddShiftModal } from './AddShiftModal';
+import { useT } from '../../i18n';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -58,6 +60,7 @@ export function RotationWizard({
 }: Props) {
   const C = useColors();
   const s = makeStyles(C);
+  const { t } = useT();
   const [, m, d] = sd.split('-').map(Number);
   const [sequence, setSequence] = useState<WorkSegment[]>([]);
   const [shiftDefaults, setShiftDefaults] = useState<Record<string, { commuteTime: { hour: number; min: number }; offworkTime: { hour: number; min: number }; hasOffwork: boolean; shiftCustom?: string }>>({});
@@ -200,7 +203,7 @@ export function RotationWizard({
 
   const finish = () => {
     if (!sequence.some(b => !b.isRest)) {
-      Alert.alert('근무 블록 필요', '비번만으로는 알람을 만들 수 없어요. 근무 조를 하나 이상 추가해주세요.');
+      Alert.alert(t('근무 블록 필요'), t('비번만으로는 알람을 만들 수 없어요. 근무 조를 하나 이상 추가해주세요.'));
       return;
     }
     onComplete(sequence);
@@ -213,20 +216,20 @@ export function RotationWizard({
       <View style={s.wzTopRow}>
         <View />
         <TouchableOpacity style={s.wzCloseBtn} onPress={onCancel}>
-          <Text style={s.wzCloseText}>✕ 취소</Text>
+          <Text style={s.wzCloseText}>✕ {t('취소')}</Text>
         </TouchableOpacity>
       </View>
 
       <View style={s.wpStartRow}>
-        <Text style={s.wpStartLabel}>시작일</Text>
+        <Text style={s.wpStartLabel}>{t('시작일')}</Text>
         <View style={s.wpStartHintGroup}>
-          {!startDateSeen && <Text style={s.wzStartHint}>먼저 시작일을 넣으세요 →</Text>}
+          {!startDateSeen && <Text style={s.wzStartHint}>{t('먼저 시작일을 넣으세요 →')}</Text>}
           <TouchableOpacity
             style={s.cycleDateChip}
             onPress={() => { setStartDateSeen(true); setShowCal(true); }}
           >
             <Text>📅</Text>
-            <Text style={s.cycleDateChipText}>{m}/{d} 시작</Text>
+            <Text style={s.cycleDateChipText}>{t('{date} 시작', { date: `${m}/${d}` })}</Text>
             {!startDateSeen && <View style={s.wzStartBadge} />}
           </TouchableOpacity>
         </View>
@@ -234,10 +237,10 @@ export function RotationWizard({
 
       {!flow && (
         <>
-          <Text style={s.wzQuestion}>근무 순환표 <Text style={s.wzStartHint}>(비번도 넣으세요)</Text></Text>
+          <Text style={s.wzQuestion}>{t('근무 순환표')} <Text style={s.wzStartHint}>{t('(비번도 넣으세요)')}</Text></Text>
           <View style={s.wzOptionRow}>
             {sequence.map((seg, i) => {
-              const label = seg.isRest ? '비번' : (seg.shift === 'custom' ? (seg.shiftCustom?.trim() || '기타') : SHIFTS.find(sh => sh.id === seg.shift)!.label);
+              const label = seg.isRest ? t('비번') : (seg.shift === 'custom' ? (seg.shiftCustom?.trim() || t('기타')) : t(SHIFTS.find(sh => sh.id === seg.shift)!.label));
               const color = seg.isRest ? REST_COLOR : SHIFTS.find(sh => sh.id === seg.shift)!.color;
               return (
                 <TouchableOpacity
@@ -246,7 +249,7 @@ export function RotationWizard({
                   onPress={() => editSegment(i)}
                   disabled={seg.isRest}
                 >
-                  <Text style={[s.wzSeqChipText, { color }]}>{label} {seg.days}일</Text>
+                  <Text style={[s.wzSeqChipText, { color }]}>{t('{label} {n}일', { label, n: seg.days })}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -254,15 +257,15 @@ export function RotationWizard({
               <Text style={s.wzAddChipText}>+</Text>
             </TouchableOpacity>
           </View>
-          {sequence.length === 0 && <Text style={s.wzSummary}>+를 눌러 하루씩 쌓아보세요</Text>}
+          {sequence.length === 0 && <Text style={s.wzSummary}>{t('+를 눌러 하루씩 쌓아보세요')}</Text>}
 
           {sequence.length > 0 && (
             <View style={s.wzActionRow}>
               <TouchableOpacity style={s.wzSecondaryBtn} onPress={undoLast}>
-                <Text style={s.wzSecondaryText}>↩ 마지막 취소</Text>
+                <Text style={s.wzSecondaryText}>↩ {t('마지막 취소')}</Text>
               </TouchableOpacity>
               <TouchableOpacity ref={finishBtnRef} style={s.wzPrimaryBtn} onPress={() => { finish(); onTutorialEvent?.('finish'); }}>
-                <Text style={s.wzPrimaryText}>여기서 반복</Text>
+                <Text style={s.wzPrimaryText}>{t('여기서 반복')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -271,22 +274,22 @@ export function RotationWizard({
 
       {flow?.phase === 'customName' && (
         <>
-          <Text style={s.wzQuestion}>근무 이름이 뭐예요?</Text>
+          <Text style={s.wzQuestion}>{t('근무 이름이 뭐예요?')}</Text>
           <TextInput
             style={s.wpCustomInput}
             value={customText}
             onChangeText={setCustomText}
-            placeholder="예: 새벽조"
+            placeholder={t('예: 새벽조')}
             placeholderTextColor={C.txt3}
             returnKeyType="done"
             autoFocus
           />
           <View style={[s.wzActionRow, { marginTop: 16 }]}>
             <TouchableOpacity style={s.wzSecondaryBtn} onPress={() => setFlow(null)}>
-              <Text style={s.wzSecondaryText}>취소</Text>
+              <Text style={s.wzSecondaryText}>{t('취소')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.wzPrimaryBtn} onPress={confirmCustomName}>
-              <Text style={s.wzPrimaryText}>다음</Text>
+              <Text style={s.wzPrimaryText}>{t('다음')}</Text>
             </TouchableOpacity>
           </View>
         </>
@@ -294,17 +297,17 @@ export function RotationWizard({
 
       {flow?.phase === 'commute' && (
         <>
-          <Text style={s.wzQuestion}>출근 시각은?</Text>
+          <Text style={s.wzQuestion}>{t('출근 시각은?')}</Text>
           <TouchableOpacity style={s.wpTimePill} onPress={() => setTimeModal('commute')}>
             <Text style={s.wpTimePillText}>{pad(flow.commuteTime.hour)}:{pad(flow.commuteTime.min)}</Text>
-            <Text style={s.wpTimePillSub}>탭해서 변경</Text>
+            <Text style={s.wpTimePillSub}>{t('탭해서 변경')}</Text>
           </TouchableOpacity>
           <View style={[s.wzActionRow, { marginTop: 20 }]}>
             <TouchableOpacity style={s.wzSecondaryBtn} onPress={() => setFlow(null)}>
-              <Text style={s.wzSecondaryText}>취소</Text>
+              <Text style={s.wzSecondaryText}>{t('취소')}</Text>
             </TouchableOpacity>
             <TouchableOpacity ref={nextBtnRef} style={s.wzPrimaryBtn} onPress={() => { advanceFromCommute(); onTutorialEvent?.('commuteNext'); }}>
-              <Text style={s.wzPrimaryText}>다음</Text>
+              <Text style={s.wzPrimaryText}>{t('다음')}</Text>
             </TouchableOpacity>
           </View>
         </>
@@ -312,13 +315,13 @@ export function RotationWizard({
 
       {flow?.phase === 'offworkYN' && (
         <>
-          <Text style={s.wzQuestion}>퇴근 알람도 필요해요?</Text>
+          <Text style={s.wzQuestion}>{t('퇴근 알람도 필요해요?')}</Text>
           <View style={s.wzOptionRow}>
             <TouchableOpacity ref={offworkYesBtnRef} style={s.wzOption} onPress={() => { pickOffworkYN(true); onTutorialEvent?.('offworkYes'); }}>
-              <Text style={s.wzOptionText}>네</Text>
+              <Text style={s.wzOptionText}>{t('네')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.wzOption} onPress={() => pickOffworkYN(false)}>
-              <Text style={s.wzOptionText}>아니요</Text>
+              <Text style={s.wzOptionText}>{t('아니요')}</Text>
             </TouchableOpacity>
           </View>
         </>
@@ -326,14 +329,18 @@ export function RotationWizard({
 
       {flow?.phase === 'offworkTime' && (
         <>
-          <Text style={s.wzQuestion}>퇴근 시각은?</Text>
+          <Text style={s.wzQuestion}>{t('퇴근 시각은?')}</Text>
           <TouchableOpacity style={s.wpTimePill} onPress={() => setTimeModal('offwork')}>
             <Text style={s.wpTimePillText}>{pad(flow.offworkTime.hour)}:{pad(flow.offworkTime.min)}</Text>
-            <Text style={s.wpTimePillSub}>탭해서 변경</Text>
+            <Text style={s.wpTimePillSub}>{t('탭해서 변경')}</Text>
           </TouchableOpacity>
+          {/* 퇴근이 출근보다 이르면 자정을 넘는 근무 — 퇴근 알람이 다음 날 울린다는 걸 그 자리에서 알려준다 */}
+          {isOvernight(flow.commuteTime, flow.offworkTime) && (
+            <Text style={[s.wpTimePillSub, { marginTop: 8, textAlign: 'center' }]}>{t('출근보다 이른 시각이라 다음날 퇴근으로 울려요')}</Text>
+          )}
           <View style={[s.wzActionRow, { marginTop: 20 }]}>
             <TouchableOpacity ref={nextBtnRef} style={s.wzPrimaryBtn} onPress={() => { finishFlow(flow); onTutorialEvent?.('offworkDone'); }}>
-              <Text style={s.wzPrimaryText}>완료</Text>
+              <Text style={s.wzPrimaryText}>{t('완료')}</Text>
             </TouchableOpacity>
           </View>
         </>
@@ -352,7 +359,7 @@ export function RotationWizard({
 
       <BlockTimeModal
         visible={!!timeModal}
-        title={timeModal === 'offwork' ? '퇴근 시각' : '출근 시각'}
+        title={timeModal === 'offwork' ? t('퇴근 시각') : t('출근 시각')}
         hour={(timeModal === 'offwork' ? flow?.offworkTime.hour : flow?.commuteTime.hour) ?? 9}
         min={(timeModal === 'offwork' ? flow?.offworkTime.min : flow?.commuteTime.min) ?? 0}
         onChange={(h, mi) => {

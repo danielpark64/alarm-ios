@@ -4,6 +4,7 @@ import { Text } from '../common/AppText';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
 import { helpKo as ENTRIES } from '../../content/help.ko';
+import { useT } from '../../i18n';
 
 interface Props {
   onClose: () => void;
@@ -13,13 +14,16 @@ interface Props {
 export function HelpScreen({ onClose, onStartRotationTutorial }: Props) {
   const C = useColors();
   const s = makeStyles(C);
+  const { t, lang } = useT();
+  // 한국 전용 기능(음력·한국 공휴일) 설명은 한국어일 때만 보인다
+  const entries = lang === 'ko' ? ENTRIES : ENTRIES.filter(e => e.kind !== 'item' || !e.krOnly);
 
   return (
     <View style={s.root}>
       <View style={s.topBar}>
-        <Text style={s.topBarTitle}>사용법 안내</Text>
+        <Text style={s.topBarTitle}>{t('사용법 안내')}</Text>
         <TouchableOpacity style={s.closeBtn} onPress={onClose}>
-          <Text style={s.closeBtnText}>닫기</Text>
+          <Text style={s.closeBtnText}>{t('닫기')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -27,17 +31,17 @@ export function HelpScreen({ onClose, onStartRotationTutorial }: Props) {
         <TouchableOpacity style={s.tutorialBanner} activeOpacity={0.8} onPress={onStartRotationTutorial}>
           <Text style={s.tutorialBannerIcon}>🗓️</Text>
           <View style={{ flex: 1 }}>
-            <Text style={s.tutorialBannerTitle}>근무표 만들기 따라하기</Text>
-            <Text style={s.tutorialBannerSub}>초번·말번·비번 순환표를 직접 만들어봐요</Text>
+            <Text style={s.tutorialBannerTitle}>{t('근무표 만들기 따라하기')}</Text>
+            <Text style={s.tutorialBannerSub}>{t('초번·말번·비번 순환표를 직접 만들어봐요')}</Text>
           </View>
           <Text style={s.tutorialBannerArrow}>›</Text>
         </TouchableOpacity>
 
-        {ENTRIES.map((entry, i) => {
+        {entries.map((entry, i) => {
           if (entry.kind === 'section') {
             return (
               <View key={i} style={s.sectionHeader}>
-                <Text style={s.sectionTitle}>{entry.title}</Text>
+                <Text style={s.sectionTitle}>{t(entry.title)}</Text>
                 <View style={s.sectionLine} />
               </View>
             );
@@ -56,9 +60,9 @@ export function HelpScreen({ onClose, onStartRotationTutorial }: Props) {
                 ) : (
                   <Text style={s.cardIcon}>{entry.icon}</Text>
                 )}
-                <Text style={s.cardTitle}>{entry.title}</Text>
+                <Text style={s.cardTitle}>{t(entry.title)}</Text>
               </View>
-              <Text style={s.cardBody}>{entry.body}</Text>
+              <Text style={s.cardBody}>{t(lang !== 'ko' && entry.bodyIntl ? entry.bodyIntl : entry.body)}</Text>
             </View>
           );
         })}

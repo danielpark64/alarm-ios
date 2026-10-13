@@ -4,6 +4,7 @@ import { Text } from '../common/AppText';
 import { ScrollPicker } from '../common/ScrollPicker';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
+import { useT } from '../../i18n';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINS  = Array.from({ length: 12 }, (_, i) => i * 5);
@@ -26,6 +27,7 @@ interface Props {
 export function OverrideTimeModal({ visible, title, start, end, onConfirm, onClose }: Props) {
   const C = useColors();
   const s = makeStyles(C);
+  const { t } = useT();
   const [sh, setSh] = useState(start?.hour ?? 9);
   const [sm, setSm] = useState(start?.min ?? 0);
   const [eh, setEh] = useState(end?.hour ?? 18);
@@ -45,13 +47,13 @@ export function OverrideTimeModal({ visible, title, start, end, onConfirm, onClo
     <View style={s.overlay}>
       <View style={s.card}>
         <Text style={s.title}>{title}</Text>
-        <Text style={s.rowLabel}>출근</Text>
+        <Text style={s.rowLabel}>{t('출근')}</Text>
         <View style={s.row}>
           <ScrollPicker value={sh} items={HOURS} onChange={setSh} />
           <Text style={s.colon}>:</Text>
           <ScrollPicker value={sm} items={MINS} onChange={setSm} />
         </View>
-        <Text style={s.rowLabel}>퇴근</Text>
+        <Text style={s.rowLabel}>{t('퇴근')}</Text>
         <View style={s.row}>
           <ScrollPicker value={eh} items={HOURS} onChange={setEh} />
           <Text style={s.colon}>:</Text>
@@ -59,10 +61,10 @@ export function OverrideTimeModal({ visible, title, start, end, onConfirm, onClo
         </View>
         <View style={s.btnRow}>
           <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
-            <Text style={s.cancelBtnText}>취소</Text>
+            <Text style={s.cancelBtnText}>{t('취소')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.confirmBtn} onPress={confirm}>
-            <Text style={s.confirmBtnText}>확인</Text>
+            <Text style={s.confirmBtnText}>{t('확인')}</Text>
           </TouchableOpacity>
         </View>
       </View>

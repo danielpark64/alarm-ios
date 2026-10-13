@@ -1,59 +1,69 @@
+import { N } from '../i18n/lang';
 export const TYPES = [
-  { id: 'commute',  label: '출근', icon: '🚇', color: '#2196F3' },
+  { id: 'commute',  label: N('출근'), icon: '🚇', color: '#2196F3' },
   // 빨강은 비번 전용으로 양보 — 비번이 달력에서 유일하게 빨갛게 띄도록
-  { id: 'offwork',  label: '퇴근', icon: '🏠', color: '#00ACC1' },
+  { id: 'offwork',  label: N('퇴근'), icon: '🏠', color: '#00ACC1' },
   // 원래 #4ADE80(파스텔 연두)였으나 라이트 테마 배경(밝은 회백색)과 명도가 거의 같아
   // 텍스트/배경 둘 다 안 보이는 문제 — 다른 TYPES 색상들과 비슷한 명도의 진한 녹색으로 교체
-  { id: 'meal',     label: '식사', icon: '🍽️', color: '#16A34A' },
+  { id: 'meal',     label: N('식사'), icon: '🍽️', color: '#16A34A' },
   // 주황은 비번 빨강과 한 계열이라 달력에서 헷갈림 → 노랑 계열로
-  { id: 'exercise', label: '운동', icon: '🏃', color: '#F9A825' },
-  { id: 'custom',   label: '기타', icon: '✏️', color: '#9C27B0' },
+  { id: 'exercise', label: N('운동'), icon: '🏃', color: '#F9A825' },
+  { id: 'custom',   label: N('기타'), icon: '✏️', color: '#9C27B0' },
 ] as const;
 // 색은 종류(TYPES) 색상, 비번의 빨강과 겹치지 않도록 선정 — 달력에서 근무 시간대별로 한눈에 구분되게
 // 말번은 원래 #F2994A(채도 높은 오렌지)였으나 다크 테마에서 비번(빨강)보다 먼저 눈에 띄어 톤 다운
 export const SHIFTS = [
-  { id: 'early',  label: '초번', color: '#2F80ED' },
-  { id: 'mid',    label: '중번', color: '#27AE60' },
-  { id: 'late',   label: '말번', color: '#D98A4A' },
-  { id: 'custom', label: '기타', color: '#9B51E0' },
-  { id: 'none',   label: '해당없음', color: '#9CA3AF' },
+  { id: 'early',  label: N('초번'), color: '#2F80ED' },
+  { id: 'mid',    label: N('중번'), color: '#27AE60' },
+  { id: 'late',   label: N('말번'), color: '#D98A4A' },
+  // 주간(2026-10-13) — 2교대의 낮 근무(Day/日勤/Tagschicht). 초·중·말번(3교대 이름)과 별개로, 야간과 짝을 이룬다.
+  { id: 'day',    label: N('주간'), color: '#E0A106' },
+  // 야간(2026-10-13) — 자정을 넘겨 다음 날 퇴근하는 근무. 해외(Night/夜勤/Nachtschicht)는 물론 한국 2교대·3교대에도 있다.
+  { id: 'night',  label: N('야간'), color: '#5B6BD6' },
+  { id: 'custom', label: N('기타'), color: '#9B51E0' },
+  { id: 'none',   label: N('해당없음'), color: '#9CA3AF' },
 ] as const;
 // 근무 시간대별 기본 출근/퇴근 시각 — RotationWizard 첫 사용 시, 그리고 기존 알람 편집 화면에서
 // 시간대를 새로 고를 때 동일하게 참조(값이 흩어져 있으면 한쪽만 바뀌는 불일치가 생기기 쉬움)
 export const DEFAULT_SHIFT_TIMES: Record<string, { commute: { hour: number; min: number }; offwork: { hour: number; min: number } }> = {
   early: { commute: { hour: 5,  min: 40 }, offwork: { hour: 15, min: 0 } },
   late:  { commute: { hour: 13, min: 40 }, offwork: { hour: 23, min: 0 } },
+  day:   { commute: { hour: 7,  min: 0 },  offwork: { hour: 19, min: 0 } },
+  // 퇴근(06:00)이 출근(22:00)보다 이르다 = 다음 날 퇴근. isOvernight가 이걸 보고 퇴근 알람을 근무일 다음 날로 민다.
+  night: { commute: { hour: 22, min: 0 },  offwork: { hour: 6,  min: 0 } },
 };
 export const DEFAULT_SHIFT_TIME_FALLBACK = { commute: { hour: 8, min: 0 }, offwork: { hour: 17, min: 0 } };
 // 비번 색 — 달력(CalendarView)의 비번 표시 색과 동일하게 맞춰서, 위저드/블록편집기 미리보기 칩과
 // 실제 달력에서 같은 색으로 보이게 한다
 export const REST_COLOR = '#e05252';
 export const REPEAT = [
-  { id: 'once',     label: '한 번' },
-  { id: 'wdcustom', label: '요일' },
-  { id: 'cycle',    label: 'N일 주기' },
-  { id: 'rest',     label: 'N일 후 휴식' },
-  { id: 'monthly',  label: '매월' },
-  { id: 'yearly',   label: '매년' },
+  { id: 'once',     label: N('한 번') },
+  { id: 'wdcustom', label: N('요일') },
+  { id: 'cycle',    label: N('N일 주기') },
+  { id: 'rest',     label: N('N일 후 휴식') },
+  { id: 'monthly',  label: N('매월') },
+  { id: 'yearly',   label: N('매년') },
 ] as const;
 // ⚠️ DAYS의 배열 인덱스가 곧 저장 포맷이다(Alarm.days, 0=월 … 6=일).
 // 이 값이 AsyncStorage에 그대로 남고 Expo weekday·네이티브 Calendar 변환과
 // 슬롯 ID 계산(weekdaySlotId)까지 쓰므로, 순서를 바꾸면 기존 사용자의 요일 알람이
 // 하루씩 밀린다. 화면에 일요일을 먼저 보여주고 싶으면 아래 DAYS_DISPLAY를 쓸 것.
-export const DAYS = ['월','화','수','목','금','토','일'];
+export const DAYS = [N('월'),N('화'),N('수'),N('목'),N('금'),N('토'),N('일')];
 
 // 화면 표시 전용 — 한국 일반 달력처럼 일요일이 첫 칸(0=일 … 6=토).
 // 저장값과 섞이지 않도록 반드시 아래 변환 함수를 거쳐서 쓴다.
-export const DAYS_DISPLAY = ['일','월','화','수','목','금','토'];
+export const DAYS_DISPLAY = [N('일'),N('월'),N('화'),N('수'),N('목'),N('금'),N('토')];
+// 월 이름 키 — 표시할 때 t(MONTH_KEYS[m-1]). t(`${m}월`)처럼 보간하면 키 추출이 안 된다.
+export const MONTH_KEYS = [N('1월'),N('2월'),N('3월'),N('4월'),N('5월'),N('6월'),N('7월'),N('8월'),N('9월'),N('10월'),N('11월'),N('12월')];
 export const displayToStore = (i: number) => (i + 6) % 7; // 일0→6, 월1→0
 export const storeToDisplay = (d: number) => (d + 1) % 7; // 월0→1, 일6→0
 export const SOUNDS = [
-  { id: 'none',    label: '없음', icon: '🔇' },
-  { id: 'default', label: '소리', icon: '🔔' },
+  { id: 'none',    label: N('없음'), icon: '🔇' },
+  { id: 'default', label: N('소리'), icon: '🔔' },
 ] as const;
 export const VIBS = [
-  { id: 'none',  label: '없음', icon: '📵' },
-  { id: 'pulse', label: '진동', icon: '📳' },
+  { id: 'none',  label: N('없음'), icon: '📵' },
+  { id: 'pulse', label: N('진동'), icon: '📳' },
 ] as const;
 export const CYCLE_PRESETS = [2,3,4,7,10,30];
 // 인앱 알람 울림 팝업의 "5분 후" 스누즈 버튼 노출 여부. false면 끄기 버튼만 표시.
@@ -119,17 +129,20 @@ export interface Alarm {
 // 필요한 경우는 이미 경조사(family)가 커버한다.
 export type OverrideKind =
   | 'annual' | 'half' | 'quarter' | 'sick'   // 연차 반차 반반차 병가
-  | 'substitute' | 'special' | 'night' | 'extend';       // 대근 특근 야근 연장
+  | 'substitute' | 'special' | 'night' | 'extend'        // 대근 특근 야근 연장
+  | 'comp' | 'oncall';                                   // 대체휴무(Comp day/代休) 대기근무(On-call/待機) — 2026-10-13, 해외 제도 대응
 
 export const OVERRIDE_KINDS: { id: OverrideKind; label: string }[] = [
-  { id: 'annual',     label: '연차' },
-  { id: 'half',       label: '반차' },
-  { id: 'quarter',    label: '반반차' },
-  { id: 'sick',       label: '병가' },
-  { id: 'substitute', label: '대근' },
-  { id: 'special',    label: '특근' },
-  { id: 'night',      label: '야근' },
-  { id: 'extend',     label: '연장' },
+  { id: 'annual',     label: N('연차') },
+  { id: 'half',       label: N('반차') },
+  { id: 'quarter',    label: N('반반차') },
+  { id: 'sick',       label: N('병가') },
+  { id: 'substitute', label: N('대근') },
+  { id: 'special',    label: N('특근') },
+  { id: 'night',      label: N('야근') },
+  { id: 'extend',     label: N('연장') },
+  { id: 'comp',       label: N('대체휴무') },   // work 없음 = 그날 근무 알람 끔(연차와 같은 갈래)
+  { id: 'oncall',     label: N('대기근무') },   // 근무조·시각을 고르는 갈래(대근·특근과 같음)
 ];
 
 // work 없음 = 그날 근무 알람 끔(연차 등 기본값). UI가 기본값을 미리 채워줄 뿐,
@@ -144,3 +157,15 @@ export type DayOverride = {
   };
 };
 export type DayOverrides = Record<string, DayOverride>; // key = 'YYYY-MM-DD'
+
+// 개발용 딥링크(alarmapp://?k=<키>&testAlarm=3 등) 잠금 키. 출시 빌드에도 들어가는 코드라, 키 없이 열면 아무 웹페이지나
+// 링크 하나로 사용자 폰에 알람을 만들 수 있다. 번들에서 꺼낼 수는 있어도 무심코 걸리는 남용은 막는다.
+export const DEV_LINK_KEY = '1ef80163d089870d';
+
+// 하루 근무 변경 선택지에 보일 종류 — 반반차는 한국에만 있는 제도라 한국어일 때만 고를 수 있다.
+// (이미 기록된 반반차는 언어와 무관하게 OVERRIDE_KINDS 전체에서 라벨을 찾아 그대로 표시된다)
+export const pickableOverrideKinds = (lang: string) => OVERRIDE_KINDS.filter(k => k.id !== 'quarter' || lang === 'ko');
+
+// 알람 목록 저장 키(AsyncStorage). useAlarms와 i18n(기존 설치 판별 → 한국어 고정)이 함께 쓴다 —
+// 각자 문자열로 들고 있으면 키를 바꿀 때 한쪽만 바뀌어 기존 사용자 보호가 조용히 풀린다.
+export const ALARMS_STORAGE_KEY = 'alarms_v1_rn';

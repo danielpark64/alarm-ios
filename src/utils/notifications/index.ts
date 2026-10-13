@@ -5,6 +5,7 @@ import { getNextFireDate } from '../index';
 import { cancelNativeAlarms, syncActiveNativeAlarms } from './android';
 import { scheduleAlarmTriggers, scheduleGroupReps, schedulePatternAlarmReps } from './core';
 import { nextGen, isStaleGen } from './rescheduleGen';
+import { t } from '../../i18n/translate';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -172,9 +173,9 @@ export async function registerNotificationCategories() {
   // 들어가면 스누즈가 안 울린다 — 앱에서 제거한 기능이 워치에서만 살아나 가장 약한 경로로
   // 동작하는 셈이라, SNOOZE_ENABLED와 묶어둔다.
   const actions = [
-    { identifier: 'stop', buttonTitle: '알람 끄기', options: { isDestructive: false, isAuthenticationRequired: false } },
+    { identifier: 'stop', buttonTitle: t('알람 끄기'), options: { isDestructive: false, isAuthenticationRequired: false } },
     ...(SNOOZE_ENABLED
-      ? [{ identifier: 'snooze', buttonTitle: '5분 후', options: { isDestructive: false, isAuthenticationRequired: false } }]
+      ? [{ identifier: 'snooze', buttonTitle: t('5분 후'), options: { isDestructive: false, isAuthenticationRequired: false } }]
       : []),
   ];
 

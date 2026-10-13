@@ -1,3 +1,4 @@
+import { isKoreanLocale } from '../i18n/lang';
 // 대한민국 법정공휴일 — 몇 년치를 내장해서 오프라인에서도 정확히 동작한다.
 // 설날·추석 연휴, 대체공휴일, 임시공휴일(정부가 그때그때 지정하는 것)까지 포함.
 // 음력 기반 공휴일과 대체공휴일 규정은 매년 정부 발표를 확인해 이 표를 갱신해야 한다.
@@ -114,7 +115,11 @@ export function setApiHolidays(map: Record<string, string>) {
   listeners.forEach(fn => { try { fn(); } catch {} });
 }
 
-export const getHoliday = (dateStr: string): string | undefined => apiHolidays[dateStr] ?? HOLIDAYS[dateStr];
+// 한국 공휴일 표는 언어가 한국어일 때만 쓴다(isKoreanLocale). 여기 한 곳을 막으면 공휴일 이름 표시·법정공휴일
+// 건너뛰기(isStatutoryHoliday)·휴일근무 집계(statutoryHolidaysInYear)가 전부 함께 꺼진다 — 해외 사용자의 출근 알람이
+// 한국 공휴일에 조용히 안 울리는 일이 없어야 한다. 언어가 바뀌면 app/index.tsx가 재예약을 돌린다.
+export const getHoliday = (dateStr: string): string | undefined =>
+  isKoreanLocale() ? (apiHolidays[dateStr] ?? HOLIDAYS[dateStr]) : undefined;
 
 // API 이름은 "대체공휴일(광복절)"처럼 괄호로 원인 공휴일을 덧붙여 온다 — 비교·표시 전에 떼어낸다.
 const normalizeHolidayName = (full: string) => full.replace(/\s*\([^)]*\)\s*/g, '').trim();
@@ -141,6 +146,7 @@ export const isStatutoryHoliday = (dateStr: string): boolean => {
 export const statutoryHolidaysInYear = (year: number): string[] => {
   const prefix = `${year}-`;
   const all = new Set<string>();
+  if (!isKoreanLocale()) return [];
   for (const ds of Object.keys(HOLIDAYS)) if (ds.startsWith(prefix)) all.add(ds);
   for (const ds of Object.keys(apiHolidays)) if (ds.startsWith(prefix)) all.add(ds);
   return Array.from(all).filter(isStatutoryHoliday).sort();

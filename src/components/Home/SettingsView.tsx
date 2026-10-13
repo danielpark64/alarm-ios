@@ -7,11 +7,19 @@ import { Palette } from '../../constants/colors';
 import { useColors, useThemeSetting, ThemeName } from '../../hooks/useTheme';
 import { useAlarmDefaults } from '../../hooks/useAlarmDefaults';
 import { useFontScale, FontScaleName } from '../../hooks/useFontScale';
+import { useT, N, LANGS, LANGUAGE_LABEL, type LanguageSetting } from '../../i18n';
+import { useWeekStart, type WeekStartSetting } from '../../hooks/useWeekStart';
 
 const FONT_SCALES: { id: FontScaleName; label: string }[] = [
-  { id: 'small',  label: '작게' },
-  { id: 'medium', label: '보통' },
-  { id: 'large',  label: '크게' },
+  { id: 'small',  label: N('작게') },
+  { id: 'medium', label: N('보통') },
+  { id: 'large',  label: N('크게') },
+];
+
+const WEEK_STARTS: { id: WeekStartSetting; label: string }[] = [
+  { id: 'auto', label: N('자동') },
+  { id: 'sun',  label: N('일요일') },
+  { id: 'mon',  label: N('월요일') },
 ];
 
 interface Props {
@@ -25,13 +33,15 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp }: Props) {
   const { theme, setTheme } = useThemeSetting();
   const { fontScale, setFontScale } = useFontScale();
   const { defaults, setDefaults } = useAlarmDefaults();
+  const { t, setting: langSetting, setSetting: setLangSetting } = useT();
+  const { setting: weekSetting, setSetting: setWeekSetting } = useWeekStart();
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false}>
-      <Text style={s.sectionLabel}>화면</Text>
+      <Text style={s.sectionLabel}>{t('화면')}</Text>
       <View style={s.card}>
         <View style={s.row}>
-          <Text style={s.rowLabel}>글자크기</Text>
+          <Text style={s.rowLabel}>{t('글자크기')}</Text>
           <View style={s.segment}>
             {FONT_SCALES.map(f => (
               <TouchableOpacity
@@ -39,22 +49,54 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp }: Props) {
                 style={[s.segBtn, fontScale === f.id && s.segBtnActive]}
                 onPress={() => setFontScale(f.id)}
               >
-                <Text style={[s.segBtnText, fontScale === f.id && s.segBtnTextActive]}>{f.label}</Text>
+                <Text style={[s.segBtnText, fontScale === f.id && s.segBtnTextActive]}>{t(f.label)}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
         <View style={s.divider} />
         <View style={s.row}>
-          <Text style={s.rowLabel}>테마</Text>
+          <Text style={s.rowLabel}>{t('테마')}</Text>
           <View style={s.segment}>
-            {(['dark', 'light'] as ThemeName[]).map(t => (
+            {(['dark', 'light'] as ThemeName[]).map(th => (
               <TouchableOpacity
-                key={t}
-                style={[s.segBtn, theme === t && s.segBtnActive]}
-                onPress={() => setTheme(t)}
+                key={th}
+                style={[s.segBtn, theme === th && s.segBtnActive]}
+                onPress={() => setTheme(th)}
               >
-                <Text style={[s.segBtnText, theme === t && s.segBtnTextActive]}>{t === 'dark' ? '다크' : '라이트'}</Text>
+                <Text style={[s.segBtnText, theme === th && s.segBtnTextActive]}>{th === 'dark' ? t('다크') : t('라이트')}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+        <View style={s.divider} />
+        {/* 언어 — 세이람과 같은 방식: '시스템'은 폰 언어를 따르고, 나머지는 각 언어의 자기 이름으로 보여준다.
+            선택지가 10개라 한 줄 세그먼트 대신 줄바꿈되는 칩으로 둔다. */}
+        <View style={{ paddingVertical: 13, paddingHorizontal: 14 }}>
+          <Text style={s.rowLabel}>{t('언어')}</Text>
+          <View style={s.langWrap}>
+            {(['system', ...LANGS] as LanguageSetting[]).map(l => (
+              <TouchableOpacity
+                key={l}
+                style={[s.langChip, langSetting === l && s.segBtnActive]}
+                onPress={() => setLangSetting(l)}
+                accessibilityLabel={`${t('언어')} ${l === 'system' ? t(LANGUAGE_LABEL[l]) : LANGUAGE_LABEL[l]}`}
+              >
+                <Text style={[s.segBtnText, langSetting === l && s.segBtnTextActive]}>
+                  {l === 'system' ? t(LANGUAGE_LABEL[l]) : LANGUAGE_LABEL[l]}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={s.langSub}>{t('시스템은 폰의 언어를 따라요')}</Text>
+        </View>
+        <View style={s.divider} />
+        <View style={s.row}>
+          <Text style={s.rowLabel}>{t('달력 주 시작')}</Text>
+          <View style={s.segment}>
+            {WEEK_STARTS.map(w => (
+              <TouchableOpacity key={w.id} style={[s.segBtn, weekSetting === w.id && s.segBtnActive]} onPress={() => setWeekSetting(w.id)}>
+                <Text style={[s.segBtnText, weekSetting === w.id && s.segBtnTextActive]}>{t(w.label)}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -63,11 +105,11 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp }: Props) {
 
       {Platform.OS === 'android' && (
         <>
-          <Text style={s.sectionLabel}>알람 기본값</Text>
+          <Text style={s.sectionLabel}>{t('알람 기본값')}</Text>
           <View style={s.card}>
             <View style={{ paddingVertical: 13, paddingHorizontal: 14 }}>
               <View style={s.volumeHeadRow}>
-                <Text style={s.rowLabel}>알람 볼륨</Text>
+                <Text style={s.rowLabel}>{t('알람 볼륨')}</Text>
                 <View style={s.androidBadge}><Text style={s.androidBadgeText}>Android</Text></View>
               </View>
               <View style={s.volumeRow}>
@@ -97,8 +139,8 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp }: Props) {
       >
         <View style={s.tutorialIcon}><Text style={s.tutorialIconT}>📖</Text></View>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={s.tutorialTitle}>사용법 안내</Text>
-          <Text style={s.tutorialSub}>기본 사용법과 잘 안 보이는 기능까지 알려드려요</Text>
+          <Text style={s.tutorialTitle}>{t('사용법 안내')}</Text>
+          <Text style={s.tutorialSub}>{t('기본 사용법과 잘 안 보이는 기능까지 알려드려요')}</Text>
         </View>
         <Text style={s.tutorialArrow}>›</Text>
       </TouchableOpacity>
@@ -110,16 +152,16 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp }: Props) {
       >
         <View style={s.tutorialIcon}><Text style={s.tutorialIconT}>🗓️</Text></View>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={s.tutorialTitle}>근무표 만들기 따라하기</Text>
-          <Text style={s.tutorialSub}>초번·말번·비번 순환표를 직접 만들어봐요</Text>
+          <Text style={s.tutorialTitle}>{t('근무표 만들기 따라하기')}</Text>
+          <Text style={s.tutorialSub}>{t('초번·말번·비번 순환표를 직접 만들어봐요')}</Text>
         </View>
         <Text style={s.tutorialArrow}>›</Text>
       </TouchableOpacity>
 
-      <Text style={s.sectionLabel}>정보</Text>
+      <Text style={s.sectionLabel}>{t('정보')}</Text>
       <View style={s.card}>
         <View style={s.row}>
-          <Text style={s.rowLabel}>앱 버전</Text>
+          <Text style={s.rowLabel}>{t('앱 버전')}</Text>
           <Text style={s.rowValue}>{Constants.expoConfig?.version ?? '1.0.0'}</Text>
         </View>
       </View>
@@ -139,6 +181,9 @@ function makeStyles(C: Palette) {
     segment: { flexDirection: 'row', gap: 4, backgroundColor: C.bg3, borderRadius: 10, padding: 3 },
     segBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
     segBtnActive: { backgroundColor: C.accent2 },
+    langWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
+    langChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, backgroundColor: C.bg3 },
+    langSub: { fontSize: 11, color: C.txt3, marginTop: 8 },
     segBtnText: { fontSize: 12, color: C.txt3, fontWeight: '700' },
     segBtnTextActive: { color: '#fff' },
     androidBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(162,155,254,0.15)' },

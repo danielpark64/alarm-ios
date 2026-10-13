@@ -62,7 +62,7 @@ class CoverAlarmActivity : Activity() {
             gravity = Gravity.CENTER
         }
         val stopButton = Button(this).apply {
-            text = "끄기"
+            text = NativeStrings.get(this@CoverAlarmActivity, "stop", "끄기")
             textSize = 16f
             setOnClickListener { stopAlarmAndFinish() }
         }

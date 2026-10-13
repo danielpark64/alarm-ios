@@ -1,14 +1,16 @@
 import React from 'react';
-import { View, TouchableOpacity, Modal } from 'react-native';
+import { View, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { Text } from '../common/AppText';
 import { SHIFTS, ShiftPeriod, REST_COLOR } from '../../constants';
 import { useColors } from '../../hooks/useTheme';
 import { makeStyles } from './styles';
+import { useT } from '../../i18n';
 
 const BLOCK_SHIFTS = SHIFTS.filter(s => s.id !== 'none');
 // RotationWizard/WorkPatternBuilder와 동일한 순서(초·말·비·중·기타) — 대부분의 교대근무자가
 // 이 순서로 근무하므로 버튼도 이 순서로 배치
-const BUTTON_ORDER: (ShiftPeriod | 'REST')[] = ['early', 'late', 'REST', 'mid', 'custom'];
+// night(야간)는 2026-10-13 추가 — 여기 목록이 하드코딩이라 SHIFTS에만 넣으면 이 팝업에 안 나온다.
+const BUTTON_ORDER: (ShiftPeriod | 'REST')[] = ['early', 'late', 'day', 'night', 'REST', 'mid', 'custom'];
 
 interface Props {
   visible: boolean;
@@ -23,22 +25,26 @@ interface Props {
 export function AddShiftModal({ visible, onClose, onPick, itemRefs }: Props) {
   const C = useColors();
   const s = makeStyles(C);
+  const { t } = useT();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={s.modalOverlay}>
         <View style={s.modalContent}>
-          <Text style={s.wpMenuTitle}>어떤 근무를 추가할까요?</Text>
+          <Text style={s.wpMenuTitle}>{t('어떤 근무를 추가할까요?')}</Text>
+          {/* 버튼이 7개라 작은 화면·글자 크게에서 넘칠 수 있다 — 목록만 스크롤 */}
+          <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
           {BUTTON_ORDER.map(id => id === 'REST' ? (
             <TouchableOpacity key="REST" ref={itemRefs?.REST} style={s.wpMenuBtn} onPress={() => onPick('REST')}>
-              <Text style={[s.wpMenuBtnText, { color: REST_COLOR }]}>비번</Text>
+              <Text style={[s.wpMenuBtnText, { color: REST_COLOR }]}>{t('비번')}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity key={id} ref={itemRefs?.[id]} style={s.wpMenuBtn} onPress={() => onPick(id)}>
-              <Text style={s.wpMenuBtnText}>{BLOCK_SHIFTS.find(sh => sh.id === id)!.label}</Text>
+              <Text style={s.wpMenuBtnText}>{t(BLOCK_SHIFTS.find(sh => sh.id === id)!.label)}</Text>
             </TouchableOpacity>
           ))}
+          </ScrollView>
           <TouchableOpacity style={s.wpMenuCancelBtn} onPress={onClose}>
-            <Text style={s.wpMenuCancelText}>취소</Text>
+            <Text style={s.wpMenuCancelText}>{t('취소')}</Text>
           </TouchableOpacity>
         </View>
       </View>

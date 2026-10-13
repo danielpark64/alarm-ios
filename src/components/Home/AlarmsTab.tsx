@@ -8,6 +8,7 @@ import { Alarm } from '../../constants';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
 import { makeHomeStyles } from './styles';
+import { useT } from '../../i18n';
 
 export function AlarmsTab({
   alarms, sorted, selectMode, selectedIds, repLimitedIds, highlightId,
@@ -30,27 +31,28 @@ export function AlarmsTab({
   const C = useColors();
   const homeStyles = makeHomeStyles(C);
   const s = makeStyles(C);
+  const { t, lang } = useT();
   return (
     <ScrollView style={homeStyles.scroll} contentContainerStyle={homeStyles.scrollC} showsVerticalScrollIndicator={false}>
       {selectMode && (
         <View style={s.selBar}>
-          <Text style={s.selCnt}>{selectedIds.size}개 선택됨</Text>
+          <Text style={s.selCnt}>{t('{n}개 선택됨', { n: selectedIds.size })}</Text>
           <TouchableOpacity onPress={onExitSelectMode} style={s.selB}>
-            <Text style={s.selBT}>취소</Text>
+            <Text style={s.selBT}>{t('취소')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={onSelectAll} style={s.selB}>
-            <Text style={s.selBT}>전체</Text>
+            <Text style={s.selBT}>{t('전체')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={onDeleteSelected} style={[s.selB,s.selBDel]}>
-            <Text style={[s.selBT,{color:'#fff'}]}>삭제</Text>
+            <Text style={[s.selBT,{color:'#fff'}]}>{t('삭제')}</Text>
           </TouchableOpacity>
         </View>
       )}
       {alarms.length===0 ? (
         <View style={s.empty}>
           <Text style={s.emptyI}>⏰</Text>
-          <Text style={s.emptyT}>알람이 없습니다</Text>
-          <Text style={s.emptySub}>＋ 버튼으로 추가하세요</Text>
+          <Text style={s.emptyT}>{t('알람이 없습니다')}</Text>
+          <Text style={s.emptySub}>{t('＋ 버튼으로 추가하세요')}</Text>
         </View>
       ) : sorted.map(al => (
         <AlarmCard
@@ -64,7 +66,8 @@ export function AlarmsTab({
           repLimited={repLimitedIds.has(al.id)}
         />
       ))}
-      <PromoBanner />
+      {/* 유튜브 채널·계좌 후원은 한국 사용자 대상 — 한국어일 때만 */}
+      {lang === 'ko' && <PromoBanner />}
     </ScrollView>
   );
 }

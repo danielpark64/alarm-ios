@@ -493,6 +493,87 @@ grep -q "openURLContexts" "$ROOT/plugins/withIosSceneDelegate.js" 2>/dev/null \
   && grep -q "launchOptions\[.url\] = url" "$ROOT/plugins/withIosSceneDelegate.js" 2>/dev/null \
   && ok "" || { fail "withIosSceneDelegate.js에 딥링크 전달 코드 없음 — iOS에서 딥링크 전부 무시됨"; }
 
+# ⑱ 자정을 넘는 근무(야간 22~06시, 24시간 근무)(2026-10-13) — 퇴근 시각이 출근 시각보다 이르거나 같으면
+#    퇴근 알람은 근무일 "다음 날"에 울려야 한다. 판정은 isOvernight 한 곳, effectiveTime/dayWorkFor가
+#    dayOffset을 돌려주고, 발화 시각을 만드는 세 곳(core.ts 두 예약 루프 + getNextFireDate)이 전부 그걸 더해야 한다.
+#    한 곳이라도 빠지면 "다음 알람 문구는 내일 06시인데 실제 예약은 오늘 06시(이미 지남 → 안 울림)"가 된다.
+printf "  자정 넘는 근무: dayOffset이 예약 루프 2곳 + getNextFireDate에 반영 ... "
+_U="$ROOT/src/utils/index.ts"; _C="$ROOT/src/utils/notifications/core.ts"
+if ! grep -q "export function isOvernight" "$_U" 2>/dev/null; then
+  fail "isOvernight 헬퍼 없음"
+elif ! grep -q "if (t.dayOffset) ft.setDate" "$_C" 2>/dev/null || ! grep -q "if (dw?.dayOffset) ft.setDate" "$_C" 2>/dev/null; then
+  fail "core.ts 예약 루프가 dayOffset을 반영하지 않음(로테이션·날짜기반 두 루프 모두 필요)"
+elif ! awk '/export function getNextFireDate/,/^}/' "$_U" | grep -q "dayOffset"; then
+  fail "getNextFireDate가 dayOffset을 반영하지 않음 — 다음 알람 문구·보조 알림 시각이 실제 예약과 어긋남"
+elif [ "$(grep -c "overnightFrom(alarm)" "$_C" 2>/dev/null)" -lt 2 ]; then
+  fail "core.ts 예약 루프가 어제 근무분(i=-1)부터 훑지 않음 — 어젯밤 야간 근무의 오늘 아침 퇴근 알람 누락"
+else
+  ok ""
+fi
+
+# ⑲ 야간(night) 근무조 — SHIFTS와 테마 색상표(다크/라이트) 양쪽에 있어야 배지가 빈 색으로 뜨지 않는다.
+# (OVERRIDE_KINDS에도 id:'night'(야근)가 있어 파일 전체 grep은 거짓 통과한다 — SHIFTS 블록만 잘라 본다.
+#  "+" 근무 추가 팝업(AddShiftModal BUTTON_ORDER)은 목록이 하드코딩이라 거기에도 있어야 고를 수 있다.)
+printf "  야간(night) 근무조가 SHIFTS·다크·라이트 색상표·근무 추가 팝업에 모두 있는지 ... "
+grep -q "BUTTON_ORDER.*'day'.*'night'" "$ROOT/src/components/AlarmForm/AddShiftModal.tsx" 2>/dev/null || { fail "AddShiftModal BUTTON_ORDER에 day/night 없음 — 근무표에 주간·야간 블록을 추가할 수 없음"; }
+awk '/^export const SHIFTS/,/as const/' "$ROOT/src/constants/index.ts" 2>/dev/null | grep -q "id: 'night'" \
+  && [ "$(grep -c "^  night:" "$ROOT/src/constants/colors.ts" 2>/dev/null)" -ge 2 ] \
+  && ok "" || { fail "night 근무조가 SHIFTS 또는 colors.ts(DARK_SHIFT/LIGHT_SHIFT)에 없음"; }
+
+# ⑳ 순수 로직 시나리오 테스트(scripts/logic-tests) — 시각을 고정해 getNextFireDate·effectiveTime·dayWorkFor 등을
+#    실제로 실행한다. grep 체크가 못 잡는 "값이 틀림"을 잡는 용도(자정 넘는 근무 등).
+printf "  로직 시나리오 테스트(node scripts/logic-tests/run.js) ... "
+_LT=$(cd "$ROOT" && node scripts/logic-tests/run.js 2>&1)
+if echo "$_LT" | grep -q "/ 0 실패"; then ok "$(echo "$_LT" | tail -1)"; else fail "로직 테스트 실패"; echo "$_LT" | grep -E "FAIL|Error" | head -8; fi
+
+# 로테이션 보조 알림 제목(2026-10-13) — iOS 보조 알림(schedulePatternAlarmReps)도 본 알림처럼 "근무일" 근무조로
+#    제목을 만든다. alarmLabel만 쓰면 본 알림은 "야간 출근"인데 30초 뒤 보조는 "출근"으로 달라진다.
+printf "  로테이션 보조 알림 제목이 근무조 기준(roleLabel)인지 ... "
+if awk '/export async function schedulePatternAlarmReps/,/^}/' "$ROOT/src/utils/notifications/core.ts" 2>/dev/null | grep -q "roleLabel(" \
+  && awk '/export async function schedulePatternAlarmReps/,/^}/' "$ROOT/src/utils/notifications/core.ts" 2>/dev/null | grep -q "workDateOfFire("; then ok ""
+else fail "schedulePatternAlarmReps 제목이 근무일 근무조(roleLabel+workDateOfFire)를 쓰지 않음"; fi
+
+# ㉑ 다국어(2026-10-13) — 순수 모듈(utils·constants)은 i18n 인덱스(React·AsyncStorage)를 import하면 안 된다
+#    (scripts/logic-tests가 node에서 못 돈다). 번역은 '../i18n/translate', 표식은 '../i18n/lang'만.
+printf "  utils·constants가 i18n 인덱스를 import하지 않는지 ... "
+if grep -rnE "from '(\.\./)+i18n'" "$ROOT/src/utils" "$ROOT/src/constants" >/dev/null 2>&1; then
+  fail "src/utils 또는 src/constants가 '…/i18n' 인덱스를 import함 — '…/i18n/translate'로 바꿀 것"
+else ok ""; fi
+
+# ㉒ 사전 누락 검사 — 코드의 모든 t()/N() 키가 8개 언어 사전에 있고, 자리표시자·{time} 선두 규칙을 지키는지.
+printf "  번역 사전 누락·자리표시자 검사(node scripts/i18n-keys.js --check) ... "
+_IK=$(cd "$ROOT" && node scripts/i18n-keys.js --check 2>&1)
+if echo "$_IK" | grep -q "누락 없음"; then ok "$(echo "$_IK" | tail -1)"; else fail "사전에 문제"; echo "$_IK" | head -12; fi
+
+# ㉓ 한국 전용 기능 게이트 — 공휴일 표는 한국어일 때만(getHoliday). 이 게이트가 빠지면 해외 사용자의 출근 알람이
+#    한국 공휴일에 조용히 안 울린다. 알림 본문 키는 {time}으로 시작해야 네이티브 끄기 경로가 시각을 읽는다.
+printf "  한국 공휴일 게이트(isKoreanLocale) + 알림 본문 키 ... "
+grep -A3 "export const getHoliday" "$ROOT/src/constants/holidays.ts" 2>/dev/null | grep -q "isKoreanLocale()" \
+  && grep -q "'{time} 알람'" "$ROOT/src/utils/notifications/core.ts" 2>/dev/null \
+  && ok "" || { fail "getHoliday의 isKoreanLocale 게이트 또는 '{time} 알람' 키가 없음"; }
+
+# ㉔ 네이티브 문구 — 알림 "끄기" 버튼·위젯 라벨은 JS가 넘긴 현재 언어 문구(NativeStrings)를 쓴다.
+printf "  네이티브 문구가 NativeStrings를 거치는지 ... "
+_J="$ROOT/android/app/src/main/java/com/danielpark/alarmapp"
+grep -q 'NativeStrings.get(this, "stop"' "$_J/AlarmService.kt" 2>/dev/null \
+  && grep -q "saveNativeStrings" "$_J/WidgetModule.kt" 2>/dev/null \
+  && grep -q "saveNativeStrings" "$ROOT/src/utils/widgetSync.ts" 2>/dev/null \
+  && ok "" || { fail "AlarmService 끄기 버튼 또는 saveNativeStrings 연결이 없음"; }
+
+# ㉕ 기존 한국어 사용자 보호(2026-10-13 verify-fix) — (a) 기기 언어는 네이티브 값(iOS AppleLanguages / Android I18nManager)을
+#    먼저 읽는다: iOS의 Intl 로캘은 앱이 선언한 언어 안에서만 정해져 한국어 iPhone에서도 en이 나올 수 있다.
+#    (b) iOS가 지원 언어를 선언한다(CFBundleLocalizations). (c) 언어 설정이 없는 기존 설치(알람 데이터 있음)는 'ko'로 고정한다 —
+#    폰을 영어로 쓰는 기존 사용자가 업데이트 뒤 영어로 바뀌며 공휴일 건너뛰기가 조용히 꺼지는 것을 막는다.
+printf "  기기 언어 네이티브 읽기 + iOS 언어 선언 + 기존 설치 한국어 고정 ... "
+_IX="$ROOT/src/i18n/index.tsx"
+if ! grep -q "setSystemLocaleProvider(" "$_IX" 2>/dev/null || ! grep -q "AppleLanguages" "$_IX" 2>/dev/null; then
+  fail "i18n/index.tsx가 네이티브 로캘 제공자를 등록하지 않음 — 한국어 iPhone이 영어로 뜰 수 있음"
+elif ! grep -q "CFBundleLocalizations" "$ROOT/app.json" 2>/dev/null; then
+  fail "app.json ios.infoPlist에 CFBundleLocalizations 없음"
+elif ! grep -q "existing ? 'ko' : 'system'" "$_IX" 2>/dev/null; then
+  fail "기존 설치를 'ko'로 고정하는 첫 실행 판별이 없음(loadLanguageSetting)"
+else ok ""; fi
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

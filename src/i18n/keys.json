@@ -1,0 +1,2274 @@
+[
+ {
+  "key": "\"4일 알람 울리고 2일 쉬기\"처럼 알람과 휴식이 번갈아 도는 경우예요. 반복 방식에서 🌙 N일 후 휴식 카드를 누르면 팝업이 떠요.\n알람일수 4일, 휴식 일수 2일로 각각 정하고 알람시작일을 잡으면 그 패턴이 계속 반복돼요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "\"격일 알람\"이나 \"3일마다\"처럼 일정한 간격으로만 울리면 되는 알람이에요. 반복 방식에서 🔁 N일 주기 카드를 누르면 팝업이 떠요.\n며칠 간격인지와 시작일만 정하면 그 간격으로 계속 반복되고, 다음에 울릴 날짜들을 팝업에서 미리 확인할 수 있어요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "\"비번\"을 선택해보세요 — 시각 입력 없이 바로 추가돼요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "\"추가\" 버튼을 눌러 알람을 완성해보세요!",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "(근무 시간대 알람은 출근·퇴근 세트로 함께 삭제됩니다)",
+  "files": [
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "(비번도 넣으세요)",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx"
+  ]
+ },
+ {
+  "key": "+를 눌러 하루씩 쌓아보세요",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx"
+  ]
+ },
+ {
+  "key": "10월",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "11월",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "12시간 근무, 28일 주기. 야간 4 → 휴무 3 → 주간 3 → 휴무 1 → 야간 3 → 휴무 3 → 주간 4 → 휴무 7",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "12시간 근무. 2일 근무 → 2일 휴무",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "12시간 근무. 2일 근무 → 2일 휴무 → 3일 근무 → 2일 휴무 → 2일 근무 → 3일 휴무",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "12시간 근무. 주간 2일 → 야간 2일 → 휴무 2일",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "12시간 근무. 주간 4일 → 휴무 4일 → 야간 4일 → 휴무 4일",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "12월",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "1월",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "2-2-3 (피트먼)",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "24시간 근무 1일 → 휴무 2일 (소방·구급)",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "24시간 근무 · 48시간 휴무",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "2교대 (주간·장시간 야간)",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "2월",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "2일 근무 2일 휴무",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "3교대 전진 순환",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "3월",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "4월",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "4일 근무 4일 휴무",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "4조 3교대 (3근 1휴)",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "5분 후",
+  "files": [
+   "src/components/AlarmRinging.tsx",
+   "src/utils/notifications/index.ts"
+  ]
+ },
+ {
+  "key": "5월",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "6월",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "7월",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "8월",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "9월",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "N일 주기",
+  "files": [
+   "src/components/AlarmForm/CycleRestControls.tsx",
+   "src/components/AlarmForm/RepeatModeSelector.tsx",
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "N일 후 휴식",
+  "files": [
+   "src/components/AlarmForm/CycleRestControls.tsx",
+   "src/components/AlarmForm/RepeatModeSelector.tsx",
+   "src/constants/index.ts",
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "{cd}일 알람 → {rd}일 휴식 반복",
+  "files": [
+   "src/components/AlarmForm/CycleRestControls.tsx",
+   "src/hooks/useAlarmFormState.ts"
+  ]
+ },
+ {
+  "key": "{date} 시작",
+  "files": [
+   "src/components/AlarmForm/CycleRestControls.tsx",
+   "src/components/AlarmForm/RotationWizard.tsx",
+   "src/components/AlarmForm/WorkPatternBuilder.tsx"
+  ]
+ },
+ {
+  "key": "{date}부터",
+  "files": [
+   "src/hooks/useAlarmFormState.ts"
+  ]
+ },
+ {
+  "key": "{label} {month} (년 {year})",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "{label} {n}일",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx",
+   "src/components/AlarmForm/WorkPatternBuilder.tsx"
+  ]
+ },
+ {
+  "key": "{label} {n}일({time})",
+  "files": [
+   "src/utils/workPattern.ts"
+  ]
+ },
+ {
+  "key": "{label} {n}일({time}, 퇴근 없음)",
+  "files": [
+   "src/utils/workPattern.ts"
+  ]
+ },
+ {
+  "key": "{label} · {kind}로 꺼짐",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "{label} · 공휴일이라 꺼짐",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "{label} · 다음날",
+  "files": [
+   "src/components/AlarmCard.tsx",
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "{label} · 이날 꺼짐",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "{label} — 근무조 선택",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "{label} 근무",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "{label} 시각",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "{month} {d}일 ({dow})",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "{month} {d}일 {dow}요일",
+  "files": [
+   "src/components/Home/ClockHeader.tsx"
+  ]
+ },
+ {
+  "key": "{m}.{d} ({dow})부터",
+  "files": [
+   "src/components/AlarmCard.tsx"
+  ]
+ },
+ {
+  "key": "{n}개 선택됨",
+  "files": [
+   "src/components/Home/AlarmsTab.tsx"
+  ]
+ },
+ {
+  "key": "{n}일",
+  "files": [
+   "src/components/AlarmForm/CycleRestControls.tsx",
+   "src/components/AlarmForm/WorkPatternBuilder.tsx",
+   "src/i18n/index.tsx",
+   "src/utils/index.ts"
+  ]
+ },
+ {
+  "key": "{n}일 비번",
+  "files": [
+   "src/utils/index.ts"
+  ]
+ },
+ {
+  "key": "{n}일 알람",
+  "files": [
+   "src/components/AlarmForm/CycleRestControls.tsx"
+  ]
+ },
+ {
+  "key": "{n}일 알람 후 {r}일 휴식",
+  "files": [
+   "src/utils/index.ts"
+  ]
+ },
+ {
+  "key": "{n}일 주기",
+  "files": [
+   "src/utils/index.ts"
+  ]
+ },
+ {
+  "key": "{n}일 휴식",
+  "files": [
+   "src/components/AlarmForm/CycleRestControls.tsx"
+  ]
+ },
+ {
+  "key": "{n}일마다",
+  "files": [
+   "src/components/AlarmForm/CycleRestControls.tsx"
+  ]
+ },
+ {
+  "key": "{n}일마다 반복",
+  "files": [
+   "src/hooks/useAlarmFormState.ts"
+  ]
+ },
+ {
+  "key": "{pattern} 반복",
+  "files": [
+   "src/utils/index.ts",
+   "src/utils/workPattern.ts"
+  ]
+ },
+ {
+  "key": "{role} · {kind} · 다음날",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "{shift} 출근",
+  "files": [
+   "src/utils/index.ts",
+   "src/utils/workPattern.ts"
+  ]
+ },
+ {
+  "key": "{shift} 퇴근",
+  "files": [
+   "src/utils/index.ts",
+   "src/utils/workPattern.ts"
+  ]
+ },
+ {
+  "key": "{time} 알람",
+  "files": [
+   "src/utils/notifications/core.ts"
+  ]
+ },
+ {
+  "key": "{year}년",
+  "files": [
+   "src/components/Home/CalendarView.tsx",
+   "src/components/common/CalendarPicker.tsx"
+  ]
+ },
+ {
+  "key": "‹ 종류 다시 선택",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "⏰ 다음 알람",
+  "files": [
+   "src/utils/widgetSync.ts"
+  ]
+ },
+ {
+  "key": "⏰ 스누즈",
+  "files": [
+   "src/hooks/useAlarmNotifications.ts"
+  ]
+ },
+ {
+  "key": "⏰ 알람",
+  "files": [
+   "src/hooks/useAlarmNotifications.ts"
+  ]
+ },
+ {
+  "key": "● 알람  ○ 휴식",
+  "files": [
+   "src/components/AlarmForm/CycleRestControls.tsx"
+  ]
+ },
+ {
+  "key": "● 알람  ○ 휴식 (일부만 표시)",
+  "files": [
+   "src/components/AlarmForm/CycleRestControls.tsx"
+  ]
+ },
+ {
+  "key": "⚠ 1회만",
+  "files": [
+   "src/components/AlarmCard.tsx"
+  ]
+ },
+ {
+  "key": "✓ 복사됐어요",
+  "files": [
+   "src/components/Support/CoffeeTipScreen.tsx"
+  ]
+ },
+ {
+  "key": "간단한 실습으로 알람을 처음부터 끝까지 직접 만들어볼게요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "개발자 응원하기",
+  "files": [
+   "src/components/Home/PromoBanner.tsx",
+   "src/components/Support/CoffeeTipScreen.tsx"
+  ]
+ },
+ {
+  "key": "결제 중 오류가 발생했습니다",
+  "files": [
+   "src/hooks/useCoffeeTip.ts"
+  ]
+ },
+ {
+  "key": "결혼식·장례식처럼 참석은 하지만 근무 여부와는 상관없는 일정은, 위 \"하루 근무 변경\"과 별도로 메모칸에 자유롭게 적어두면 돼요.\n연차를 쓴 날이든 정상 근무하는 날이든 상관없이 메모만 남길 수 있고, 근무 알람에는 전혀 영향을 주지 않아요. 달력 칸에는 작은 점으로 표시돼요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "경조사",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "경조사 메모",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "경조사 메모 (예: 김과장 결혼식 15시)",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "계속",
+  "files": [
+   "src/components/AlarmForm/index.tsx"
+  ]
+ },
+ {
+  "key": "계속하기",
+  "files": [
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "계좌번호 복사",
+  "files": [
+   "src/components/Support/CoffeeTipScreen.tsx"
+  ]
+ },
+ {
+  "key": "고른 뒤 시각과 일수를 내 근무에 맞게 고칠 수 있어요",
+  "files": [
+   "src/components/AlarmForm/PresetModal.tsx"
+  ]
+ },
+ {
+  "key": "공휴일엔 출퇴근 알람이 쉬어요",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "공휴일이 자동으로 반영돼요",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "교대 근무가 아니어도 괜찮아요. 반복 알람, 이날만 끄기, 음력 생일·제사 알람까지 — 일상의 모든 알람을 이 앱 하나로 관리할 수 있어요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "교대 근무가 아니어도 괜찮아요. 반복 알람, 이날만 끄기까지 — 일상의 모든 알람을 이 앱 하나로 관리할 수 있어요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "교대근무",
+  "files": [
+   "src/components/AlarmForm/index.tsx"
+  ]
+ },
+ {
+  "key": "교대근무 알람 · 아래 블록에서 조정",
+  "files": [
+   "src/components/AlarmForm/index.tsx"
+  ]
+ },
+ {
+  "key": "교대근무 이름을 입력하세요 (예: 새벽조)",
+  "files": [
+   "src/components/AlarmForm/ShiftSelector.tsx"
+  ]
+ },
+ {
+  "key": "교대근무 전환",
+  "files": [
+   "src/components/AlarmForm/index.tsx"
+  ]
+ },
+ {
+  "key": "교대근무에서 \"초번\"을 눌러보세요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "교대근무자도, 일반인도",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "그만두기",
+  "files": [
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "근무 로테이션",
+  "files": [
+   "src/utils/index.ts"
+  ]
+ },
+ {
+  "key": "근무 블록 필요",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx"
+  ]
+ },
+ {
+  "key": "근무 블록이 필요해요",
+  "files": [
+   "src/hooks/useAlarmFormState.ts"
+  ]
+ },
+ {
+  "key": "근무 순환표",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx",
+   "src/components/AlarmForm/WorkPatternBuilder.tsx"
+  ]
+ },
+ {
+  "key": "근무 이름이 뭐예요?",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx",
+   "src/components/AlarmForm/WorkPatternBuilder.tsx"
+  ]
+ },
+ {
+  "key": "근무로 전환",
+  "files": [
+   "src/components/AlarmForm/WorkPatternBuilder.tsx"
+  ]
+ },
+ {
+  "key": "근무표 마법사로 순환표 한 번에 만들기",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "근무표 만들기 따라하기",
+  "files": [
+   "src/components/Help/HelpScreen.tsx",
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "근무표 만들기 따라하기를 해볼까요?\n(설정에서 언제든 보실 수 있습니다)",
+  "files": [
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "근무표는 하루 단위 블록을 원하는 순서로 쌓아서 만들어요. 흔한 3교대뿐 아니라 며칠씩 이어지는 근무, 불규칙하게 섞인 나만의 스케줄도 그대로 담을 수 있어요.\n그 패턴이 계속 반복되기만 한다면 어떤 근무 형태든 이 앱 하나로 관리할 수 있어요 — 이게 이 앱의 가장 큰 힘이에요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "글자 크게 보기",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "글자크기",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "금",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "기본 사용법",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "기본 사용법과 잘 안 보이는 기능까지 알려드려요",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "기본값 그대로, 초번→말번→비번이 도는 3일 주기 근무표를 함께 만들어볼게요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "기타",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx",
+   "src/components/AlarmForm/WorkPatternBuilder.tsx",
+   "src/constants/index.ts",
+   "src/utils/workPattern.ts"
+  ]
+ },
+ {
+  "key": "꺼둔 알람은 절대 안 울리고, 켠 알람은 절대 놓치지 않아요",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "끄기",
+  "files": [
+   "src/components/AlarmRinging.tsx",
+   "src/utils/widgetSync.ts"
+  ]
+ },
+ {
+  "key": "나중에",
+  "files": [
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "내일",
+  "files": [
+   "src/components/Home/TodayShiftRow.tsx"
+  ]
+ },
+ {
+  "key": "네",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx",
+   "src/components/AlarmForm/WorkPatternBuilder.tsx",
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "다시 켜기",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "다음",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx",
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "다음 {icon}",
+  "files": [
+   "src/components/Home/NextAlarmLine.tsx"
+  ]
+ },
+ {
+  "key": "다음 알람 날짜를 확인하고 닫기 버튼을 눌러보세요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "다음: {dates}",
+  "files": [
+   "src/components/AlarmForm/CycleRestControls.tsx"
+  ]
+ },
+ {
+  "key": "다음날 {time}",
+  "files": [
+   "src/components/AlarmCard.tsx"
+  ]
+ },
+ {
+  "key": "다크",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "단순한 반복은 반복 방식 위쪽의 작은 버튼으로 골라요.\n• 요일: 월~일 중에서 원하는 요일을 여러 개 고를 수 있어요. 7개를 다 고르면 매일이 돼요.\n• 매월 / 매년: 매달 같은 날짜, 매년 같은 날짜에 울려요. 매월은 \"말일\"도 고를 수 있어요.\n• 한 번: 정한 날짜에 딱 한 번만 울리고 끝나요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "닫기",
+  "files": [
+   "src/components/Help/HelpScreen.tsx",
+   "src/components/Home/CalendarView.tsx",
+   "src/components/Support/CoffeeTipScreen.tsx",
+   "src/components/common/CalendarPicker.tsx"
+  ]
+ },
+ {
+  "key": "달·연도 넘기기",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "달력",
+  "files": [
+   "src/components/Home/BottomNav.tsx",
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "달력 주 시작",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "달력 화면에서 좌우로 밀거나 상단의 ‹ › 버튼을 누르면 한 달씩 넘어가요.\n화면 위쪽의 \"????년\" 부분(현재 연도가 적힌 곳)을 누르면 연도 목록이 떠서, 몇 년 전이나 몇 년 후든 원하는 해로 바로 이동할 수 있어요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "달력에 공휴일과 대체공휴일이 자동으로 표시돼요. 정부에서 새 임시공휴일을 발표해도 앱이 알아서 확인하고 채워 넣어서, 따로 신경 쓰지 않아도 항상 최신이에요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "달력에 근무표가 저절로",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "달력에서 고른 월·일을 음력 기준으로 매년 계산해요",
+  "files": [
+   "src/components/AlarmForm/DateSection.tsx"
+  ]
+ },
+ {
+  "key": "달력에서 고른 월·일을 음력 기준으로 매년 계산해요 (올해는 양력 {month} {d}일)",
+  "files": [
+   "src/components/AlarmForm/DateSection.tsx"
+  ]
+ },
+ {
+  "key": "달력에서 날짜를 누르면 \"하루 근무 변경\" 버튼이 있어요. 여기서 그날 근무 상태를 바꿔요.\n• 연차·병가: 그날 출근·퇴근 알람이 꺼져요.\n• 대근·특근: 원래 쉬는 날(비번)에 알람을 새로 켜요. 근무조를 고르면 시각이 자동으로 채워지고, 직접 조정할 수도 있어요.\n• 반차·반반차·야근·연장: 그날 알람은 그대로 울리되, 출근이나 퇴근 시각만 원하는 대로 바꿔요.\n한번 정한 건 \"하루 근무 변경 해제\"를 누르면 원래대로 되돌아가요. 달력에는 그 사유가 배지로 뜨고, 달력 아래엔 종류별로 몇 번 썼는지도 자동으로 집계돼요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "대근",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "대기근무",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "대체휴무",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "듀폰",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "라벨에 내용을 적어보세요. (예: 기상)",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "라이트",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "마지막 취소",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx"
+  ]
+ },
+ {
+  "key": "마지막으로 \"추가\" 버튼을 눌러 저장하세요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "말번",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "말일",
+  "files": [
+   "src/components/AlarmForm/DateSection.tsx"
+  ]
+ },
+ {
+  "key": "매년",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "매년 {month} {d}일",
+  "files": [
+   "src/utils/index.ts"
+  ]
+ },
+ {
+  "key": "매년 {month} {d}일 {time}",
+  "files": [
+   "src/hooks/useAlarmFormState.ts"
+  ]
+ },
+ {
+  "key": "매년 음력 {month} {d}일 {time}",
+  "files": [
+   "src/hooks/useAlarmFormState.ts"
+  ]
+ },
+ {
+  "key": "매월",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "매월 {d}일",
+  "files": [
+   "src/utils/index.ts"
+  ]
+ },
+ {
+  "key": "매월 {d}일 {time}",
+  "files": [
+   "src/hooks/useAlarmFormState.ts"
+  ]
+ },
+ {
+  "key": "매월 말일",
+  "files": [
+   "src/components/AlarmForm/DateSection.tsx",
+   "src/utils/index.ts"
+  ]
+ },
+ {
+  "key": "매월 말일 {time}",
+  "files": [
+   "src/hooks/useAlarmFormState.ts"
+  ]
+ },
+ {
+  "key": "매일",
+  "files": [
+   "src/utils/index.ts"
+  ]
+ },
+ {
+  "key": "먼저 시작일을 넣으세요 →",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx"
+  ]
+ },
+ {
+  "key": "먼저 알람 종류를 선택해보세요. (예: 출근)",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "며칠마다 반복 (N일 주기)",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "며칠인가요?",
+  "files": [
+   "src/components/AlarmForm/WorkPatternBuilder.tsx"
+  ]
+ },
+ {
+  "key": "목",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "믿을 수 있는 알람",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "반반차",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "반복 방식",
+  "files": [
+   "src/components/AlarmForm/RepeatModeSelector.tsx"
+  ]
+ },
+ {
+  "key": "반복 방식에서 \"N일 주기\"를 눌러보세요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "반복 알람",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "반차",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "변경",
+  "files": [
+   "src/components/AlarmForm/WorkPatternBuilder.tsx"
+  ]
+ },
+ {
+  "key": "병가",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "보통",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "비번",
+  "files": [
+   "src/components/AlarmForm/AddShiftModal.tsx",
+   "src/components/AlarmForm/RotationWizard.tsx",
+   "src/components/AlarmForm/WorkPatternBuilder.tsx",
+   "src/components/Home/CalendarView.tsx",
+   "src/components/Home/TodayShiftRow.tsx",
+   "src/utils/widgetSync.ts"
+  ]
+ },
+ {
+  "key": "비번 (쉬는 날)",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "비번 {n}일",
+  "files": [
+   "src/utils/workPattern.ts"
+  ]
+ },
+ {
+  "key": "비번 {n}일 후",
+  "files": [
+   "src/utils/widgetSync.ts"
+  ]
+ },
+ {
+  "key": "비번 없음",
+  "files": [
+   "src/utils/widgetSync.ts"
+  ]
+ },
+ {
+  "key": "비번만으로는 알람을 만들 수 없어요. 근무 조를 하나 이상 추가해주세요.",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx"
+  ]
+ },
+ {
+  "key": "비번만으로는 알람이 울릴 수 없어요.\n근무 블록을 추가하거나, 이 근무표를 없애려면 아래 \"이 알람 삭제\"를 눌러주세요.",
+  "files": [
+   "src/hooks/useAlarmFormState.ts"
+  ]
+ },
+ {
+  "key": "비번만으로는 알람이 울릴 수 없어요.\n＋ 버튼으로 근무 블록을 추가해주세요.",
+  "files": [
+   "src/hooks/useAlarmFormState.ts"
+  ]
+ },
+ {
+  "key": "비번으로 전환",
+  "files": [
+   "src/components/AlarmForm/WorkPatternBuilder.tsx"
+  ]
+ },
+ {
+  "key": "사용법 안내",
+  "files": [
+   "src/components/Help/HelpScreen.tsx",
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "삭제",
+  "files": [
+   "src/components/AlarmForm/WorkPatternBuilder.tsx",
+   "src/components/Home/AlarmsTab.tsx",
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "새 알람 추가하기",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "선택한 {k}개를 삭제할까요?",
+  "files": [
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "설정",
+  "files": [
+   "src/components/Home/BottomNav.tsx"
+  ]
+ },
+ {
+  "key": "설정 화면의 \"글자크기\"에서 작게·보통·크게 중 편한 크기를 고르면 앱 전체 글자가 그 크기로 바뀌어요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "설정 화면의 \"알람 기본값 › 알람 볼륨\"에서 막대를 좌우로 밀면 알람이 울릴 때의 소리 크기가 정해져요. 앞으로 만드는 알람은 물론 이미 만들어둔 알람에도 적용돼요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "설정 화면의 \"테마\"에서 밝은 화면(라이트)과 어두운 화면(다크) 중에 고를 수 있어요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "설정으로 이동",
+  "files": [
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "설정을 그만둘까요?",
+  "files": [
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "소개",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "소리",
+  "files": [
+   "src/components/AlarmForm/SndVibSelector.tsx",
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "소리+진동",
+  "files": [
+   "src/components/AlarmForm/SndVibSelector.tsx"
+  ]
+ },
+ {
+  "key": "소리/진동",
+  "files": [
+   "src/components/AlarmForm/index.tsx"
+  ]
+ },
+ {
+  "key": "소리만",
+  "files": [
+   "src/components/AlarmForm/SndVibSelector.tsx"
+  ]
+ },
+ {
+  "key": "수",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "수수뮤직과 기분좋은 하루",
+  "files": [
+   "src/components/Home/PromoBanner.tsx"
+  ]
+ },
+ {
+  "key": "시각 변경",
+  "files": [
+   "src/components/AlarmForm/WorkPatternBuilder.tsx"
+  ]
+ },
+ {
+  "key": "시간",
+  "files": [
+   "src/components/AlarmForm/TimePickerSection.tsx"
+  ]
+ },
+ {
+  "key": "시간을 맞춰보세요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "시스템",
+  "files": [
+   "src/i18n/index.tsx"
+  ]
+ },
+ {
+  "key": "시스템은 폰의 언어를 따라요",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "시작 일자",
+  "files": [
+   "src/components/AlarmForm/DateSection.tsx"
+  ]
+ },
+ {
+  "key": "시작일",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx",
+   "src/components/AlarmForm/WorkPatternBuilder.tsx"
+  ]
+ },
+ {
+  "key": "시작일자를 선택해보세요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "시작하기",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "식사",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "식사·운동처럼 근무와 상관없는 알람은, 달력에서 날짜를 누르고 그 알람 옆의 \"이날 끄기\"를 누르면 그날 하루만 안 울려요. 알람 자체를 지우지 않아도 돼요.\n출근·퇴근 알람은 여기 안 뜨고, 대신 아래 \"하루 근무 변경\"을 써요 — 절반만 꺼서 근무 상태가 어긋나는 걸 막기 위해서예요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "아니요",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx",
+   "src/components/AlarmForm/WorkPatternBuilder.tsx"
+  ]
+ },
+ {
+  "key": "알람",
+  "files": [
+   "src/components/Home/BottomNav.tsx"
+  ]
+ },
+ {
+  "key": "알람 기본값",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "알람 끄기",
+  "files": [
+   "src/utils/notifications/index.ts"
+  ]
+ },
+ {
+  "key": "알람 볼륨",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "알람 삭제",
+  "files": [
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "알람 소리 크기 (안드로이드)",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "알람 수정",
+  "files": [
+   "src/components/AlarmForm/index.tsx"
+  ]
+ },
+ {
+  "key": "알람 수정하기",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "알람 오른쪽에 있는 동그란 스위치를 손가락으로 누르면 켜지거나 꺼져요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "알람 울림",
+  "files": [
+   "src/utils/widgetSync.ts"
+  ]
+ },
+ {
+  "key": "알람 추가",
+  "files": [
+   "src/components/AlarmForm/index.tsx",
+   "src/i18n/index.tsx"
+  ]
+ },
+ {
+  "key": "알람 추가 화면 맨 위 \"교대근무\" 카드에서 초번·중번·말번(또는 직접 이름 지은 조)을 고르면 근무표 만들기로 바뀌어요.\n출근·퇴근 시각을 정하면 하루 블록이 하나 쌓이고, + 로 다음 근무나 비번을 이어서 쌓은 뒤 \"여기서 반복\"을 누르면 그 순서가 계속 도는 나만의 근무표가 완성돼요.\n위쪽 \"근무표 만들기 따라하기\"에서 직접 만들어볼 수 있어요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "알람 추가 화면에서 \"매년\"을 고르면 옆에 \"음력\" 버튼이 나와요. 이걸 누르고 날짜를 고르면, 매년 그 음력 날짜에 맞는 양력 날로 알아서 계산해서 알람이 울려요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "알람 켜고 끄기",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "알람내용",
+  "files": [
+   "src/components/AlarmForm/index.tsx"
+  ]
+ },
+ {
+  "key": "알람시작일",
+  "files": [
+   "src/components/AlarmForm/CycleRestControls.tsx"
+  ]
+ },
+ {
+  "key": "알람앱이 마음에 드셨다면\n아래 계좌로 작은 후원을 보내주세요\n큰 힘이 됩니다 🙏",
+  "files": [
+   "src/components/Support/CoffeeTipScreen.tsx"
+  ]
+ },
+ {
+  "key": "알람을 손가락으로 잠깐 길게 누르고 있으면 여러 개를 한 번에 골라서 지울 수 있어요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "알람을 손가락으로 한 번 누르면 시간이나 반복 방식을 바꿀 수 있어요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "알람이 없습니다",
+  "files": [
+   "src/components/Home/AlarmsTab.tsx"
+  ]
+ },
+ {
+  "key": "알람이 울릴 때 화면에 바로 떠서 끄기 버튼을 누를 수 있게 하려면 권한이 필요해요.\n\n\"설정으로 이동\"을 누르면 \"다른 앱 위에 표시\"라는 제목의 화면이 열려요.\n\n1. 그 목록에서 \"알람\"을 찾아주세요\n2. \"알람\" 옆에 있는 스위치를 켜주세요\n3. 켠 다음에는 화면 왼쪽 위 ← 버튼을 눌러 앱으로 돌아와주세요",
+  "files": [
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "알람일수",
+  "files": [
+   "src/components/AlarmForm/CycleRestControls.tsx"
+  ]
+ },
+ {
+  "key": "앱 버전",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "앱을 열면 바로 달력이 보여요. \"출근\" 알람을 만들어두면 그 알람이 울리는 날이 색칠되고, 알람이 안 울리는 날은 \"비번\"이라는 테두리 박스로 표시돼요.\n근무표를 따로 적을 필요 없이, 알람만 만들면 달력이 저절로 완성돼요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "야간",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "야근",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "어떤 근무를 추가할까요?",
+  "files": [
+   "src/components/AlarmForm/AddShiftModal.tsx"
+  ]
+ },
+ {
+  "key": "어떤 근무표든, 반복되기만 하면 다 만들 수 있어요",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "언어",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "없음",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "여기서 반복",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx"
+  ]
+ },
+ {
+  "key": "여러 알람 한꺼번에 지우기",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "연도 선택",
+  "files": [
+   "src/components/Home/CalendarView.tsx",
+   "src/components/common/CalendarPicker.tsx"
+  ]
+ },
+ {
+  "key": "연장",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "연차",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "예: 2일 알람 후 1일 휴식",
+  "files": [
+   "src/components/AlarmForm/RepeatModeSelector.tsx"
+  ]
+ },
+ {
+  "key": "예: 3일마다",
+  "files": [
+   "src/components/AlarmForm/RepeatModeSelector.tsx"
+  ]
+ },
+ {
+  "key": "예: 새벽조",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx",
+   "src/components/AlarmForm/WorkPatternBuilder.tsx"
+  ]
+ },
+ {
+  "key": "예금주 {name}",
+  "files": [
+   "src/components/Support/CoffeeTipScreen.tsx"
+  ]
+ },
+ {
+  "key": "예정된 알람 없음",
+  "files": [
+   "src/components/Home/NextAlarmLine.tsx"
+  ]
+ },
+ {
+  "key": "오늘",
+  "files": [
+   "src/components/Home/TodayShiftRow.tsx"
+  ]
+ },
+ {
+  "key": "오늘 {time}",
+  "files": [
+   "src/utils/index.ts"
+  ]
+ },
+ {
+  "key": "오늘 · {date}",
+  "files": [
+   "src/hooks/useAlarmFormState.ts"
+  ]
+ },
+ {
+  "key": "오늘 비번! 🎉",
+  "files": [
+   "src/utils/widgetSync.ts"
+  ]
+ },
+ {
+  "key": "오늘로 설정",
+  "files": [
+   "src/components/common/CalendarPicker.tsx"
+  ]
+ },
+ {
+  "key": "오늘부터 며칠마다?",
+  "files": [
+   "src/components/AlarmForm/CycleRestControls.tsx"
+  ]
+ },
+ {
+  "key": "완료",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx"
+  ]
+ },
+ {
+  "key": "완성! 이 순환표가 3일마다 계속 반복돼요. 이제부터는 직접 자유롭게 만들어보세요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "요일",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "요일 선택",
+  "files": [
+   "src/utils/index.ts"
+  ]
+ },
+ {
+  "key": "요일·매월·매년·한 번",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "요일로 반복하는 출근·퇴근 알람은 법정공휴일(설날·추석·대체공휴일 등)에 자동으로 울리지 않아요. 교대근무 알람과 식사·운동 같은 다른 알람은 공휴일에도 그대로 울려요.\n공휴일에 출근해야 한다면 달력에서 그날을 누르고 \"하루 근무 변경 → 특근\"을 고르세요. 그날만 알람이 다시 켜져요.\n제헌절·근로자의날은 쉬지 않는 곳이 많아서 평소대로 울려요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "운동",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "월",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "월요일",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "위젯 & 설정",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "윤년이 아닐 때는 2월 28일에 울려요",
+  "files": [
+   "src/components/AlarmForm/DateSection.tsx"
+  ]
+ },
+ {
+  "key": "음력",
+  "files": [
+   "src/components/AlarmForm/DateSection.tsx",
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "음력 {month} {d}일",
+  "files": [
+   "src/hooks/useAlarmFormState.ts"
+  ]
+ },
+ {
+  "key": "음력 생일·제사 알람",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "이 알람 삭제",
+  "files": [
+   "src/components/AlarmForm/index.tsx"
+  ]
+ },
+ {
+  "key": "이 알람을 삭제하시려면 이 버튼을 누르세요. 원하지 않으시면 다음을 누르세요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "이 알람을 삭제할까요?",
+  "files": [
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "이 앱의 핵심",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "이날 끄기",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "이날 울리는 알람이 없어요",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "이날만 알람 끄기 (근무와 상관없는 알람)",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "이름 변경",
+  "files": [
+   "src/components/AlarmForm/WorkPatternBuilder.tsx"
+  ]
+ },
+ {
+  "key": "이름을 입력하세요",
+  "files": [
+   "src/components/AlarmForm/index.tsx"
+  ]
+ },
+ {
+  "key": "이번엔 \"말번\"을 선택해보세요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "일",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "일##단위",
+  "files": [
+   "src/i18n/translate.ts"
+  ]
+ },
+ {
+  "key": "일수 조정",
+  "files": [
+   "src/components/AlarmForm/WorkPatternBuilder.tsx"
+  ]
+ },
+ {
+  "key": "일요일",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "입력한 반복/시간 설정이 초기화됩니다. 계속할까요?",
+  "files": [
+   "src/components/AlarmForm/index.tsx"
+  ]
+ },
+ {
+  "key": "자동",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "자발적인 후원이며, 앱 이용에는 아무 영향이 없어요",
+  "files": [
+   "src/components/Support/CoffeeTipScreen.tsx"
+  ]
+ },
+ {
+  "key": "자주 쓰는 근무표",
+  "files": [
+   "src/components/AlarmForm/PresetModal.tsx"
+  ]
+ },
+ {
+  "key": "자주 쓰는 근무표에서 고르기",
+  "files": [
+   "src/components/AlarmForm/index.tsx"
+  ]
+ },
+ {
+  "key": "작게",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "작은 후원으로 응원해주세요",
+  "files": [
+   "src/components/Home/PromoBanner.tsx"
+  ]
+ },
+ {
+  "key": "저장",
+  "files": [
+   "src/components/AlarmForm/index.tsx",
+   "src/components/Home/CalendarView.tsx",
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "저장 안 함",
+  "files": [
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "저장하지 않을까요?",
+  "files": [
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "전체",
+  "files": [
+   "src/components/Home/AlarmsTab.tsx"
+  ]
+ },
+ {
+  "key": "정말 잘하셨어요! 이제부터는 직접 자유롭게 사용해보세요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "정보",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "주간",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "주간 1일 → 야간 1일 → 비번 2일 (4조 2교대)",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "주간 2 · 야간 2 · 휴무 2",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "주간 2일 → 야간 1일(16시간) → 휴무 2일",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "주말",
+  "files": [
+   "src/utils/index.ts"
+  ]
+ },
+ {
+  "key": "주야비휴",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "중번",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "진동",
+  "files": [
+   "src/components/AlarmForm/SndVibSelector.tsx",
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "진동만",
+  "files": [
+   "src/components/AlarmForm/SndVibSelector.tsx"
+  ]
+ },
+ {
+  "key": "채널 바로가기",
+  "files": [
+   "src/components/Home/PromoBanner.tsx"
+  ]
+ },
+ {
+  "key": "처음이시군요!",
+  "files": [
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "초번",
+  "files": [
+   "src/constants/index.ts",
+   "src/i18n/lang.ts"
+  ]
+ },
+ {
+  "key": "초번 1일 → 말번 1일 → 비번 1일",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "초번 2일 → 말번 2일 → 야간 2일 → 비번 2일",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "초번 3일 → 휴무 1일 → 말번 3일 → 휴무 1일 → 야간 3일 → 휴무 1일",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "초번·말번·비번",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "초번·말번·비번 순환표를 직접 만들어봐요",
+  "files": [
+   "src/components/Help/HelpScreen.tsx",
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "초번·말번·비번이 다 모였어요! \"여기서 반복\"을 눌러 완성해보세요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "추가",
+  "files": [
+   "src/components/AlarmForm/WorkPatternBuilder.tsx",
+   "src/components/AlarmForm/index.tsx"
+  ]
+ },
+ {
+  "key": "출근",
+  "files": [
+   "src/components/Home/OverrideTimeModal.tsx",
+   "src/constants/index.ts",
+   "src/utils/index.ts",
+   "src/utils/workPattern.ts"
+  ]
+ },
+ {
+  "key": "출근 시각",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx",
+   "src/components/AlarmForm/WorkPatternBuilder.tsx"
+  ]
+ },
+ {
+  "key": "출근 시각도 기본값 그대로 \"다음\"을 눌러보세요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "출근 시각은?",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx"
+  ]
+ },
+ {
+  "key": "출근 시각이에요. 기본값 그대로 \"다음\"을 눌러보세요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "출근 알람을 수정하러 오셨어요 — 아래 칩을 눌러 원하는 구간의 시각을 바꾸세요",
+  "files": [
+   "src/components/AlarmForm/index.tsx"
+  ]
+ },
+ {
+  "key": "출근보다 이른 시각이라 다음날 퇴근으로 울려요",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx"
+  ]
+ },
+ {
+  "key": "출퇴근 확인 앱을 쓰신다면 특히 유용해요",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "취소",
+  "files": [
+   "src/components/AlarmForm/AddShiftModal.tsx",
+   "src/components/AlarmForm/PresetModal.tsx",
+   "src/components/AlarmForm/RotationWizard.tsx",
+   "src/components/AlarmForm/WorkPatternBuilder.tsx",
+   "src/components/AlarmForm/index.tsx",
+   "src/components/Home/AlarmsTab.tsx",
+   "src/components/Home/OverrideTimeModal.tsx",
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "커버 화면만 켜둔 채로 알람을 꺼도, 펼친 화면과 항상 똑같이 맞춰져요. 어느 화면으로 끄든 걱정 없어요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "크게",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "탭해서 변경",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx"
+  ]
+ },
+ {
+  "key": "테마",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "토",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "퇴근",
+  "files": [
+   "src/components/Home/OverrideTimeModal.tsx",
+   "src/constants/index.ts",
+   "src/utils/index.ts",
+   "src/utils/workPattern.ts"
+  ]
+ },
+ {
+  "key": "퇴근 시각",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx",
+   "src/components/AlarmForm/WorkPatternBuilder.tsx"
+  ]
+ },
+ {
+  "key": "퇴근 시각도 기본값 그대로 \"완료\"를 눌러보세요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "퇴근 시각은?",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx"
+  ]
+ },
+ {
+  "key": "퇴근 알람 끄기",
+  "files": [
+   "src/components/AlarmForm/WorkPatternBuilder.tsx"
+  ]
+ },
+ {
+  "key": "퇴근 알람 켜기",
+  "files": [
+   "src/components/AlarmForm/WorkPatternBuilder.tsx"
+  ]
+ },
+ {
+  "key": "퇴근 알람도 필요해요?",
+  "files": [
+   "src/components/AlarmForm/RotationWizard.tsx",
+   "src/components/AlarmForm/WorkPatternBuilder.tsx"
+  ]
+ },
+ {
+  "key": "퇴근 알람도 필요해요? \"네\"를 눌러보세요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "퇴근 알람을 수정하러 오셨어요 — 아래 칩을 눌러 원하는 구간의 시각을 바꾸세요",
+  "files": [
+   "src/components/AlarmForm/index.tsx"
+  ]
+ },
+ {
+  "key": "특근",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "팝업에서 며칠마다 울릴지 골라보세요. (예: 3일)",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "평일",
+  "files": [
+   "src/utils/index.ts"
+  ]
+ },
+ {
+  "key": "폴더블도 문제없어요",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "표시 권한 설정 방법",
+  "files": [
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "하루 근무 변경",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "하루 근무 변경 (연차·대근 등)",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "하루 근무 변경 — 연차·대근·반차 등",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "하루 근무 변경 해제",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "한 번",
+  "files": [
+   "src/constants/index.ts",
+   "src/utils/index.ts"
+  ]
+ },
+ {
+  "key": "해당없음",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "홈 화면 빈 곳을 길게 누르면 위젯 메뉴가 나와요. \"교대알람\"을 찾으면 위젯 두 개가 있어요.\n• 교대근무 알람 (중): 다음 알람 시간 · 오늘 근무조 · 다음 비번\n• 교대근무 알람 (대): 중간 위젯 내용 + 이번 주 일정 스크롤\n위젯을 누르면 앱이 바로 열려요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "홈 화면 위젯 (안드로이드)",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "화",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "화면",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "화면 밝기 바꾸기",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "화면 오른쪽 위에 있는 ＋ 버튼을 누르면 새 알람을 만들 수 있어요.\n처음이라 헷갈리면 위쪽 \"근무표 만들기 따라하기\"를 눌러 화면을 보면서 그대로 따라 해보세요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "화면이 꺼져 있어도, 배터리 절약 모드여도 상관없어요. 기기가 허용하는 예약 수단을 전부 동원해서 정확한 시각에 울리도록 걸어둬요. 반대로 알람을 끄면 걸어둔 예약을 하나도 남김없이 취소해서, \"꺼놨는데 울렸다\" 같은 일이 생기지 않도록 설계했어요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "확인",
+  "files": [
+   "src/components/AlarmForm/BlockTimeModal.tsx",
+   "src/components/AlarmForm/CycleRestControls.tsx",
+   "src/components/AlarmForm/WorkPatternBuilder.tsx",
+   "src/components/Home/OverrideTimeModal.tsx",
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "회사 출퇴근 확인(태그·인증) 앱을 사용하시는 분들에게는 대단히 유용합니다. 근무표대로 알람이 정확히 울려주니, 출·퇴근 확인을 놓칠 걱정 없이 시간 맞춰 준비할 수 있어요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "휴식 일수",
+  "files": [
+   "src/components/AlarmForm/CycleRestControls.tsx"
+  ]
+ },
+ {
+  "key": "휴일근무",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "📌 경조사: {memo}",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "📱 표시 권한 허용",
+  "files": [
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "🔔 알림 권한 허용",
+  "files": [
+   "app/index.tsx"
+  ]
+ },
+ {
+  "key": "＋ 를 눌러 다음 근무를 추가해보세요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "＋ 를 다시 눌러 이번엔 쉬는 날을 추가해볼게요.",
+  "files": [
+   "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "＋ 버튼으로 추가하세요",
+  "files": [
+   "src/components/Home/AlarmsTab.tsx"
+  ]
+ }
+]

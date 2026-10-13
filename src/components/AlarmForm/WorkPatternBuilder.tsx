@@ -7,6 +7,8 @@ import { newBlockId, mergeOrAppendSegment, sameSegmentType } from '../../utils/w
 import { makeStyles } from './styles';
 import { BlockTimeModal } from './BlockTimeModal';
 import { AddShiftModal } from './AddShiftModal';
+import { useT } from '../../i18n';
+import { t as tr } from '../../i18n/translate';
 
 interface Props {
   blocks: WorkSegment[];
@@ -20,9 +22,11 @@ interface Props {
   onDeleteLastBlock: () => void;
 }
 
+// 컴포넌트 밖 헬퍼라 훅 대신 순수 번역 함수(tr)를 쓴다 — 렌더 중에만 불리므로 언어가 바뀌면 같이 갱신된다.
+// 사용자가 지은 이름(shiftCustom)은 번역하지 않는다.
 function segLabel(seg: WorkSegment): string {
-  if (seg.isRest) return '비번';
-  return seg.shift === 'custom' ? (seg.shiftCustom?.trim() || '기타') : SHIFTS.find(sh => sh.id === seg.shift)!.label;
+  if (seg.isRest) return tr('비번');
+  return seg.shift === 'custom' ? (seg.shiftCustom?.trim() || tr('기타')) : tr(SHIFTS.find(sh => sh.id === seg.shift)!.label);
 }
 function segColor(seg: WorkSegment, C: ReturnType<typeof useColors>): string {
   return seg.isRest ? REST_COLOR : SHIFTS.find(sh => sh.id === seg.shift)!.color;
@@ -35,6 +39,7 @@ function segColor(seg: WorkSegment, C: ReturnType<typeof useColors>): string {
 export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal, onDeleteLastBlock }: Props) {
   const C = useColors();
   const s = makeStyles(C);
+  const { t } = useT();
   const [, m, d] = sd.split('-').map(Number);
   const [menuIndex, setMenuIndex] = useState<number | null>(null);
   const [timeEdit, setTimeEdit] = useState<{ index: number; phase: 'commute' | 'offwork'; askOffworkYN?: boolean } | null>(null);
@@ -168,18 +173,18 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal, onDelete
   return (
     <View>
       <View style={s.wpStartRow}>
-        <Text style={s.wpStartLabel}>시작일</Text>
+        <Text style={s.wpStartLabel}>{t('시작일')}</Text>
         <TouchableOpacity style={s.cycleDateChip} onPress={() => setShowCal(true)}>
           <Text>📅</Text>
-          <Text style={s.cycleDateChipText}>{m}/{d} 시작</Text>
+          <Text style={s.cycleDateChipText}>{t('{date} 시작', { date: `${m}/${d}` })}</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={[s.sLabel, { marginTop: 8 }]}>근무 순환표</Text>
+      <Text style={[s.sLabel, { marginTop: 8 }]}>{t('근무 순환표')}</Text>
       <View style={s.wzOptionRow}>
         {blocks.map((seg, i) => (
           <TouchableOpacity key={seg.blockId} style={[s.wzSeqChip, { borderColor: segColor(seg, C) }]} onPress={() => setMenuIndex(i)}>
-            <Text style={[s.wzSeqChipText, { color: segColor(seg, C) }]}>{segLabel(seg)} {seg.days}일</Text>
+            <Text style={[s.wzSeqChipText, { color: segColor(seg, C) }]}>{t('{label} {n}일', { label: segLabel(seg), n: seg.days })}</Text>
           </TouchableOpacity>
         ))}
         <TouchableOpacity style={s.wzAddChip} onPress={() => setAddModalVisible(true)}>
@@ -193,33 +198,33 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal, onDelete
           <View style={s.modalContent}>
             {menuSeg && (
               <>
-                <Text style={s.wpMenuTitle}>{segLabel(menuSeg)} {menuSeg.days}일</Text>
+                <Text style={s.wpMenuTitle}>{t('{label} {n}일', { label: segLabel(menuSeg), n: menuSeg.days })}</Text>
                 {!menuSeg.isRest && (
                   <TouchableOpacity style={s.wpMenuBtn} onPress={() => startTimeEdit(menuIndex!)}>
-                    <Text style={s.wpMenuBtnText}>🕐 시각 변경</Text>
+                    <Text style={s.wpMenuBtnText}>🕐 {t('시각 변경')}</Text>
                   </TouchableOpacity>
                 )}
                 {!menuSeg.isRest && (
                   <TouchableOpacity style={s.wpMenuBtn} onPress={() => toggleOffwork(menuIndex!)}>
-                    <Text style={s.wpMenuBtnText}>{menuSeg.hasOffwork ? '퇴근 알람 끄기' : '🕐 퇴근 알람 켜기'}</Text>
+                    <Text style={s.wpMenuBtnText}>{menuSeg.hasOffwork ? t('퇴근 알람 끄기') : `🕐 ${t('퇴근 알람 켜기')}`}</Text>
                   </TouchableOpacity>
                 )}
                 {!menuSeg.isRest && menuSeg.shift === 'custom' && (
                   <TouchableOpacity style={s.wpMenuBtn} onPress={() => openRename(menuIndex!)}>
-                    <Text style={s.wpMenuBtnText}>✏️ 이름 변경</Text>
+                    <Text style={s.wpMenuBtnText}>✏️ {t('이름 변경')}</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity style={s.wpMenuBtn} onPress={() => openDayEdit(menuIndex!)}>
-                  <Text style={s.wpMenuBtnText}>일수 조정</Text>
+                  <Text style={s.wpMenuBtnText}>{t('일수 조정')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.wpMenuBtn} onPress={() => (menuSeg.isRest ? convertToWork(menuIndex!) : convertToRest(menuIndex!))}>
-                  <Text style={s.wpMenuBtnText}>{menuSeg.isRest ? '근무로 전환' : '비번으로 전환'}</Text>
+                  <Text style={s.wpMenuBtnText}>{menuSeg.isRest ? t('근무로 전환') : t('비번으로 전환')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.wpMenuBtn} onPress={() => removeBlock(menuIndex!)}>
-                  <Text style={[s.wpMenuBtnText, s.wpMenuBtnDangerText]}>삭제</Text>
+                  <Text style={[s.wpMenuBtnText, s.wpMenuBtnDangerText]}>{t('삭제')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.wpMenuCancelBtn} onPress={() => setMenuIndex(null)}>
-                  <Text style={s.wpMenuCancelText}>취소</Text>
+                  <Text style={s.wpMenuCancelText}>{t('취소')}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -231,18 +236,18 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal, onDelete
       <Modal visible={dayEditIndex != null} transparent animationType="fade" onRequestClose={confirmDayEdit}>
         <View style={s.modalOverlay}>
           <View style={s.modalContent}>
-            <Text style={s.wpMenuTitle}>며칠인가요?</Text>
+            <Text style={s.wpMenuTitle}>{t('며칠인가요?')}</Text>
             <View style={s.wpDayStepperRow}>
               <TouchableOpacity style={s.stepBtn} onPress={() => setTempDays(v => Math.max(1, v - 1))}>
                 <Text style={s.stepBtnText}>−</Text>
               </TouchableOpacity>
-              <Text style={s.wpDayVal}>{tempDays}일</Text>
+              <Text style={s.wpDayVal}>{t('{n}일', { n: tempDays })}</Text>
               <TouchableOpacity style={s.stepBtn} onPress={() => setTempDays(v => Math.min(365, v + 1))}>
                 <Text style={s.stepBtnText}>＋</Text>
               </TouchableOpacity>
             </View>
             <TouchableOpacity style={[s.wpModalConfirmBtn, { marginTop: 14 }]} onPress={confirmDayEdit}>
-              <Text style={s.wpModalConfirmText}>확인</Text>
+              <Text style={s.wpModalConfirmText}>{t('확인')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -252,18 +257,18 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal, onDelete
       <Modal visible={customPrompt} transparent animationType="fade" onRequestClose={() => setCustomPrompt(false)}>
         <View style={s.modalOverlay}>
           <View style={s.modalContent}>
-            <Text style={s.wpMenuTitle}>근무 이름이 뭐예요?</Text>
+            <Text style={s.wpMenuTitle}>{t('근무 이름이 뭐예요?')}</Text>
             <TextInput
               style={s.wpCustomInput}
               value={customText}
               onChangeText={setCustomText}
-              placeholder="예: 새벽조"
+              placeholder={t('예: 새벽조')}
               placeholderTextColor={C.txt3}
               returnKeyType="done"
               autoFocus
             />
             <TouchableOpacity style={[s.wpModalConfirmBtn, { marginTop: 14 }]} onPress={confirmCustomPrompt}>
-              <Text style={s.wpModalConfirmText}>추가</Text>
+              <Text style={s.wpModalConfirmText}>{t('추가')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -273,18 +278,18 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal, onDelete
       <Modal visible={renameIndex != null} transparent animationType="fade" onRequestClose={() => setRenameIndex(null)}>
         <View style={s.modalOverlay}>
           <View style={s.modalContent}>
-            <Text style={s.wpMenuTitle}>근무 이름이 뭐예요?</Text>
+            <Text style={s.wpMenuTitle}>{t('근무 이름이 뭐예요?')}</Text>
             <TextInput
               style={s.wpCustomInput}
               value={customText}
               onChangeText={setCustomText}
-              placeholder="예: 새벽조"
+              placeholder={t('예: 새벽조')}
               placeholderTextColor={C.txt3}
               returnKeyType="done"
               autoFocus
             />
             <TouchableOpacity style={[s.wpModalConfirmBtn, { marginTop: 14 }]} onPress={confirmRename}>
-              <Text style={s.wpModalConfirmText}>변경</Text>
+              <Text style={s.wpModalConfirmText}>{t('변경')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -294,7 +299,7 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal, onDelete
       <Modal visible={offworkYNIndex != null} transparent animationType="fade" onRequestClose={() => setOffworkYNIndex(null)}>
         <View style={s.modalOverlay}>
           <View style={s.modalContent}>
-            <Text style={s.wpMenuTitle}>퇴근 알람도 필요해요?</Text>
+            <Text style={s.wpMenuTitle}>{t('퇴근 알람도 필요해요?')}</Text>
             <View style={[s.wzActionRow, { marginTop: 4 }]}>
               <TouchableOpacity
                 style={s.wzSecondaryBtn}
@@ -304,7 +309,7 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal, onDelete
                   setOffworkYNIndex(null);
                 }}
               >
-                <Text style={s.wzSecondaryText}>아니요</Text>
+                <Text style={s.wzSecondaryText}>{t('아니요')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={s.wzPrimaryBtn}
@@ -314,7 +319,7 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal, onDelete
                   setOffworkYNIndex(null);
                 }}
               >
-                <Text style={s.wzPrimaryText}>네</Text>
+                <Text style={s.wzPrimaryText}>{t('네')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -332,7 +337,7 @@ export function WorkPatternBuilder({ blocks, setBlocks, sd, setShowCal, onDelete
 
       <BlockTimeModal
         visible={!!timeEdit}
-        title={timeEdit?.phase === 'offwork' ? '퇴근 시각' : '출근 시각'}
+        title={timeEdit?.phase === 'offwork' ? t('퇴근 시각') : t('출근 시각')}
         hour={activeTime?.hour ?? 9}
         min={activeTime?.min ?? 0}
         onChange={(h, mi) => {

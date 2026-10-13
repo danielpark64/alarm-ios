@@ -4,6 +4,7 @@ import { Text } from '../common/AppText';
 import { VibIcon } from '../VibIcon';
 import { useColors } from '../../hooks/useTheme';
 import { makeStyles } from './styles';
+import { useT } from '../../i18n';
 
 interface Props {
   sndVibMode: string;
@@ -19,10 +20,11 @@ interface Props {
 export function SndVibSelector({ sndVibMode, setSndVibMode, layout = 'column' }: Props) {
   const C = useColors();
   const s = makeStyles(C);
+  const { t } = useT();
   const SND_VIB_OPTS: { mode: 'both'|'snd'|'vib'; label: string; renderIcon: () => React.ReactNode }[] = [
-    { mode: 'both', label: '소리+진동', renderIcon: () => <><Text style={s.sndVibIconFixed}>🔔</Text><VibIcon size={16} color={sndVibMode === 'both' ? C.txt : C.txt3}/></> },
-    { mode: 'snd',  label: '소리만',   renderIcon: () => <Text style={s.sndVibIconFixed}>🔔</Text> },
-    { mode: 'vib',  label: '진동만',   renderIcon: () => <VibIcon size={16} color={sndVibMode === 'vib' ? C.txt : C.txt3}/> },
+    { mode: 'both', label: t('소리+진동'), renderIcon: () => <><Text style={s.sndVibIconFixed}>🔔</Text><VibIcon size={16} color={sndVibMode === 'both' ? C.txt : C.txt3}/></> },
+    { mode: 'snd',  label: t('소리만'), renderIcon: () => <Text style={s.sndVibIconFixed}>🔔</Text> },
+    { mode: 'vib',  label: t('진동만'), renderIcon: () => <VibIcon size={16} color={sndVibMode === 'vib' ? C.txt : C.txt3}/> },
   ];
 
   return (
@@ -36,9 +38,9 @@ export function SndVibSelector({ sndVibMode, setSndVibMode, layout = 'column' }:
           <View style={[s.sndVibIconWrap, layout === 'row' && { width: 'auto', marginRight: 4 }]}>{renderIcon()}</View>
           {mode === 'both' && layout !== 'row' ? (
             <View style={{ alignItems: 'center' }}>
-              <Text style={[s.sndVibLabel, sndVibMode === mode && s.sndVibLabelActive]}>소리</Text>
+              <Text style={[s.sndVibLabel, sndVibMode === mode && s.sndVibLabelActive]}>{t('소리')}</Text>
               <Text style={[s.sndVibPlus,  sndVibMode === mode && s.sndVibLabelActive]}>+</Text>
-              <Text style={[s.sndVibLabel, sndVibMode === mode && s.sndVibLabelActive]}>진동</Text>
+              <Text style={[s.sndVibLabel, sndVibMode === mode && s.sndVibLabelActive]}>{t('진동')}</Text>
             </View>
           ) : (
             <Text style={[s.sndVibLabel, sndVibMode === mode && s.sndVibLabelActive]} numberOfLines={1}>

@@ -22,6 +22,8 @@ const DARK_SHIFT: Record<string, ShiftTone> = {
   early:    { bg:'#253e51', fg:'#cde5fe' },
   mid:      { bg:'#37564b', fg:'#c6ebdc' },
   late:     { bg:'#5a4835', fg:'#f6dec7' },
+  day:      { bg:'#5c4a14', fg:'#fbe6a6' },
+  night:    { bg:'#2c3360', fg:'#d3d9ff' },
   custom:   { bg:'#6c5b71', fg:'#efdcf6' },
   none:     { bg:'#3a3a44', fg:'#d4d4de' },
 };
@@ -30,6 +32,8 @@ const LIGHT_SHIFT: Record<string, ShiftTone> = {
   early:    { bg:'#abc7e2', fg:'#144664' },
   mid:      { bg:'#b7e0d0', fg:'#144b3a' },
   late:     { bg:'#f3d8be', fg:'#563d20' },
+  day:      { bg:'#f1dc9a', fg:'#4f3b05' },
+  night:    { bg:'#b9c0ee', fg:'#232a63' },
   custom:   { bg:'#c4afcb', fg:'#51395a' },
   none:     { bg:'#c8c8d2', fg:'#3c3c4a' },
 };

@@ -8,12 +8,15 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
+import { useT, LANGS, type LanguageSetting } from '../src/i18n';
+import { syncWidget } from '../src/utils/widgetSync';
+import { rescheduleAll, registerNotificationCategories } from '../src/utils/notifications';
 import * as Notifications from 'expo-notifications';
 import { useAlarms } from '../src/hooks/useAlarms';
 import { useDayOverrides } from '../src/hooks/useDayOverrides';
 import { useAlarmNotifications } from '../src/hooks/useAlarmNotifications';
 import { useSelectMode } from '../src/hooks/useSelectMode';
-import { useHolidaySync } from '../src/hooks/useHolidaySync';
+import { useHolidaySync, refreshHolidays } from '../src/hooks/useHolidaySync';
 import { ClockHeader } from '../src/components/Home/ClockHeader';
 import { TodayShiftRow } from '../src/components/Home/TodayShiftRow';
 import { NextAlarmLine } from '../src/components/Home/NextAlarmLine';
@@ -28,7 +31,7 @@ import { CycleAlarmTutorial, SpotlightRect } from '../src/components/Tutorial/Cy
 import { RotationTutorialEvent } from '../src/components/AlarmForm/RotationWizard';
 import { cycleTutorialStepsKo, rotationTutorialStepsKo } from '../src/content/tutorialSteps.ko';
 import { nextAlarmParts, getRepLimitedIds, getNextFireDate } from '../src/utils';
-import { Alarm, ShiftPeriod } from '../src/constants';
+import { Alarm, ShiftPeriod, DEV_LINK_KEY } from '../src/constants';
 import { Palette } from '../src/constants/colors';
 import { useColors, useThemeSetting } from '../src/hooks/useTheme';
 
@@ -202,11 +205,11 @@ export default function App() {
   }, [rotationTutorialStep, tab, insets.top]);
 
   const showOverlayPrompt = () => Alert.alert(
-    '표시 권한 설정 방법',
-    '알람이 울릴 때 화면에 바로 떠서 끄기 버튼을 누를 수 있게 하려면 권한이 필요해요.\n\n"설정으로 이동"을 누르면 "다른 앱 위에 표시"라는 제목의 화면이 열려요.\n\n1. 그 목록에서 "알람"을 찾아주세요\n2. "알람" 옆에 있는 스위치를 켜주세요\n3. 켠 다음에는 화면 왼쪽 위 ← 버튼을 눌러 앱으로 돌아와주세요',
+    t('표시 권한 설정 방법'),
+    t('알람이 울릴 때 화면에 바로 떠서 끄기 버튼을 누를 수 있게 하려면 권한이 필요해요.\n\n"설정으로 이동"을 누르면 "다른 앱 위에 표시"라는 제목의 화면이 열려요.\n\n1. 그 목록에서 "알람"을 찾아주세요\n2. "알람" 옆에 있는 스위치를 켜주세요\n3. 켠 다음에는 화면 왼쪽 위 ← 버튼을 눌러 앱으로 돌아와주세요'),
     [
-      { text: '취소', style: 'cancel' },
-      { text: '설정으로 이동', onPress: requestOverlayPermission },
+      { text: t('취소'), style: 'cancel' },
+      { text: t('설정으로 이동'), onPress: requestOverlayPermission },
     ]
   );
 
@@ -216,15 +219,30 @@ export default function App() {
     if (overlayGranted === false) showOverlayPrompt();
   }, [overlayGranted]);
 
+  // 언어가 바뀌면 알림·위젯 문구를 새 언어로 다시 만든다 — 예약된 알림의 제목/본문과 위젯 payload는
+  // 예약 시점의 언어로 굳어 있어서, 재예약하지 않으면 화면만 바뀌고 알림은 이전 언어로 뜬다.
+  // 첫 로드 때는 useAlarms가 이미 (언어 설정을 읽은 뒤) 재예약하므로 건너뛴다.
+  const { lang, t, setSetting: setLangSetting } = useT();
+  const langRef = useRef(lang);
+  useEffect(() => {
+    if (!loaded || langRef.current === lang) { langRef.current = lang; return; }
+    langRef.current = lang;
+    // 알림 액션 버튼('알람 끄기')도 등록 시점 언어로 굳으므로 카테고리부터 다시 등록한다.
+    registerNotificationCategories().catch(() => {});
+    if (lang === 'ko') refreshHolidays().catch(() => {}); // 한국어로 바꾼 순간 공휴일 표를 최신으로(게이트 때문에 그동안 건너뛰었을 수 있다)
+    syncWidget(alarms, overrides);
+    rescheduleAll(alarms, overrides);
+  }, [lang, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // 알람이 하나도 없는 신규 사용자는 빈 달력 대신 알람 탭(빈 상태 안내)에서 시작
   useEffect(() => {
     if (loaded && alarms.length === 0) setTab('alarms');
   }, [loaded]);
 
-  // ── 개발용 딥링크: alarmapp://?testAlarm=<분>[&snd=default] ────────────────────────
+  // ── 개발용 딥링크: alarmapp://?k=<DEV_LINK_KEY>&testAlarm=<분>[&snd=default] ────────────────────────
   // N분 뒤 울리는 '한 번' 테스트 알람을 만든다(기본 진동만). iPhone은 adb처럼 화면을 자동 조작할
   // 수단이 없어, 반복 울림·진동 테스트를 돌릴 때 터미널에서 알람을 만들 유일한 통로다:
-  //   xcrun devicectl device process launch --device <id> --payload-url "alarmapp://?testAlarm=3" com.danielpark.alarmapp
+  //   xcrun devicectl device process launch --device <id> --payload-url "alarmapp://?k=<키>&testAlarm=3" com.danielpark.alarmapp
   // 같은 URL은 한 번만 처리하고, 로드 전엔 기다린다(알람 목록이 비어 있을 때 저장하면 덮어쓴다).
   const url = Linking.useURL();
   const handledUrlRef = useRef<string | null>(null);
@@ -232,6 +250,60 @@ export default function App() {
     if (!loaded || !url || handledUrlRef.current === url) return;
     handledUrlRef.current = url;
     const q = Linking.parse(url).queryParams ?? {};
+    if (q.k !== DEV_LINK_KEY) return; // 잠금 키가 없으면 무시(constants의 DEV_LINK_KEY 주석 참고)
+    // alarmapp://?k=…&report=1 — 현재 상태(언어·알람·대기/표시된 알림)를 AsyncStorage 'dev_report'에 JSON으로 남긴다.
+    // 화면을 캡처할 수 없는 기기(iPad·iPhone)에서 터미널로 결과를 확인하는 용도:
+    //   xcrun devicectl device copy from --device <id> --domain-type appDataContainer --domain-identifier com.danielpark.alarmapp \
+    //     --source "Library/Application Support/com.danielpark.alarmapp/RCTAsyncLocalStorage_V1/manifest.json" --destination <파일>
+    if (q.report != null) {
+      (async () => {
+        const fmtT = (tr: any) => {
+          if (tr?.type === 'timeInterval' && typeof tr?.seconds === 'number') return new Date(Date.now() + tr.seconds * 1000).toISOString();
+          if (typeof tr?.value === 'number') return new Date(tr.value).toISOString();
+          const dc = tr?.dateComponents;
+          if (dc?.year != null) return new Date(dc.year, (dc.month ?? 1) - 1, dc.day ?? 1, dc.hour ?? 0, dc.minute ?? 0, dc.second ?? 0).toISOString();
+          if (dc?.weekday != null) return `weekly:${dc.weekday} ${dc.hour}:${dc.minute}`;
+          return JSON.stringify(tr ?? null).slice(0, 60);
+        };
+        const pending = await Notifications.getAllScheduledNotificationsAsync().catch(() => []);
+        const presented = await Notifications.getPresentedNotificationsAsync().catch(() => []);
+        const report = {
+          at: new Date().toISOString(), platform: Platform.OS, lang, langSetting: await AsyncStorage.getItem('language_v1'),
+          header: next ? `${next.label} · ${next.when}` : null,
+          alarms: alarms.map(a => ({ id: a.id, typeId: a.typeId, rm: a.rm, label: a.label, active: a.active, snd: a.snd, vib: a.vib, role: a.groupRole })),
+          pending: pending.map(n => ({ id: n.identifier, when: fmtT(n.trigger), title: n.content.title, body: n.content.body, sound: (n.content as any).sound ?? null }))
+            .sort((a, b) => String(a.when).localeCompare(String(b.when))),
+          presented: presented.map(n => ({ id: n.request.identifier, title: n.request.content.title, body: n.request.content.body, date: new Date(n.date).toISOString() })),
+        };
+        await AsyncStorage.setItem('dev_report', JSON.stringify(report));
+      })();
+      return;
+    }
+    // alarmapp://?k=…&lang=en|ja|…|system — 언어 설정을 바꾼다(기기 테스트에서 언어별 화면을 찍는 용도).
+    if (typeof q.lang === 'string' && (q.lang === 'system' || (LANGS as readonly string[]).includes(q.lang))) {
+      setLangSetting(q.lang as LanguageSetting);
+      if (typeof q.tab === 'string' && ['calendar', 'alarms', 'settings', 'add'].includes(q.tab)) setTab(q.tab as any);
+      return;
+    }
+    if (typeof q.tab === 'string' && ['calendar', 'alarms', 'settings', 'add'].includes(q.tab)) { setTab(q.tab as any); return; }
+    // alarmapp://?k=…&testPattern=night — 오늘 시작 "야간 2일(22:00~다음날 06:00) → 비번 2일" 근무표(진동만)를 만든다.
+    // 자정 넘는 근무의 퇴근이 근무일 다음 날로 예약되는지 dumpsys alarm으로 확인하는 용도.
+    if (q.testPattern === 'night') {
+      const d = new Date(); const p2 = (n: number) => String(n).padStart(2, '0');
+      const sd = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+      submitWorkPattern(undefined, [
+        { blockId: 'tn1', shift: 'night', days: 2, commuteTime: { hour: 22, min: 0 }, hasOffwork: true, offworkTime: { hour: 6, min: 0 } },
+        { blockId: 'tn2', shift: 'none', days: 2, isRest: true, hasOffwork: false },
+      ], sd, 'none', 'pulse');
+      setTab('alarms');
+      return;
+    }
+    // alarmapp://?k=…&clearAll=1 — 알람 전부 삭제(테스트 정리용)
+    if (q.clearAll != null) {
+      if (alarms.length) deleteAlarms(new Set(alarms.map(a => a.id)));
+      setTab('alarms');
+      return;
+    }
     // alarmapp://?dumpPending=1 — 지금 iOS/Expo에 걸려 있는 대기 알림을 발화 시각순으로 띄운다(진단용).
     // iOS는 64개를 넘으면 조용히 버리므로 "무엇이 실제로 남았는지"는 이 방법으로만 볼 수 있다.
     if (q.dumpPending != null) {
@@ -256,7 +328,8 @@ export default function App() {
     }
     // alarmapp://?clearTestAlarms=1 — 위 testAlarm으로 만든 '테스트 알람'을 전부 삭제(정리용).
     if (q.clearTestAlarms != null) {
-      const ids = new Set(alarms.filter(a => a.label === '테스트 알람').map(a => a.id));
+      // testAlarm이 만든 '테스트 알람'과 testPattern=night가 만든 근무표(blockId 'tn1')만 지운다 — 사용자의 알람은 건드리지 않는다.
+      const ids = new Set(alarms.filter(a => a.label === '테스트 알람' || a.pattern?.[0]?.blockId === 'tn1').map(a => a.id));
       if (ids.size) deleteAlarms(ids);
       setTab('alarms');
       return;
@@ -283,11 +356,11 @@ export default function App() {
       if (seen) return;
       await AsyncStorage.setItem(TUTORIAL_PROMPT_KEY, '1');
       Alert.alert(
-        '처음이시군요!',
-        '근무표 만들기 따라하기를 해볼까요?\n(설정에서 언제든 보실 수 있습니다)',
+        t('처음이시군요!'),
+        t('근무표 만들기 따라하기를 해볼까요?\n(설정에서 언제든 보실 수 있습니다)'),
         [
-          { text: '나중에', style: 'cancel' },
-          { text: '네', onPress: () => setRotationTutorialStep(0) },
+          { text: t('나중에'), style: 'cancel' },
+          { text: t('네'), onPress: () => setRotationTutorialStep(0) },
         ],
       );
     })();
@@ -300,14 +373,14 @@ export default function App() {
       alarms.filter(a => ids.has(a.id) && a.groupId != null).map(a => a.groupId!)
     );
     if (!groups.size) return '';
-    return '\n(근무 시간대 알람은 출근·퇴근 세트로 함께 삭제됩니다)';
+    return '\n' + t('(근무 시간대 알람은 출근·퇴근 세트로 함께 삭제됩니다)');
   };
 
   const handleDeleteSelected = () => {
     if (!selectedIds.size) return;
-    Alert.alert('알람 삭제', `선택한 ${selectedIds.size}개를 삭제할까요?${groupDeleteNotice(selectedIds)}`, [
-      { text:'취소', style:'cancel' },
-      { text:'삭제', style:'destructive', onPress: async () => {
+    Alert.alert(t('알람 삭제'), t('선택한 {k}개를 삭제할까요?', { k: selectedIds.size }) + groupDeleteNotice(selectedIds), [
+      { text:t('취소'), style:'cancel' },
+      { text:t('삭제'), style:'destructive', onPress: async () => {
         await deleteAlarms(selectedIds);
         exitSelectMode();
       }},
@@ -315,9 +388,9 @@ export default function App() {
   };
 
   const handleDeleteOne = (id: number) => {
-    Alert.alert('알람 삭제', `이 알람을 삭제할까요?${groupDeleteNotice(new Set([id]))}`, [
-      { text:'취소', style:'cancel' },
-      { text:'삭제', style:'destructive', onPress: async () => {
+    Alert.alert(t('알람 삭제'), t('이 알람을 삭제할까요?') + groupDeleteNotice(new Set([id])), [
+      { text:t('취소'), style:'cancel' },
+      { text:t('삭제'), style:'destructive', onPress: async () => {
         await deleteAlarms(new Set([id]));
         if (tutorialStep !== null) exitTutorial();
         else setEditAlarm(null);
@@ -331,12 +404,12 @@ export default function App() {
       return;
     }
     Alert.alert(
-      '저장하지 않을까요?',
+      t('저장하지 않을까요?'),
       '',
       [
-        { text: '계속하기', style: 'cancel' },
-        { text: '저장 안 함', style: 'destructive', onPress: () => setEditAlarm(null) },
-        { text: '저장', onPress: () => editFormRef.current?.submit() },
+        { text: t('계속하기'), style: 'cancel' },
+        { text: t('저장 안 함'), style: 'destructive', onPress: () => setEditAlarm(null) },
+        { text: t('저장'), onPress: () => editFormRef.current?.submit() },
       ],
     );
   };
@@ -357,22 +430,22 @@ export default function App() {
     // "저장" 선택지를 주지 않는다 — 계속하거나 그냥 나가는(저장 안 함) 것만 가능
     if (activeFormRef.current?.isWizardActive()) {
       Alert.alert(
-        '설정을 그만둘까요?',
+        t('설정을 그만둘까요?'),
         '',
         [
-          { text: '계속하기', style: 'cancel' },
-          { text: '그만두기', style: 'destructive', onPress: () => finishNav(target) },
+          { text: t('계속하기'), style: 'cancel' },
+          { text: t('그만두기'), style: 'destructive', onPress: () => finishNav(target) },
         ],
       );
       return;
     }
     Alert.alert(
-      '저장하지 않을까요?',
+      t('저장하지 않을까요?'),
       '',
       [
-        { text: '계속하기', style: 'cancel' },
-        { text: '저장 안 함', style: 'destructive', onPress: () => finishNav(target) },
-        { text: '저장', onPress: () => { setPendingNav(target); activeFormRef.current?.submit(); } },
+        { text: t('계속하기'), style: 'cancel' },
+        { text: t('저장 안 함'), style: 'destructive', onPress: () => finishNav(target) },
+        { text: t('저장'), onPress: () => { setPendingNav(target); activeFormRef.current?.submit(); } },
       ],
     );
   };
@@ -394,7 +467,7 @@ export default function App() {
   }, [alarms, tick]);
   const repLimitedIds = useMemo(() => getRepLimitedIds(alarms), [alarms]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const next = useMemo(() => nextAlarmParts(alarms, overrides), [alarms, overrides, tick]);
+  const next = useMemo(() => nextAlarmParts(alarms, overrides), [alarms, overrides, tick, lang]); // lang: 문구와 공휴일 게이트가 언어를 따른다
 
   if (!loaded)
     return <View style={s.loading}><Text style={s.loadingT}>⏰</Text></View>;
@@ -425,12 +498,12 @@ export default function App() {
         <View style={s.permRow}>
           {!notifGranted && (
             <TouchableOpacity style={s.permChip} onPress={requestPermission}>
-              <Text style={s.permChipT}>🔔 알림 권한 허용</Text>
+              <Text style={s.permChipT}>{t('🔔 알림 권한 허용')}</Text>
             </TouchableOpacity>
           )}
           {Platform.OS === 'android' && !overlayGranted && (
             <TouchableOpacity style={s.permChip} onPress={showOverlayPrompt}>
-              <Text style={s.permChipT}>📱 표시 권한 허용</Text>
+              <Text style={s.permChipT}>{t('📱 표시 권한 허용')}</Text>
             </TouchableOpacity>
           )}
         </View>

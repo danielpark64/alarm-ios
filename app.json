@@ -35,6 +35,8 @@
           "fetch",
           "remote-notification"
         ],
+        "CFBundleLocalizations": ["ko", "en", "ja", "zh-Hans", "zh-Hant", "es", "fr", "de", "pt"],
+        "CFBundleAllowMixedLocalizations": true,
         "NSUserNotificationsUsageDescription": "알람을 울리기 위해 알림 권한이 필요합니다.",
         "UIApplicationSceneManifest": {
           "UIApplicationSupportsMultipleScenes": false,

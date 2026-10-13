@@ -1,4 +1,4 @@
-import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { View, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { Text } from '../common/AppText';
 import { Alarm, ShiftPeriod, WorkSegment, SoundMode, VibMode } from '../../constants';
@@ -6,6 +6,9 @@ import { useColors } from '../../hooks/useTheme';
 import { useAlarmFormState } from '../../hooks/useAlarmFormState';
 import { TypeSelector } from './TypeSelector';
 import { ShiftSelector } from './ShiftSelector';
+import { PresetModal } from './PresetModal';
+import { presetToSegments } from '../../constants/shiftPresets';
+import { newBlockId } from '../../utils/workPattern';
 import { WorkPatternBuilder } from './WorkPatternBuilder';
 import { RotationWizard, RotationTutorialEvent } from './RotationWizard';
 import { SndVibSelector } from './SndVibSelector';
@@ -16,6 +19,7 @@ import { RepeatModeSelector } from './RepeatModeSelector';
 import { DayOfWeekSelector } from './DayOfWeekSelector';
 import { CycleRestControls } from './CycleRestControls';
 import { makeStyles } from './styles';
+import { useT } from '../../i18n';
 
 export interface AlarmFormHandle {
   submit: () => void;
@@ -71,6 +75,8 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
     const form = useAlarmFormState(initial, onSubmit, onTypeChange, onRmChange, onCalendarClose, onSubmitPattern, onRepeatConfigClose);
     const C = useColors();
     const s = makeStyles(C);
+    const { t } = useT();
+    const [showPresets, setShowPresets] = useState(false);
     const isCycleRest = form.rm === 'cycle' || form.rm === 'rest';
     const isEdit = initial.id != null;
 
@@ -82,11 +88,11 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
       const crossing = (form.shift === 'none') !== (newShift === 'none');
       if (crossing && form.isDirty()) {
         Alert.alert(
-          '교대근무 전환',
-          '입력한 반복/시간 설정이 초기화됩니다. 계속할까요?',
+          t('교대근무 전환'),
+          t('입력한 반복/시간 설정이 초기화됩니다. 계속할까요?'),
           [
-            { text: '취소', style: 'cancel' },
-            { text: '계속', style: 'destructive', onPress: () => form.applyShiftGate(newShift) },
+            { text: t('취소'), style: 'cancel' },
+            { text: t('계속'), style: 'destructive', onPress: () => form.applyShiftGate(newShift) },
           ],
         );
       } else {
@@ -143,16 +149,16 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
         {/* 상단 고정 바 — 폼이 길어도 스크롤 없이 바로 취소/저장 */}
         <View style={s.topBar}>
           <TouchableOpacity style={s.topBarCancelBtn} onPress={onCancel}>
-            <Text style={s.topBarCancelText}>취소</Text>
+            <Text style={s.topBarCancelText}>{t('취소')}</Text>
           </TouchableOpacity>
-          <Text style={s.topBarTitle} numberOfLines={1}>{isEdit ? '알람 수정' : '알람 추가'}</Text>
+          <Text style={s.topBarTitle} numberOfLines={1}>{isEdit ? t('알람 수정') : t('알람 추가')}</Text>
           <TouchableOpacity
             ref={addBtnRef}
             style={[s.topBarSaveBtn, !isEdit && !form.isDirty() && { opacity: 0.4 }]}
             disabled={!isEdit && !form.isDirty()}
             onPress={form.handleSubmit}
           >
-            <Text style={s.topBarSaveText}>{isEdit ? '저장' : '추가'}</Text>
+            <Text style={s.topBarSaveText}>{isEdit ? t('저장') : t('추가')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -168,12 +174,13 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
                 실제 시간대를 고르면 블록 빌더(로테이션)로 전체가 바뀐다. 카드로 감싸서
                 아래 알람내용/시간/반복방식 섹션과 시각적으로 분리. */}
             <View style={s.shiftSectionCard}>
-              <Text style={[s.sLabel, { marginTop: 0 }]}>교대근무</Text>
+              <Text style={[s.sLabel, { marginTop: 0 }]}>{t('교대근무')}</Text>
               {form.isPatternMode ? (
                 <View style={s.wpGateBanner}>
-                  <Text style={s.wpGateBannerText}>교대근무 알람 · 아래 블록에서 조정</Text>
+                  <Text style={s.wpGateBannerText}>{t('교대근무 알람 · 아래 블록에서 조정')}</Text>
                 </View>
               ) : (
+                <>
                 <ShiftSelector
                   shift={form.shift}
                   onChange={(newShift) => { requestShiftGate(newShift); onShiftPick?.(newShift); }}
@@ -181,15 +188,38 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
                   onCustomChange={form.handleShiftCustomChange}
                   gridRef={shiftGridRef}
                 />
+                {/* 새 근무표를 만들 때만 — 나라별 대표 순환 패턴을 한 번에 채우는 지름길 */}
+                {form.isNewPatternEntry && (
+                  <TouchableOpacity onPress={() => setShowPresets(true)} style={{ paddingTop: 10, alignItems: 'center' }}>
+                    <Text style={s.wpEditHint}>{t('자주 쓰는 근무표에서 고르기')} ›</Text>
+                  </TouchableOpacity>
+                )}
+                </>
               )}
+              <PresetModal
+                visible={showPresets}
+                onClose={() => setShowPresets(false)}
+                onPick={(p) => {
+                  setShowPresets(false);
+                  const apply = () => form.applyPreset(presetToSegments(p, newBlockId));
+                  // 근무조 칩으로 전환할 때와 같은 확인 — 입력해 둔 일반 알람 설정이 사라진다
+                  if (form.isDirty()) {
+                    Alert.alert(t('교대근무 전환'), t('입력한 반복/시간 설정이 초기화됩니다. 계속할까요?'), [
+                      { text: t('취소'), style: 'cancel' },
+                      { text: t('계속'), style: 'destructive', onPress: apply },
+                    ]);
+                  } else apply();
+                }}
+              />
             </View>
 
             {form.isPatternMode ? (
               <>
                 {isEdit && (
                   <Text style={s.wpEditHint}>
-                    {editTypeId === 'offwork' ? '퇴근' : '출근'} 알람을 수정하러 오셨어요 —
-                    아래 칩을 눌러 원하는 구간의 시각을 바꾸세요
+                    {editTypeId === 'offwork'
+                      ? t('퇴근 알람을 수정하러 오셨어요 — 아래 칩을 눌러 원하는 구간의 시각을 바꾸세요')
+                      : t('출근 알람을 수정하러 오셨어요 — 아래 칩을 눌러 원하는 구간의 시각을 바꾸세요')}
                   </Text>
                 )}
                 <WorkPatternBuilder
@@ -201,7 +231,7 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
                   // 삭제 확인(onDelete)으로, 추가 모드면 근무 시간대 게이트를 해당없음으로 되돌린다.
                   onDeleteLastBlock={onDelete ?? (() => requestShiftGate('none'))}
                 />
-                <Text style={s.sLabel}>소리/진동</Text>
+                <Text style={s.sLabel}>{t('소리/진동')}</Text>
                 <SndVibSelector layout="row" sndVibMode={form.sndVibMode} setSndVibMode={form.setSndVibMode} />
               </>
             ) : (
@@ -209,13 +239,13 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
                 <TypeSelector typeId={form.typeId} onChange={form.handleTypeChange} gridRef={typeRef} />
 
                 {/* 라벨 */}
-                <Text style={s.sLabel}>알람내용</Text>
+                <Text style={s.sLabel}>{t('알람내용')}</Text>
                 <TextInput
                   ref={labelRef}
                   style={s.input}
                   value={form.label}
                   onChangeText={form.setLabel}
-                  placeholder="이름을 입력하세요"
+                  placeholder={t('이름을 입력하세요')}
                   placeholderTextColor={C.txt3}
                   returnKeyType="done"
                 />
@@ -306,20 +336,20 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
 
             <View style={s.bottomActions}>
               <TouchableOpacity style={s.bottomCancelBtn} onPress={onCancel}>
-                <Text style={s.bottomCancelText}>취소</Text>
+                <Text style={s.bottomCancelText}>{t('취소')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.bottomSaveBtn, !isEdit && !form.isDirty() && { opacity: 0.4 }]}
                 disabled={!isEdit && !form.isDirty()}
                 onPress={form.handleSubmit}
               >
-                <Text style={s.bottomSaveText}>{isEdit ? '저장' : '추가'}</Text>
+                <Text style={s.bottomSaveText}>{isEdit ? t('저장') : t('추가')}</Text>
               </TouchableOpacity>
             </View>
 
             {onDelete && (
               <TouchableOpacity ref={deleteBtnRef} style={s.deleteBtn} onPress={onDelete}>
-                <Text style={s.deleteBtnText}>🗑 이 알람 삭제</Text>
+                <Text style={s.deleteBtnText}>🗑 {t('이 알람 삭제')}</Text>
               </TouchableOpacity>
             )}
 

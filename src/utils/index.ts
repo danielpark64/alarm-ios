@@ -1,5 +1,7 @@
 import KoreanLunarCalendar from 'korean-lunar-calendar';
-import { Alarm, TYPES, SOUNDS, VIBS, DAYS, SHIFTS, ShiftPeriod, WorkSegment, DayOverride, DayOverrides, OverrideKind, OVERRIDE_KINDS } from '../constants';
+import { Alarm, TYPES, SOUNDS, VIBS, DAYS, MONTH_KEYS, SHIFTS, ShiftPeriod, WorkSegment, DayOverride, DayOverrides, OverrideKind, OVERRIDE_KINDS } from '../constants';
+import { t, translate } from '../i18n/translate';
+import { LANGS, N } from '../i18n/lang';
 import { isStatutoryHoliday } from '../constants/holidays';
 export const pad = (n: number) => String(n).padStart(2, '0');
 export const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
@@ -13,10 +15,10 @@ export const getVib   = (id: string) => VIBS.find(v => v.id === id) ?? VIBS[0];
 export const shiftPeriodLabel = (a: Alarm, resolved?: { shift: ShiftPeriod; shiftCustom?: string } | null): string => {
   const r = resolved !== undefined ? resolved : (a.shift && a.shift !== 'none' ? { shift: a.shift, shiftCustom: a.shiftCustom } : null);
   if (r) {
-    if (r.shift === 'custom') return r.shiftCustom?.trim() || SHIFTS.find(s => s.id === 'custom')!.label;
-    if (r.shift !== 'none') return SHIFTS.find(s => s.id === r.shift)!.label;
+    if (r.shift === 'custom') return r.shiftCustom?.trim() || t(SHIFTS.find(s => s.id === 'custom')!.label);
+    if (r.shift !== 'none') return t(SHIFTS.find(s => s.id === r.shift)!.label);
   }
-  return getType(a.typeId).label;
+  return t(getType(a.typeId).label);
 };
 // 근무 시간대가 사용자에 의해 명시적으로 지정된 경우에만 고정 색을 반환 — 달력에서 시간순 자동 배색과 구분해 눈에 띄게 표시
 export const shiftPeriodColor = (a: Alarm, resolved?: { shift: ShiftPeriod; shiftCustom?: string } | null): string | null => {
@@ -38,36 +40,78 @@ export const shiftPeriodId = (a: Alarm, resolved?: { shift: ShiftPeriod; shiftCu
 export const shiftPrefixFor = (shift: ShiftPeriod, shiftCustom?: string): string => {
   if (shift === 'none') return '';
   if (shift === 'custom') return shiftCustom?.trim() ? `${shiftCustom.trim()} ` : '';
-  return `${SHIFTS.find(s => s.id === shift)!.label} `;
+  return `${t(SHIFTS.find(s => s.id === shift)!.label)} `;
 };
+// ─── 알람 기본 라벨의 언어 맞춤 ────────────────────────────────────────────────
+// 알람을 만들 때 라벨 입력칸에는 기본 라벨("출근", "초번 출근")이 채워져 alarm.label로 저장된다. 이 값은 만든 시점의
+// 언어로 굳어 있어서, 언어를 바꾸면 카드·알림 제목에 이전 언어가 남는다. 저장값이 "어느 언어로든 기본 라벨과 똑같은"
+// 경우에만 현재 언어의 기본 라벨로 바꿔 보여 준다 — 사용자가 직접 고쳐 쓴 라벨은 손대지 않는다.
+// 조립 규칙은 폼(useAlarmFormState)과 같다: shiftPrefixFor(…) + 타입 라벨 = "<근무조> <타입>".
+let defaultLabelIndex: Map<string, { typeLabel: string; shiftLabel?: string }> | null = null;
+function buildDefaultLabelIndex() {
+  const idx = new Map<string, { typeLabel: string; shiftLabel?: string }>();
+  const shifts = SHIFTS.filter(s => s.id !== 'none' && s.id !== 'custom');
+  for (const lang of LANGS) {
+    for (const ty of TYPES) {
+      idx.set(translate(lang, ty.label), { typeLabel: ty.label });
+      for (const sh of shifts) {
+        const shl = translate(lang, sh.label);
+        // 폼이 조립하는 꼴("<근무조> <타입>")과, 근무표 알람·위젯이 쓰는 문장 키 꼴 둘 다 기본 라벨로 인정한다.
+        idx.set(`${shl} ${translate(lang, ty.label)}`, { typeLabel: ty.label, shiftLabel: sh.label });
+        const key = ROLE_KEYS[ty.id];
+        if (key) idx.set(translate(lang, key, { shift: shl }), { typeLabel: ty.label, shiftLabel: sh.label });
+      }
+    }
+  }
+  return idx;
+}
+// 출근·퇴근은 언어마다 어순이 달라 문장 키로 만든다(workPattern.roleLabel과 같은 키) — 같은 알람이 카드와 위젯에서
+// 다른 이름으로 보이지 않게 한다. 그 외 타입은 "<근무조> <타입>".
+const ROLE_KEYS: Record<string, string> = { commute: N('{shift} 출근'), offwork: N('{shift} 퇴근') };
+export function localizeDefaultLabel(label: string | undefined | null): string {
+  const raw = (label ?? '').trim();
+  if (!raw) return '';
+  if (!defaultLabelIndex) defaultLabelIndex = buildDefaultLabelIndex();
+  const hit = defaultLabelIndex.get(raw);
+  if (!hit) return label as string;
+  if (!hit.shiftLabel) return t(hit.typeLabel);
+  const roleKey = ROLE_KEYS[TYPES.find(x => x.label === hit.typeLabel)?.id ?? ''];
+  return roleKey ? t(roleKey, { shift: t(hit.shiftLabel) }) : `${t(hit.shiftLabel)} ${t(hit.typeLabel)}`;
+}
+/** 화면·알림에 보여 줄 알람 이름 — 저장된 라벨(기본 라벨이면 현재 언어로), 없으면 타입 이름. */
+export function alarmLabel(a: Pick<Alarm, 'label' | 'typeId'>): string {
+  return localizeDefaultLabel(a.label) || t(getType(a.typeId).label);
+}
+
 export const repeatLabel = (al: Alarm): string => {
-  if (al.rm==='once') return '한 번';
+  if (al.rm==='once') return t('한 번');
   if (al.rm==='wdcustom' || al.rm==='daily' || al.rm==='weekdays' || al.rm==='weekends') {
     const days = al.rm==='daily' ? [0,1,2,3,4,5,6]
                : al.rm==='weekdays' ? [0,1,2,3,4]
                : al.rm==='weekends' ? [5,6]
                : (al.days ?? []);
-    if (days.length === 7) return '매일';
-    if (days.length === 5 && !days.includes(5) && !days.includes(6)) return '평일';
-    if (days.length === 2 && days.includes(5) && days.includes(6)) return '주말';
-    const n = days.map(d => DAYS[d]).join(' ');
-    return n || '요일 선택';
+    if (days.length === 7) return t('매일');
+    if (days.length === 5 && !days.includes(5) && !days.includes(6)) return t('평일');
+    if (days.length === 2 && days.includes(5) && days.includes(6)) return t('주말');
+    const n = days.map(d => t(DAYS[d])).join(' ');
+    return n || t('요일 선택');
   }
-  if (al.rm==='cycle')   return `${al.cd??1}일 주기`;
-  if (al.rm==='rest')    return `${al.cd??2}일 알람 후 ${al.rd??1}일 휴식`;
+  if (al.rm==='cycle')   return t('{n}일 주기', { n: al.cd??1 });
+  if (al.rm==='rest')    return t('{n}일 알람 후 {r}일 휴식', { n: al.cd??2, r: al.rd??1 });
   if (al.rm==='pattern') {
     const segs = al.pattern ?? [];
-    if (segs.length <= 1) return '근무 로테이션';
-    return segs.map(s => `${s.days}일${s.isRest ? ' 비번' : ''}`).join(' → ') + ' 반복';
+    if (segs.length <= 1) return t('근무 로테이션');
+    return t('{pattern} 반복', { pattern: segs.map(s => s.isRest ? t('{n}일 비번', { n: s.days }) : t('{n}일', { n: s.days })).join(' → ') });
   }
   // sd는 반드시 문자열로 쪼개 쓴다 — new Date('2026-07-29')는 UTC 자정으로 파싱돼서
   // UTC 음수 오프셋 지역에서 하루 밀린다. 스케줄러(getNextFireDate/core.ts)가 sd.split('-')
   // 기준이라, 여기서 Date로 파싱하면 카드에 적힌 날짜와 실제 울리는 날이 어긋난다.
   const [, sdM, sdD] = (al.sd || todayStr()).split('-').map(Number);
-  if (al.rm==='monthly') return al.lastDay ? '매월 말일' : `매월 ${sdD}일`;
+  if (al.rm==='monthly') return al.lastDay ? t('매월 말일') : t('매월 {d}일', { d: sdD });
   if (al.rm==='yearly') {
     const M = sdM, D = sdD;
-    if (!al.lunar) return `매년 ${M}월 ${D}일`;
+    // 월 이름은 MONTH_KEYS로 번역한다(범위 밖이면 기존 표기 그대로)
+    if (!al.lunar) return t('매년 {month} {d}일', { month: MONTH_KEYS[M-1] ? t(MONTH_KEYS[M-1]) : `${M}월`, d: D });
     // 음력은 해마다 양력 날짜가 달라져서 음력 표기만으로는 언제 울리는지 알 수 없다.
     // 다음에 울릴 양력 날짜를 병기한다 — 올해분이 이미 지났으면 내년 기준으로 환산.
     const y = new Date().getFullYear();
@@ -77,7 +121,7 @@ export const repeatLabel = (al: Alarm): string => {
     const suffix = solar ? ` (양력 ${Number(solar.split('-')[1])}월 ${Number(solar.split('-')[2])}일)` : '';
     return `매년 음력 ${M}월 ${D}일${suffix}`;
   }
-  return '한 번';
+  return t('한 번');
 };
 
 function dayDiff(a: Date, b: Date): number {
@@ -115,14 +159,62 @@ export function effectiveShift(a: Alarm, dateStr: string): { shift: ShiftPeriod;
   return null;
 }
 
+// ─── 자정을 넘는 근무(야간 22~06시, 24시간 근무 등) ─────────────────────────────
+// 퇴근 시각이 출근 시각보다 이르거나 같으면 그 근무는 다음 날 끝난다(근무가 시작 전에 끝날 수는 없으므로
+// 따로 "다음날" 플래그를 받지 않고 시각만으로 판정한다. 08:00→08:00은 24시간 근무).
+// 이 판정은 여기 한 곳에만 둔다 — effectiveTime/dayWorkFor가 dayOffset으로 돌려주고, 발화 시각을 만드는
+// 세 곳(core.ts 로테이션 루프·날짜기반 루프, 아래 getNextFireDate)이 그 값을 날짜에 더한다.
+export type ClockTime = { hour: number; min: number };
+export function isOvernight(start: ClockTime | undefined, end: ClockTime | undefined): boolean {
+  if (!start || !end) return false;
+  return end.hour * 60 + end.min <= start.hour * 60 + start.min;
+}
+// "이날만 끄기"(skips) 중 더 볼 필요 없는 지난 날짜를 걷어낸다. skips는 근무일 기준이고 자정 넘는 근무의
+// 퇴근은 근무일 다음 날 울리므로 "어제"까지는 남겨야 한다 — 오늘 이전을 전부 지우면, 어젯밤 근무분을 꺼둔
+// 사용자가 자정 뒤 앱을 열 때 skip이 사라져 오늘 아침 퇴근 알람이 다시 예약된다.
+export function pruneSkips(skips: string[] | undefined, today: string): string[] | undefined {
+  if (!skips?.length) return skips;
+  const [y, m, d] = today.split('-').map(Number);
+  const yd = new Date(y, m - 1, d - 1);
+  const keepFrom = `${yd.getFullYear()}-${pad(yd.getMonth() + 1)}-${pad(yd.getDate())}`;
+  const kept = skips.filter(x => x >= keepFrom);
+  return kept.length ? kept : undefined;
+}
+// 발화 시각 date가 속한 "근무일" — 자정 넘는 근무의 퇴근이면 하루 전, 아니면 발화일 그대로.
+// 헤더·위젯처럼 발화 시각에서 거꾸로 근무조 라벨을 만드는 곳이 쓴다(알림 제목은 예약 루프가 근무일로 직접 만든다).
+export function workDateOfFire(alarm: Alarm, date: Date, overrides: DayOverrides = {}): string {
+  const dsOf = (x: Date) => `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`;
+  const fireDs = dsOf(date);
+  if (overnightFrom(alarm) === 0) return fireDs;
+  const prev = new Date(date); prev.setDate(prev.getDate() - 1);
+  const prevDs = dsOf(prev);
+  const same = (t: { hour: number; min: number } | null | undefined) => !!t && t.hour === date.getHours() && t.min === date.getMinutes();
+  const dw = dayWorkFor(alarm, overrides[prevDs]);
+  if (dw) return dw.fires && dw.dayOffset === 1 && same(dw.time) ? prevDs : fireDs;
+  if (alarm.skips?.includes(prevDs)) return fireDs;
+  const t = effectiveTime(alarm, prevDs);
+  return t?.dayOffset === 1 && same(t) ? prevDs : fireDs;
+}
+// 발화 시각을 훑는 루프가 "며칠 전 근무일"부터 봐야 하는지 — 퇴근 알람은 어젯밤 근무의 퇴근이 오늘
+// 아침에 울릴 수 있으므로 어제(-1)부터, 그 외는 오늘(0)부터. 대상은 하루 근무 변경·로테이션이 닿는
+// 출퇴근 알람(isOverridableAlarm)의 퇴근 쪽뿐이라 나머지 알람 종류는 지금까지와 완전히 같다.
+export function overnightFrom(a: Alarm): number {
+  return a.typeId === 'offwork' && isOverridableAlarm(a) ? -1 : 0;
+}
+
 // 로테이션 알람이 dateStr에 실제로 울리는 시각(출근/퇴근 세그먼트별) — 휴식일이면 null.
 // 비로테이션 알람은 기존 alarm.hour/min을 그대로 반환(하위호환).
-export function effectiveTime(a: Alarm, dateStr: string): { hour: number; min: number } | null {
+// dayOffset=1이면 그 시각은 dateStr(근무일)의 "다음 날"이다 — 자정 넘는 근무의 퇴근(isOvernight).
+export function effectiveTime(a: Alarm, dateStr: string): { hour: number; min: number; dayOffset?: number } | null {
   if (a.rm === 'pattern' && a.pattern?.length) {
     const r = resolveSegment(a.pattern, a.sd, dateStr);
     if (!r || r.segment.isRest) return null;
-    const t = a.groupRole === 'offwork' ? r.segment.offworkTime : r.segment.commuteTime;
-    return t ?? null;
+    if (a.groupRole === 'offwork') {
+      const t = r.segment.offworkTime;
+      if (!t) return null;
+      return isOvernight(r.segment.commuteTime, t) ? { hour: t.hour, min: t.min, dayOffset: 1 } : t;
+    }
+    return r.segment.commuteTime ?? null;
   }
   return { hour: a.hour, min: a.min };
 }
@@ -134,7 +226,8 @@ export function getNextFireDate(alarm: Alarm, overrides: DayOverrides = {}): Dat
   // 매년(음력 포함) 알람은 1년 가까이 뒤일 수 있어 "다음 알람" 미리보기가 놓치지 않도록 넉넉히 훑는다.
   // (실제 OS 알림 예약은 별도로 14일 창만 쓰므로 여기 범위 확장은 성능에 영향 없음)
   const searchDays = alarm.rm === 'yearly' ? 400 : 14;
-  for (let ahead = 0; ahead <= searchDays; ahead++) {
+  // 퇴근 알람은 어제 근무일부터 본다 — 어젯밤 야간 근무의 퇴근이 오늘 아침일 수 있다(overnightFrom).
+  for (let ahead = overnightFrom(alarm); ahead <= searchDays; ahead++) {
     const cand = new Date(now);
     cand.setDate(cand.getDate() + ahead);
     const cs = `${cand.getFullYear()}-${pad(cand.getMonth()+1)}-${pad(cand.getDate())}`;
@@ -148,6 +241,7 @@ export function getNextFireDate(alarm: Alarm, overrides: DayOverrides = {}): Dat
       if (!dw.fires) continue;
       if (!dw.time) continue;
       cand.setHours(dw.time.hour, dw.time.min, 0, 0);
+      if (dw.dayOffset) cand.setDate(cand.getDate() + dw.dayOffset); // 자정 넘는 근무의 퇴근
       if (cand <= now) continue;
       return cand;
     }
@@ -162,6 +256,7 @@ export function getNextFireDate(alarm: Alarm, overrides: DayOverrides = {}): Dat
       const t = effectiveTime(alarm, cs);
       if (!t) continue;
       cand.setHours(t.hour, t.min, 0, 0);
+      if (t.dayOffset) cand.setDate(cand.getDate() + t.dayOffset); // 자정 넘는 근무의 퇴근
       if (cand <= now) continue;
       return cand;
     }
@@ -432,7 +527,7 @@ export function dayOverrideDisplay(ov: DayOverride | undefined): { label: string
 //                          fires:true — 원래 그날 안 울리던 알람(비번)도 이 경로로 새로 울릴 수 있다
 export function dayWorkFor(
   alarm: Alarm, ov: DayOverride | undefined
-): { fires: boolean; time?: { hour: number; min: number }; shift?: ShiftPeriod } | null {
+): { fires: boolean; time?: { hour: number; min: number }; shift?: ShiftPeriod; dayOffset?: number } | null {
   if (!ov || !isKnownKind(ov.kind)) return null;
   // 출근/퇴근 알람이 아니면 override는 이 알람에 아무 영향을 주지 않는다 — 연차를 걸어도
   // 운동·식사·생일 같은 알람은 그대로 둔다. isWorkAlarm이 아니라 더 넓은 isOverridableAlarm을
@@ -442,7 +537,9 @@ export function dayWorkFor(
   if (!ov.work) return { fires: false };
   const time = alarm.typeId === 'offwork' ? ov.work.end : ov.work.start;
   if (!time) return { fires: false };
-  return { fires: true, time, shift: ov.work.shift };
+  // 대근·특근을 야간으로 넣은 날(예: 22:00~06:00) — 퇴근은 그 날짜의 다음 날 아침이다.
+  const dayOffset = alarm.typeId === 'offwork' && isOvernight(ov.work.start, ov.work.end) ? 1 : undefined;
+  return { fires: true, time, shift: ov.work.shift, dayOffset };
 }
 
 // 양력 날짜(YYYY-MM-DD) → 음력 "M월 D일" 문자열. 지원 범위(1000~2050년) 밖이면 빈 문자열.
@@ -493,17 +590,27 @@ export const nextAlarmParts = (
   const type = getType(alarm.typeId);
   const now  = new Date();
   const isToday = date.getDate()===now.getDate() && date.getMonth()===now.getMonth() && date.getFullYear()===now.getFullYear();
-  const dowLabel = DAYS[(date.getDay()+6)%7];
-  const dateStr  = isToday ? `오늘` : `${date.getMonth()+1}/${date.getDate()} ${dowLabel}`;
+  const dowLabel = t(DAYS[(date.getDay()+6)%7]);
+  const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  // 언어마다 어순이 달라 날짜+시각을 문장 통째로 키로 둔다(한국어 결과는 기존과 동일: "오늘 06:00", "10/14 수 06:00")
+  const when = isToday
+    ? t('오늘 {time}', { time })
+    : t('{m}/{d} {dow} {time}', { m: date.getMonth()+1, d: date.getDate(), dow: dowLabel, time });
   // 시각은 반드시 getNextFireDate가 돌려준 date에서 뽑는다 — 로테이션(pattern) 알람의
   // alarm.hour/min은 첫 블록 시각으로 고정된 레거시 폴백값이라, 그날 실제 울릴 시각과 다르다.
   // (AlarmCard는 patternTime으로 이미 고쳤지만 이 헤더 문구가 빠져 있었음)
   // 로테이션 알람의 alarm.label은 첫 블록 기준 레거시 값이라, 그날 세그먼트의 근무조로 다시 만든다
   // (workPattern.roleLabel과 같은 규칙 — 그 모듈이 이 파일을 import해서 순환을 피하려고 직접 조립).
-  const ds = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+  // 근무조는 "근무일" 기준 — 자정 넘는 근무의 퇴근은 발화일이 근무일 다음 날이라 발화일로 찾으면
+  // 다른 블록(또는 비번)을 보게 된다(workDateOfFire).
+  const ds = workDateOfFire(alarm, date, overrides);
   const seg = alarm.rm === 'pattern' ? effectiveShift(alarm, ds) : null;
+  // shiftPrefixFor는 번역된 근무조 이름 + 공백(없으면 '')을 돌려준다 — 이름만 떼어 문장 키에 넣는다
+  const shiftName = seg ? shiftPrefixFor(seg.shift, seg.shiftCustom).trim() : '';
   const label = seg
-    ? `${shiftPrefixFor(seg.shift, seg.shiftCustom)}${alarm.groupRole === 'offwork' ? '퇴근' : '출근'}`
-    : (alarm.label || type.label);
-  return { icon: type.icon, label, when: `${dateStr} ${pad(date.getHours())}:${pad(date.getMinutes())}` };
+    ? (alarm.groupRole === 'offwork'
+        ? (shiftName ? t('{shift} 퇴근', { shift: shiftName }) : t('퇴근'))
+        : (shiftName ? t('{shift} 출근', { shift: shiftName }) : t('출근')))
+    : alarmLabel(alarm);
+  return { icon: type.icon, label, when };
 };
