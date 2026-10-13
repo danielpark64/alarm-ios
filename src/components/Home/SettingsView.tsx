@@ -8,11 +8,18 @@ import { useColors, useThemeSetting, ThemeName } from '../../hooks/useTheme';
 import { useAlarmDefaults } from '../../hooks/useAlarmDefaults';
 import { useFontScale, FontScaleName } from '../../hooks/useFontScale';
 import { useT, N, LANGS, LANGUAGE_LABEL, type LanguageSetting } from '../../i18n';
+import { useWeekStart, type WeekStartSetting } from '../../hooks/useWeekStart';
 
 const FONT_SCALES: { id: FontScaleName; label: string }[] = [
   { id: 'small',  label: N('작게') },
   { id: 'medium', label: N('보통') },
   { id: 'large',  label: N('크게') },
+];
+
+const WEEK_STARTS: { id: WeekStartSetting; label: string }[] = [
+  { id: 'auto', label: N('자동') },
+  { id: 'sun',  label: N('일요일') },
+  { id: 'mon',  label: N('월요일') },
 ];
 
 interface Props {
@@ -27,6 +34,7 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp }: Props) {
   const { fontScale, setFontScale } = useFontScale();
   const { defaults, setDefaults } = useAlarmDefaults();
   const { t, setting: langSetting, setSetting: setLangSetting } = useT();
+  const { setting: weekSetting, setSetting: setWeekSetting } = useWeekStart();
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false}>
@@ -81,6 +89,17 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp }: Props) {
             ))}
           </View>
           <Text style={s.langSub}>{t('시스템은 폰의 언어를 따라요')}</Text>
+        </View>
+        <View style={s.divider} />
+        <View style={s.row}>
+          <Text style={s.rowLabel}>{t('달력 주 시작')}</Text>
+          <View style={s.segment}>
+            {WEEK_STARTS.map(w => (
+              <TouchableOpacity key={w.id} style={[s.segBtn, weekSetting === w.id && s.segBtnActive]} onPress={() => setWeekSetting(w.id)}>
+                <Text style={[s.segBtnText, weekSetting === w.id && s.segBtnTextActive]}>{t(w.label)}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       </View>
 

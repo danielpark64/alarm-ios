@@ -806,6 +806,12 @@
   ]
  },
  {
+  "key": "달력 주 시작",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
   "key": "달력 화면에서 좌우로 밀거나 상단의 ‹ › 버튼을 누르면 한 달씩 넘어가요.\n화면 위쪽의 \"????년\" 부분(현재 연도가 적힌 곳)을 누르면 연도 목록이 떠서, 몇 년 전이나 몇 년 후든 원하는 해로 바로 이동할 수 있어요.",
   "files": [
    "src/content/help.ko.ts"
@@ -1588,6 +1594,12 @@
   ]
  },
  {
+  "key": "월요일",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
   "key": "위젯 & 설정",
   "files": [
    "src/content/help.ko.ts"
@@ -1697,9 +1709,21 @@
   ]
  },
  {
+  "key": "일요일",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
   "key": "입력한 반복/시간 설정이 초기화됩니다. 계속할까요?",
   "files": [
    "src/components/AlarmForm/index.tsx"
+  ]
+ },
+ {
+  "key": "자동",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
   ]
  },
  {

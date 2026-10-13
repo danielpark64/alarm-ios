@@ -9,6 +9,7 @@ import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, isOverridableAlarm,
 import { roleLabel } from '../../utils/workPattern';
 import { getHoliday, getHolidayShort, statutoryHolidaysInYear } from '../../constants/holidays';
 import { useHolidayVersion } from '../../hooks/useHolidayVersion';
+import { useWeekStart } from '../../hooks/useWeekStart';
 import { getSolarTerm } from '../../constants/solarTerms';
 import { OverrideTimeModal } from './OverrideTimeModal';
 import { useT, N } from '../../i18n';
@@ -56,9 +57,9 @@ function buildDayMap(alarms: Alarm[], year: number, month: number): Record<strin
   return map;
 }
 
-function buildCells(year: number, month: number): (number|null)[] {
-  // getDay()가 이미 0=일이라 그대로 offset으로 쓴다 — 일요일이 첫 칸.
-  const offset = new Date(year, month, 1).getDay();
+// ws: 주 시작 요일(0=일요일, 1=월요일 — useWeekStart). 첫 칸 앞의 빈 칸 수만 달라진다.
+function buildCells(year: number, month: number, ws: number = 0): (number|null)[] {
+  const offset = (new Date(year, month, 1).getDay() - ws + 7) % 7;
   const daysInMonth = new Date(year, month+1, 0).getDate();
   const cells: (number|null)[] = [];
   for (let i=0; i<offset; i++) cells.push(null);
@@ -76,16 +77,17 @@ interface MonthGridProps {
   cv: ReturnType<typeof makeStyles>;
   cellH: number; itemHeight: number;
   overrides: DayOverrides;
+  weekStart: number; // 0=일요일 시작, 1=월요일 시작
   // 셀 안의 getHoliday(ds) 표기는 모듈 변수를 직접 읽어 memo가 변화를 모른다 — 공휴일 데이터
   // 버전을 prop으로 받아 API 갱신 시 memo가 깨지게 한다(값 자체는 쓰지 않는다).
   holidayVersion: number;
   onSelectDate: (ds: string) => void;
 }
 
-const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneIdxOf, density, cellScale, today, showLunar, width, cv, cellH, itemHeight, overrides, onSelectDate }: MonthGridProps) {
+const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneIdxOf, density, cellScale, today, showLunar, width, cv, cellH, itemHeight, overrides, weekStart, onSelectDate }: MonthGridProps) {
   // memo 컴포넌트라 부모가 다시 그려져도 건너뛴다 — 언어 변경은 이 컨텍스트 구독으로 직접 받는다.
   const { t } = useT();
-  const cells = useMemo(() => buildCells(year, month), [year, month]);
+  const cells = useMemo(() => buildCells(year, month, weekStart), [year, month, weekStart]);
   const dayMap = useMemo(() => buildDayMap(alarms, year, month), [alarms, year, month]);
   const offset = cells.findIndex(c => c !== null);
 
@@ -95,7 +97,7 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
         if (!d) return <View key={i} style={[cv.cell, { height: cellH }]}/>;
         const ds = `${year}-${pad(month+1)}-${pad(d)}`;
         const isToday = ds === today;
-        const dow = (offset + d - 1) % 7; // 0=일 … 6=토 (표시 체계)
+        const dow = (offset + d - 1 + weekStart) % 7; // 0=일 … 6=토 (실제 요일 — 주 시작이 월요일이어도 같은 값)
         const info = dayMap[ds];
         // 공휴일에 안 울리는 알람은 칩도 빼야 한다 — 안 그러면 추석 칸에 울리지도 않을 출근 칩이 뜬다.
         // 단 특근/대근을 걸어둔 공휴일은 실제로 울리므로 칩이 남아야 한다(isHolidayOffWithOverride).
@@ -237,6 +239,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
   const [ovPickingShiftFor, setOvPickingShiftFor] = useState<OverrideKind | null>(null);
   const [ovTimeEditFor, setOvTimeEditFor] = useState<{ kind: OverrideKind; shift?: ShiftPeriod; start?: { hour: number; min: number }; end?: { hour: number; min: number } } | null>(null);
   const [ovFamilyDraft, setOvFamilyDraft] = useState('');
+  const { weekStart } = useWeekStart();
   const [showLunarRaw, setShowLunar] = useState(false);
   const isKR = lang === 'ko';
   const showLunar = showLunarRaw && isKR; // 음력 표기는 한국어일 때만
@@ -496,11 +499,14 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
 
         {/* 요일 헤더 — 달이 바뀌어도 고정 */}
         <View style={cv.grid}>
-          {DAYS_DISPLAY.map((d,i) => (
-            <View key={i} style={cv.headCell}>
-              <Text style={[cv.headText, (i === 0 || i === 6) && { color: C.weekendFg }]}>{t(d)}</Text>
-            </View>
-          ))}
+          {DAYS_DISPLAY.map((_, i) => {
+            const wd = (i + weekStart) % 7; // 이 칸의 실제 요일(0=일)
+            return (
+              <View key={i} style={cv.headCell}>
+                <Text style={[cv.headText, (wd === 0 || wd === 6) && { color: C.weekendFg }]}>{t(DAYS_DISPLAY[wd])}</Text>
+              </View>
+            );
+          })}
         </View>
       </View>
 
@@ -514,7 +520,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
           keyExtractor={(i) => String(i)}
           renderItem={({ item }) => {
             const { year: y, month: m } = indexToYearMonth(item);
-            return <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} itemHeight={itemHeight} overrides={overrides} holidayVersion={holidayVersion} onSelectDate={setSelDate} />;
+            return <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} itemHeight={itemHeight} overrides={overrides} weekStart={weekStart} holidayVersion={holidayVersion} onSelectDate={setSelDate} />;
           }}
           getItemLayout={(_, index) => ({ length: winWidth, offset: winWidth * index, index })}
           initialScrollIndex={RANGE}

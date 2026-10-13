@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from './AppText';
 import { DAYS, DAYS_DISPLAY, MONTH_KEYS } from '../../constants';
+import { useWeekStart } from '../../hooks/useWeekStart';
 import { pad, todayStr } from '../../utils';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
@@ -28,6 +29,7 @@ export function CalendarPicker({
 }: { value: string; onChange: (s: string) => void; onClose: () => void }) {
   const C = useColors();
   const { t } = useT();
+  const { weekStart } = useWeekStart();
   const cal = makeStyles(C);
   const init = value ? new Date(value) : new Date();
   const [year,  setYear]  = useState(init.getFullYear());
@@ -55,7 +57,7 @@ export function CalendarPicker({
   };
 
   // getDay()가 이미 0=일이라 그대로 offset — 메인 달력(CalendarView)과 같은 배치.
-  const offset      = new Date(year, month, 1).getDay();
+  const offset      = (new Date(year, month, 1).getDay() - weekStart + 7) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const cells: (number | null)[] = [];
   for (let i = 0; i < offset; i++) cells.push(null);
@@ -118,18 +120,21 @@ export function CalendarPicker({
         </TouchableOpacity>
       </View>
       <View style={cal.grid}>
-        {DAYS_DISPLAY.map((d, i) => (
-          <View key={i} style={cal.headCell}>
-            <Text style={[cal.headText, (i === 0 || i === 6) && { color: C.weekendFg }]}>{t(d)}</Text>
-          </View>
-        ))}
+        {DAYS_DISPLAY.map((_, i) => {
+          const wd = (i + weekStart) % 7; // 이 칸의 실제 요일(0=일) — 주 시작 설정(useWeekStart) 반영
+          return (
+            <View key={i} style={cal.headCell}>
+              <Text style={[cal.headText, (wd === 0 || wd === 6) && { color: C.weekendFg }]}>{t(DAYS_DISPLAY[wd])}</Text>
+            </View>
+          );
+        })}
         {cells.map((d, i) => {
           if (!d) return <View key={i} style={cal.cell} />;
           const ds      = `${year}-${pad(month + 1)}-${pad(d)}`;
           const isPast  = ds < today;
           const isSel   = ds === value;
           const isToday = ds === today;
-          const dow     = (offset + d - 1) % 7;
+          const dow     = (offset + d - 1 + weekStart) % 7;
           return (
             <TouchableOpacity
               key={i}
