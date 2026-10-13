@@ -542,6 +542,12 @@ if [ -z "$_BADNAME" ] && grep -q '<string name="app_name">교대알람</string>'
   && grep -q '"CFBundleDisplayName": "ShiftWake"' "$ROOT/app.json" && grep -q '교대알람' "$ROOT/locales/ko.json" 2>/dev/null; then ok ""
 else fail "앱 이름 규칙 위반: $_BADNAME"; fi
 
+# 달력 칸 key(2026-10-14) — 칸 번호(key={i})를 쓰면 주 시작 요일·언어를 바꿀 때 비번 칸이 근무일로 재사용되며
+#    칸 전체가 비어 보인다(32 실기기 확인). 날짜 기반 key여야 한다.
+printf "  달력 칸 key가 날짜 기반인지 ... "
+if grep -q 'key={`${ds}-${effOff ? 1 : 0}`}' "$ROOT/src/components/Home/CalendarView.tsx" 2>/dev/null; then ok ""
+else fail "CalendarView 날짜 칸 key가 날짜 기반이 아님 — 주 시작 변경 시 빈칸 버그 재발"; fi
+
 # ㉑ 다국어(2026-10-13) — 순수 모듈(utils·constants)은 i18n 인덱스(React·AsyncStorage)를 import하면 안 된다
 #    (scripts/logic-tests가 node에서 못 돈다). 번역은 '../i18n/translate', 표식은 '../i18n/lang'만.
 printf "  utils·constants가 i18n 인덱스를 import하지 않는지 ... "

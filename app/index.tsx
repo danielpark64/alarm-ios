@@ -298,6 +298,25 @@ export default function App() {
       setTab('alarms');
       return;
     }
+    // alarmapp://?k=…&demo=1 — 스토어 스크린샷용 데모 데이터: "초번 → 말번 → 비번" 근무표 + 식사 알람(전부 진동만).
+    // 언어별 스크린샷을 같은 데이터로 찍기 위한 것. 정리는 clearAll(테스트 기기 전용).
+    // demo=1은 근무표, demo=2는 식사 알람 — 두 저장이 같은 렌더의 alarms를 보고 서로 덮어쓰지 않게 링크를 나눈다.
+    if (q.demo != null) {
+      const d = new Date(); d.setDate(d.getDate() - 20);
+      const p2 = (n: number) => String(n).padStart(2, '0');
+      const sd = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+      if (q.demo === '2') {
+        addAlarm({ typeId: 'meal', label: '', hour: 12, min: 30, rm: 'wdcustom', days: [0, 1, 2, 3, 4, 5, 6], cd: 3, rd: 1, snd: 'none', vib: 'pulse', sd });
+      } else {
+        submitWorkPattern(undefined, [
+          { blockId: 'tn1', shift: 'early', days: 1, commuteTime: { hour: 5, min: 40 }, hasOffwork: true, offworkTime: { hour: 15, min: 0 } },
+          { blockId: 'tn3', shift: 'late', days: 1, commuteTime: { hour: 13, min: 40 }, hasOffwork: true, offworkTime: { hour: 23, min: 0 } },
+          { blockId: 'tn2', shift: 'none', days: 1, isRest: true, hasOffwork: false },
+        ], sd, 'none', 'pulse');
+      }
+      setTab('calendar');
+      return;
+    }
     // alarmapp://?k=…&clearAll=1 — 알람 전부 삭제(테스트 정리용)
     if (q.clearAll != null) {
       if (alarms.length) deleteAlarms(new Set(alarms.map(a => a.id)));

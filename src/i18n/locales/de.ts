@@ -212,7 +212,7 @@ export const DE: Record<string, string> = {
   "알람 볼륨": "Weckerlautstärke",
   "알람 삭제": "Wecker löschen",
   "알람 소리 크기 (안드로이드)": "Weckerlautstärke (Android)",
-  "알람 수정": "Wecker bearbeiten",
+  "알람 수정": "Bearbeiten",
   "알람 수정하기": "Wecker bearbeiten",
   "알람 오른쪽에 있는 동그란 스위치를 손가락으로 누르면 켜지거나 꺼져요.": "Ein Tipp auf den runden Schalter rechts neben dem Wecker schaltet ihn ein oder aus.",
   "알람 추가": "Neuer Wecker",

@@ -94,7 +94,7 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
   return (
     <View style={[cv.grid, { height: itemHeight, width, paddingHorizontal: 14 }]}>
       {cells.map((d, i) => {
-        if (!d) return <View key={i} style={[cv.cell, { height: cellH }]}/>;
+        if (!d) return <View key={`e${i}`} style={[cv.cell, { height: cellH }]}/>;
         const ds = `${year}-${pad(month+1)}-${pad(d)}`;
         const isToday = ds === today;
         const dow = (offset + d - 1 + weekStart) % 7; // 0=일 … 6=토 (실제 요일 — 주 시작이 월요일이어도 같은 값)
@@ -135,7 +135,10 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
 
         return (
           <TouchableOpacity
-            key={i}
+            // key는 칸 번호가 아니라 날짜+비번 여부 — 주 시작 요일이 바뀌면 같은 칸 번호에 다른 날짜가 오는데,
+            // 칸 번호를 key로 쓰면 "비번 박스였던 칸"이 근무일로 재사용되면서 칸 전체(날짜 숫자 포함)가
+            // 안 그려지는 현상이 실기기(32)에서 확인됐다(2026-10-14). 날짜별로 새로 만들게 해서 피한다.
+            key={`${ds}-${effOff ? 1 : 0}`}
             activeOpacity={0.7}
             onPress={() => onSelectDate(ds)}
             style={[
