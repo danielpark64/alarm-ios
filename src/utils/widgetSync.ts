@@ -2,6 +2,7 @@ import { Platform, NativeModules } from 'react-native';
 import { Alarm, DayOverrides, SHIFTS } from '../constants';
 import { pad, todayStr, getType, getNextFireDate, shiftForDate, isOffDay, shiftColorMap, alarmsForDate, isWorkAlarm, isHolidayOffWithOverride, effectiveShift, dayOverrideDisplay } from './index';
 import { roleLabel } from './workPattern';
+import { t } from '../i18n/translate';
 
 const { WidgetModule } = NativeModules;
 
@@ -33,7 +34,7 @@ export async function syncWidget(alarms: Alarm[], overrides: DayOverrides = {}) 
   // (AlarmCard의 displayLabel과 같은 규칙. 시간대 정보가 없으면 기존처럼 "출근"/"퇴근"만)
   const shiftLabelFor = (a: Alarm, ds: string): string => {
     const info = effectiveShift(a, ds);
-    return info ? roleLabel(info, a.groupRole ?? 'commute') : getType(a.typeId).label;
+    return info ? roleLabel(info, a.groupRole ?? 'commute') : t(getType(a.typeId).label);
   };
 
   // 오늘 근무조 — override가 있으면 그걸로 확정(연차 등은 비번 취급, 대근 등은 그 이름으로).
@@ -41,7 +42,7 @@ export async function syncWidget(alarms: Alarm[], overrides: DayOverrides = {}) 
   const ovToday = dayOverrideDisplay(overrides[today]);
   const todayShift = ovToday ? null : shiftForDate(alarms, today);
   const isOffToday = ovToday ? ovToday.isOff : isOffDay(alarms, today);
-  const shiftName  = ovToday ? ovToday.label : (todayShift ? shiftLabelFor(todayShift, today) : '--');
+  const shiftName  = ovToday ? t(ovToday.label) : (todayShift ? shiftLabelFor(todayShift, today) : '--');
   // override로 대근·특근 등 근무조가 정해진 날은 그 근무조 고유색(SHIFTS.color)을 쓴다 —
   // colorOf는 알람 id 기준 팔레트라 override(가상의 근무)에는 매칭되는 항목이 없다.
   const shiftColor = ovToday?.shift
@@ -82,12 +83,12 @@ export async function syncWidget(alarms: Alarm[], overrides: DayOverrides = {}) 
       .filter(a => !a.skips?.includes(ds))
       .filter(a => !isHolidayOffWithOverride(a, ds, overrides[ds]))
       .filter(a => !isWorkAlarm(a))
-      .map(a => a.label || getType(a.typeId).label)
+      .map(a => a.label || t(getType(a.typeId).label))
       .filter(Boolean)
       .slice(0, 2); // 최대 2개
     return {
       date:    ds,
-      shift:   ov ? ov.label : (shift ? shiftLabelFor(shift, ds) : ''),
+      shift:   ov ? t(ov.label) : (shift ? shiftLabelFor(shift, ds) : ''),
       color:   ov?.shift ? (SHIFTS.find(s => s.id === ov.shift)?.color ?? '#a29bfe')
                           : (shift ? (colorOf[shift.id] ?? '#a29bfe') : ''),
       isOff:   off,

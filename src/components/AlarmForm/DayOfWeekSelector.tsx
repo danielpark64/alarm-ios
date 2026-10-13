@@ -4,6 +4,7 @@ import { Text } from '../common/AppText';
 import { DAYS_DISPLAY, displayToStore } from '../../constants';
 import { useColors } from '../../hooks/useTheme';
 import { makeStyles } from './styles';
+import { useT } from '../../i18n';
 
 interface Props {
   days: number[];
@@ -13,6 +14,7 @@ interface Props {
 export function DayOfWeekSelector({ days, toggleDay }: Props) {
   const C = useColors();
   const s = makeStyles(C);
+  const { t } = useT();
   return (
     <View style={{ gap: 8 }}>
       <View style={s.dayRow}>
@@ -27,7 +29,7 @@ export function DayOfWeekSelector({ days, toggleDay }: Props) {
               style={[s.dayBtn, on && s.dayBtnActive]}
               onPress={() => toggleDay(store)}
             >
-              <Text style={[s.dayText, { color: on ? '#fff' : C.txt3 }]}>{d}</Text>
+              <Text style={[s.dayText, { color: on ? '#fff' : C.txt3 }]}>{t(d)}</Text>
             </TouchableOpacity>
           );
         })}

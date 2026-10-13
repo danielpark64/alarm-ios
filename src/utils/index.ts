@@ -1,5 +1,6 @@
 import KoreanLunarCalendar from 'korean-lunar-calendar';
-import { Alarm, TYPES, SOUNDS, VIBS, DAYS, SHIFTS, ShiftPeriod, WorkSegment, DayOverride, DayOverrides, OverrideKind, OVERRIDE_KINDS } from '../constants';
+import { Alarm, TYPES, SOUNDS, VIBS, DAYS, MONTH_KEYS, SHIFTS, ShiftPeriod, WorkSegment, DayOverride, DayOverrides, OverrideKind, OVERRIDE_KINDS } from '../constants';
+import { t } from '../i18n/translate';
 import { isStatutoryHoliday } from '../constants/holidays';
 export const pad = (n: number) => String(n).padStart(2, '0');
 export const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
@@ -13,10 +14,10 @@ export const getVib   = (id: string) => VIBS.find(v => v.id === id) ?? VIBS[0];
 export const shiftPeriodLabel = (a: Alarm, resolved?: { shift: ShiftPeriod; shiftCustom?: string } | null): string => {
   const r = resolved !== undefined ? resolved : (a.shift && a.shift !== 'none' ? { shift: a.shift, shiftCustom: a.shiftCustom } : null);
   if (r) {
-    if (r.shift === 'custom') return r.shiftCustom?.trim() || SHIFTS.find(s => s.id === 'custom')!.label;
-    if (r.shift !== 'none') return SHIFTS.find(s => s.id === r.shift)!.label;
+    if (r.shift === 'custom') return r.shiftCustom?.trim() || t(SHIFTS.find(s => s.id === 'custom')!.label);
+    if (r.shift !== 'none') return t(SHIFTS.find(s => s.id === r.shift)!.label);
   }
-  return getType(a.typeId).label;
+  return t(getType(a.typeId).label);
 };
 // 근무 시간대가 사용자에 의해 명시적으로 지정된 경우에만 고정 색을 반환 — 달력에서 시간순 자동 배색과 구분해 눈에 띄게 표시
 export const shiftPeriodColor = (a: Alarm, resolved?: { shift: ShiftPeriod; shiftCustom?: string } | null): string | null => {
@@ -38,36 +39,37 @@ export const shiftPeriodId = (a: Alarm, resolved?: { shift: ShiftPeriod; shiftCu
 export const shiftPrefixFor = (shift: ShiftPeriod, shiftCustom?: string): string => {
   if (shift === 'none') return '';
   if (shift === 'custom') return shiftCustom?.trim() ? `${shiftCustom.trim()} ` : '';
-  return `${SHIFTS.find(s => s.id === shift)!.label} `;
+  return `${t(SHIFTS.find(s => s.id === shift)!.label)} `;
 };
 export const repeatLabel = (al: Alarm): string => {
-  if (al.rm==='once') return '한 번';
+  if (al.rm==='once') return t('한 번');
   if (al.rm==='wdcustom' || al.rm==='daily' || al.rm==='weekdays' || al.rm==='weekends') {
     const days = al.rm==='daily' ? [0,1,2,3,4,5,6]
                : al.rm==='weekdays' ? [0,1,2,3,4]
                : al.rm==='weekends' ? [5,6]
                : (al.days ?? []);
-    if (days.length === 7) return '매일';
-    if (days.length === 5 && !days.includes(5) && !days.includes(6)) return '평일';
-    if (days.length === 2 && days.includes(5) && days.includes(6)) return '주말';
-    const n = days.map(d => DAYS[d]).join(' ');
-    return n || '요일 선택';
+    if (days.length === 7) return t('매일');
+    if (days.length === 5 && !days.includes(5) && !days.includes(6)) return t('평일');
+    if (days.length === 2 && days.includes(5) && days.includes(6)) return t('주말');
+    const n = days.map(d => t(DAYS[d])).join(' ');
+    return n || t('요일 선택');
   }
-  if (al.rm==='cycle')   return `${al.cd??1}일 주기`;
-  if (al.rm==='rest')    return `${al.cd??2}일 알람 후 ${al.rd??1}일 휴식`;
+  if (al.rm==='cycle')   return t('{n}일 주기', { n: al.cd??1 });
+  if (al.rm==='rest')    return t('{n}일 알람 후 {r}일 휴식', { n: al.cd??2, r: al.rd??1 });
   if (al.rm==='pattern') {
     const segs = al.pattern ?? [];
-    if (segs.length <= 1) return '근무 로테이션';
-    return segs.map(s => `${s.days}일${s.isRest ? ' 비번' : ''}`).join(' → ') + ' 반복';
+    if (segs.length <= 1) return t('근무 로테이션');
+    return t('{pattern} 반복', { pattern: segs.map(s => s.isRest ? t('{n}일 비번', { n: s.days }) : t('{n}일', { n: s.days })).join(' → ') });
   }
   // sd는 반드시 문자열로 쪼개 쓴다 — new Date('2026-07-29')는 UTC 자정으로 파싱돼서
   // UTC 음수 오프셋 지역에서 하루 밀린다. 스케줄러(getNextFireDate/core.ts)가 sd.split('-')
   // 기준이라, 여기서 Date로 파싱하면 카드에 적힌 날짜와 실제 울리는 날이 어긋난다.
   const [, sdM, sdD] = (al.sd || todayStr()).split('-').map(Number);
-  if (al.rm==='monthly') return al.lastDay ? '매월 말일' : `매월 ${sdD}일`;
+  if (al.rm==='monthly') return al.lastDay ? t('매월 말일') : t('매월 {d}일', { d: sdD });
   if (al.rm==='yearly') {
     const M = sdM, D = sdD;
-    if (!al.lunar) return `매년 ${M}월 ${D}일`;
+    // 월 이름은 MONTH_KEYS로 번역한다(범위 밖이면 기존 표기 그대로)
+    if (!al.lunar) return t('매년 {month} {d}일', { month: MONTH_KEYS[M-1] ? t(MONTH_KEYS[M-1]) : `${M}월`, d: D });
     // 음력은 해마다 양력 날짜가 달라져서 음력 표기만으로는 언제 울리는지 알 수 없다.
     // 다음에 울릴 양력 날짜를 병기한다 — 올해분이 이미 지났으면 내년 기준으로 환산.
     const y = new Date().getFullYear();
@@ -77,7 +79,7 @@ export const repeatLabel = (al: Alarm): string => {
     const suffix = solar ? ` (양력 ${Number(solar.split('-')[1])}월 ${Number(solar.split('-')[2])}일)` : '';
     return `매년 음력 ${M}월 ${D}일${suffix}`;
   }
-  return '한 번';
+  return t('한 번');
 };
 
 function dayDiff(a: Date, b: Date): number {
@@ -546,8 +548,12 @@ export const nextAlarmParts = (
   const type = getType(alarm.typeId);
   const now  = new Date();
   const isToday = date.getDate()===now.getDate() && date.getMonth()===now.getMonth() && date.getFullYear()===now.getFullYear();
-  const dowLabel = DAYS[(date.getDay()+6)%7];
-  const dateStr  = isToday ? `오늘` : `${date.getMonth()+1}/${date.getDate()} ${dowLabel}`;
+  const dowLabel = t(DAYS[(date.getDay()+6)%7]);
+  const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  // 언어마다 어순이 달라 날짜+시각을 문장 통째로 키로 둔다(한국어 결과는 기존과 동일: "오늘 06:00", "10/14 수 06:00")
+  const when = isToday
+    ? t('오늘 {time}', { time })
+    : t('{m}/{d} {dow} {time}', { m: date.getMonth()+1, d: date.getDate(), dow: dowLabel, time });
   // 시각은 반드시 getNextFireDate가 돌려준 date에서 뽑는다 — 로테이션(pattern) 알람의
   // alarm.hour/min은 첫 블록 시각으로 고정된 레거시 폴백값이라, 그날 실제 울릴 시각과 다르다.
   // (AlarmCard는 patternTime으로 이미 고쳤지만 이 헤더 문구가 빠져 있었음)
@@ -557,8 +563,12 @@ export const nextAlarmParts = (
   // 다른 블록(또는 비번)을 보게 된다(workDateOfFire).
   const ds = workDateOfFire(alarm, date, overrides);
   const seg = alarm.rm === 'pattern' ? effectiveShift(alarm, ds) : null;
+  // shiftPrefixFor는 번역된 근무조 이름 + 공백(없으면 '')을 돌려준다 — 이름만 떼어 문장 키에 넣는다
+  const shiftName = seg ? shiftPrefixFor(seg.shift, seg.shiftCustom).trim() : '';
   const label = seg
-    ? `${shiftPrefixFor(seg.shift, seg.shiftCustom)}${alarm.groupRole === 'offwork' ? '퇴근' : '출근'}`
-    : (alarm.label || type.label);
-  return { icon: type.icon, label, when: `${dateStr} ${pad(date.getHours())}:${pad(date.getMinutes())}` };
+    ? (alarm.groupRole === 'offwork'
+        ? (shiftName ? t('{shift} 퇴근', { shift: shiftName }) : t('퇴근'))
+        : (shiftName ? t('{shift} 출근', { shift: shiftName }) : t('출근')))
+    : (alarm.label || t(type.label));
+  return { icon: type.icon, label, when };
 };

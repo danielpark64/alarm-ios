@@ -8,6 +8,8 @@ import { scheduleNative } from './android';
 import { weekdaySlotId, mainNativeId } from './alarmIds';
 import { isStaleGen } from './rescheduleGen';
 import { getAlarmDefaults } from '../../hooks/useAlarmDefaults';
+// ⚠️ 이 파일엔 지역 변수 t(시각 객체)가 있어 번역 함수는 tr로 가져온다
+import { t as tr } from '../../i18n/translate';
 
 function getVibrationPattern(vib: string): number[] | undefined {
   if (vib === 'none') return undefined;
@@ -88,8 +90,8 @@ async function schedulePatternAlarmTriggers(alarm: Alarm, overrides: DayOverride
     if (t.dayOffset) ft.setDate(ft.getDate() + t.dayOffset); // 자정 넘는 근무의 퇴근 — 근무일 다음 날
     if (ft <= new Date()) continue;
 
-    const title    = `${type.icon} ${shiftInfo ? roleLabel(shiftInfo, role) : type.label}`;
-    const bodyText = `${pad(t.hour)}:${pad(t.min)} 알람`;
+    const title    = `${type.icon} ${shiftInfo ? roleLabel(shiftInfo, role) : tr(type.label)}`;
+    const bodyText = tr('{time} 알람', { time: `${pad(t.hour)}:${pad(t.min)}` });
     const content = {
       title, body: bodyText,
       sound: notifSound(soundOn),
@@ -124,8 +126,8 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
   }
 
   const type     = getType(alarm.typeId);
-  const title    = `${type.icon} ${alarm.label || type.label}`;
-  const bodyText = `${pad(alarm.hour)}:${pad(alarm.min)} 알람`;
+  const title    = `${type.icon} ${alarm.label || tr(type.label)}`;
+  const bodyText = tr('{time} 알람', { time: `${pad(alarm.hour)}:${pad(alarm.min)}` });
   const soundOn  = alarm.snd === 'default';
   const vibOn    = alarm.vib === 'pulse';
   const volume   = getAlarmDefaults().volume;
@@ -259,7 +261,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
       identifier: makeId(alarm.id, `date_${ds}`),
       // override로 시각이 바뀐 날만 알림 배너 문구도 그 시각으로 — 아니면 알림엔 원래 시각이
       // 뜨는데 실제로는 다른 시각에 울리는 불일치가 생긴다.
-      content: dw?.time ? { ...baseContent, body: `${pad(hh)}:${pad(mm)} 알람` } : baseContent,
+      content: dw?.time ? { ...baseContent, body: tr('{time} 알람', { time: `${pad(hh)}:${pad(mm)}` }) } : baseContent,
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: ft },
     });
     if (isStaleGen(gen)) return;
@@ -314,14 +316,14 @@ export async function scheduleGroupReps(group: Alarm[], overrides: DayOverrides 
 
   // 묶음 라벨: 알람이 여러 개면 합침
   const label = active.length === 1
-    ? (active[0].label || getType(active[0].typeId).label)
-    : active.map(a => a.label || getType(a.typeId).label).join(' · ');
+    ? (active[0].label || tr(getType(active[0].typeId).label))
+    : active.map(a => a.label || tr(getType(a.typeId).label)).join(' · ');
   const hasSound = active.some(a => a.snd === 'default');
   const hasVib   = active.some(a => a.vib === 'pulse');
 
   const repBase = {
     title: `⏰ ${label}`,
-    body: `${pad(first.hour)}:${pad(first.min)} 알람`,
+    body: tr('{time} 알람', { time: `${pad(first.hour)}:${pad(first.min)}` }),
     sound: notifSound(hasSound),
     vibrate: hasVib ? [0,200,150,200,150,200] : undefined,
     categoryIdentifier: 'alarm',
@@ -350,8 +352,8 @@ export async function schedulePatternAlarmReps(alarm: Alarm, overrides: DayOverr
   if (!next) return;
   const type = getType(alarm.typeId);
   const repBase = {
-    title: `⏰ ${alarm.label || type.label}`,
-    body: `${pad(next.getHours())}:${pad(next.getMinutes())} 알람`,
+    title: `⏰ ${alarm.label || tr(type.label)}`,
+    body: tr('{time} 알람', { time: `${pad(next.getHours())}:${pad(next.getMinutes())}` }),
     sound: notifSound(alarm.snd === 'default'),
     categoryIdentifier: 'alarm',
     ...iosInterruption,

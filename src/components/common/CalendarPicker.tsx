@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from './AppText';
-import { DAYS, DAYS_DISPLAY } from '../../constants';
+import { DAYS, DAYS_DISPLAY, MONTH_KEYS } from '../../constants';
 import { pad, todayStr } from '../../utils';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
+import { useT } from '../../i18n';
+import { t as tr } from '../../i18n/translate';
 
 // ─── 날짜 포맷 ────────────────────────────────────────────────────────────────
 export function fmtDisplayDate(s: string): string {
@@ -12,7 +14,7 @@ export function fmtDisplayDate(s: string): string {
   const parts = ds.split('-').map(Number);
   const date  = new Date(parts[0], parts[1] - 1, parts[2]);
   const dow   = (date.getDay() + 6) % 7;
-  return `${pad(parts[1])}.${pad(parts[2])} (${DAYS[dow]})`;
+  return `${pad(parts[1])}.${pad(parts[2])} (${tr(DAYS[dow])})`;
 }
 
 // 연도 선택 그리드 — CalendarView.tsx의 연도 피커와 같은 8년(2열×4행) 페이지 방식
@@ -25,6 +27,7 @@ export function CalendarPicker({
   value, onChange, onClose,
 }: { value: string; onChange: (s: string) => void; onClose: () => void }) {
   const C = useColors();
+  const { t } = useT();
   const cal = makeStyles(C);
   const init = value ? new Date(value) : new Date();
   const [year,  setYear]  = useState(init.getFullYear());
@@ -65,7 +68,7 @@ export function CalendarPicker({
           <TouchableOpacity onPress={() => setYearPageStart(p => p - YEARS_PER_PAGE)} style={cal.navBtn}>
             <Text style={cal.navArrow}>‹</Text>
           </TouchableOpacity>
-          <Text style={cal.navTitle}>연도 선택</Text>
+          <Text style={cal.navTitle}>{t('연도 선택')}</Text>
           <TouchableOpacity onPress={() => setYearPageStart(p => p + YEARS_PER_PAGE)} style={cal.navBtn}>
             <Text style={cal.navArrow}>›</Text>
           </TouchableOpacity>
@@ -89,7 +92,7 @@ export function CalendarPicker({
           ))}
         </View>
         <TouchableOpacity style={cal.todayBtn} onPress={() => setShowYearPicker(false)}>
-          <Text style={cal.todayBtnText}>닫기</Text>
+          <Text style={cal.todayBtnText}>{t('닫기')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -105,10 +108,10 @@ export function CalendarPicker({
           {/* 연도는 CalendarView(달력 탭)의 연도 피커와 똑같이 배경 있는 알약 버튼으로 —
               화살표(‹›)는 그대로 월 이동 전용이고, 연도만 따로 탭해서 점프하는 게 명확해짐 */}
           <TouchableOpacity style={cal.yearTapBtn} activeOpacity={0.6} onPress={openYearPicker}>
-            <Text style={cal.navTitle}>{year}년</Text>
+            <Text style={cal.navTitle}>{t('{year}년', { year })}</Text>
             <Text style={cal.yearChevron}>▾</Text>
           </TouchableOpacity>
-          <Text style={cal.navTitle}> {month + 1}월</Text>
+          <Text style={cal.navTitle}> {t(MONTH_KEYS[month])}</Text>
         </View>
         <TouchableOpacity onPress={nextMonth} style={cal.navBtn}>
           <Text style={cal.navArrow}>›</Text>
@@ -117,7 +120,7 @@ export function CalendarPicker({
       <View style={cal.grid}>
         {DAYS_DISPLAY.map((d, i) => (
           <View key={i} style={cal.headCell}>
-            <Text style={[cal.headText, (i === 0 || i === 6) && { color: C.weekendFg }]}>{d}</Text>
+            <Text style={[cal.headText, (i === 0 || i === 6) && { color: C.weekendFg }]}>{t(d)}</Text>
           </View>
         ))}
         {cells.map((d, i) => {
@@ -146,7 +149,7 @@ export function CalendarPicker({
         })}
       </View>
       <TouchableOpacity style={cal.todayBtn} onPress={() => { onChange(today); onClose(); }}>
-        <Text style={cal.todayBtnText}>오늘로 설정</Text>
+        <Text style={cal.todayBtnText}>{t('오늘로 설정')}</Text>
       </TouchableOpacity>
     </View>
   );

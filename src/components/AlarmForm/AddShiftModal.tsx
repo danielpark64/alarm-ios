@@ -4,6 +4,7 @@ import { Text } from '../common/AppText';
 import { SHIFTS, ShiftPeriod, REST_COLOR } from '../../constants';
 import { useColors } from '../../hooks/useTheme';
 import { makeStyles } from './styles';
+import { useT } from '../../i18n';
 
 const BLOCK_SHIFTS = SHIFTS.filter(s => s.id !== 'none');
 // RotationWizard/WorkPatternBuilder와 동일한 순서(초·말·비·중·기타) — 대부분의 교대근무자가
@@ -24,22 +25,23 @@ interface Props {
 export function AddShiftModal({ visible, onClose, onPick, itemRefs }: Props) {
   const C = useColors();
   const s = makeStyles(C);
+  const { t } = useT();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={s.modalOverlay}>
         <View style={s.modalContent}>
-          <Text style={s.wpMenuTitle}>어떤 근무를 추가할까요?</Text>
+          <Text style={s.wpMenuTitle}>{t('어떤 근무를 추가할까요?')}</Text>
           {BUTTON_ORDER.map(id => id === 'REST' ? (
             <TouchableOpacity key="REST" ref={itemRefs?.REST} style={s.wpMenuBtn} onPress={() => onPick('REST')}>
-              <Text style={[s.wpMenuBtnText, { color: REST_COLOR }]}>비번</Text>
+              <Text style={[s.wpMenuBtnText, { color: REST_COLOR }]}>{t('비번')}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity key={id} ref={itemRefs?.[id]} style={s.wpMenuBtn} onPress={() => onPick(id)}>
-              <Text style={s.wpMenuBtnText}>{BLOCK_SHIFTS.find(sh => sh.id === id)!.label}</Text>
+              <Text style={s.wpMenuBtnText}>{t(BLOCK_SHIFTS.find(sh => sh.id === id)!.label)}</Text>
             </TouchableOpacity>
           ))}
           <TouchableOpacity style={s.wpMenuCancelBtn} onPress={onClose}>
-            <Text style={s.wpMenuCancelText}>취소</Text>
+            <Text style={s.wpMenuCancelText}>{t('취소')}</Text>
           </TouchableOpacity>
         </View>
       </View>

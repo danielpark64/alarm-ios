@@ -7,6 +7,7 @@ import { Text } from '../common/AppText';
 import { ScrollPicker } from '../common/ScrollPicker';
 import { useColors } from '../../hooks/useTheme';
 import { makeStyles } from './styles';
+import { useT } from '../../i18n';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINS  = Array.from({ length: 12 }, (_, i) => i * 5);
@@ -25,6 +26,7 @@ interface Props {
 export function BlockTimeModal({ visible, hour, min, title, onChange, onClose }: Props) {
   const C = useColors();
   const s = makeStyles(C);
+  const { t } = useT();
   const [h, setH] = useState(hour);
   const [m, setM] = useState(min);
 
@@ -51,7 +53,7 @@ export function BlockTimeModal({ visible, hour, min, title, onChange, onClose }:
             </View>
           </View>
           <TouchableOpacity style={[s.wpModalConfirmBtn, { marginTop: 14 }]} onPress={confirm}>
-            <Text style={s.wpModalConfirmText}>확인</Text>
+            <Text style={s.wpModalConfirmText}>{t('확인')}</Text>
           </TouchableOpacity>
         </View>
       </View>

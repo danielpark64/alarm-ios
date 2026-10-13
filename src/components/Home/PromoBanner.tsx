@@ -6,6 +6,8 @@ import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
 import { useScale, rf } from '../../utils/responsive';
 import { CoffeeTipScreen } from '../Support/CoffeeTipScreen';
+import { useT } from '../../i18n';
+import { N } from '../../i18n/lang';
 
 const ROTATE_MS = 5000;
 
@@ -14,8 +16,8 @@ const makeSlides = (openTip: () => void) => [
   {
     key: 'susu',
     icon: '🎵',
-    title: '수수뮤직과 기분좋은 하루',
-    sub: '채널 바로가기',
+    title: N('수수뮤직과 기분좋은 하루'),
+    sub: N('채널 바로가기'),
     iconBg: 'rgba(162,155,254,0.18)',
     boxBg: 'rgba(162,155,254,0.08)',
     boxBorder: 'rgba(162,155,254,0.25)',
@@ -24,8 +26,8 @@ const makeSlides = (openTip: () => void) => [
   {
     key: 'coffee',
     icon: '☕',
-    title: '개발자 응원하기',
-    sub: '작은 후원으로 응원해주세요',
+    title: N('개발자 응원하기'),
+    sub: N('작은 후원으로 응원해주세요'),
     iconBg: 'rgba(250,199,117,0.18)',
     boxBg: 'rgba(250,199,117,0.08)',
     boxBorder: 'rgba(250,199,117,0.3)',
@@ -42,6 +44,7 @@ export function PromoBanner() {
   const C = useColors();
   const s = makeStyles(C);
   const insets = useSafeAreaInsets();
+  const { t } = useT();
   // 후원 화면은 이 배너에서만 열리므로 상태를 여기서 들고 있는다 — 상위로 prop을 끌어올릴 이유가 없다.
   const [showTip, setShowTip] = useState(false);
   const slides = useMemo(() => makeSlides(() => setShowTip(true)), []);
@@ -64,11 +67,11 @@ export function PromoBanner() {
   // 5초마다 자동 롤링 — 사용자가 직접 밀어서 dotIdx가 바뀌어도 이 effect가 재시작되며 타이머가 리셋됨
   useEffect(() => {
     if (count < 2 || !width) return;
-    const t = setInterval(() => {
+    const timer = setInterval(() => {
       posRef.current += 1;
       scrollRef.current?.scrollTo({ x: width * posRef.current, animated: true });
     }, ROTATE_MS);
-    return () => clearInterval(t);
+    return () => clearInterval(timer);
   }, [count, width, dotIdx]);
 
   // 경계의 복제 슬라이드에 도착하면 반대쪽 실제 슬라이드로 즉시(애니메이션 없이) 점프
@@ -110,8 +113,8 @@ export function PromoBanner() {
             >
               <View style={[s.promoIcon, { backgroundColor: slide.iconBg }]}><Text style={s.promoIconT}>{slide.icon}</Text></View>
               <View style={{flex:1, minWidth:0}}>
-                <Text style={[s.promoTitle,{fontSize:rf(14,scale)}]} numberOfLines={1} ellipsizeMode="tail">{slide.title}</Text>
-                <Text style={[s.promoSub,{fontSize:rf(11,scale)}]} numberOfLines={1} ellipsizeMode="tail">{slide.sub}</Text>
+                <Text style={[s.promoTitle,{fontSize:rf(14,scale)}]} numberOfLines={1} ellipsizeMode="tail">{t(slide.title)}</Text>
+                <Text style={[s.promoSub,{fontSize:rf(11,scale)}]} numberOfLines={1} ellipsizeMode="tail">{t(slide.sub)}</Text>
               </View>
               <Text style={s.promoArrow}>›</Text>
             </TouchableOpacity>

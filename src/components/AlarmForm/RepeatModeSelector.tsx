@@ -4,6 +4,8 @@ import { Text } from '../common/AppText';
 import { REPEAT } from '../../constants';
 import { useColors } from '../../hooks/useTheme';
 import { makeStyles } from './styles';
+import { useT } from '../../i18n';
+import { N } from '../../i18n/lang';
 
 interface Props {
   rm: string;
@@ -15,14 +17,15 @@ interface Props {
 }
 
 const PRIMARY = [
-  { id: 'cycle', icon: '🔁', label: 'N일 주기', hint: '예: 3일마다' },
-  { id: 'rest',  icon: '🌙', label: 'N일 후 휴식', hint: '예: 2일 알람 후 1일 휴식' },
+  { id: 'cycle', icon: '🔁', label: N('N일 주기'), hint: N('예: 3일마다') },
+  { id: 'rest',  icon: '🌙', label: N('N일 후 휴식'), hint: N('예: 2일 알람 후 1일 휴식') },
 ] as const;
 
 const SECONDARY_ORDER = ['wdcustom', 'monthly', 'yearly', 'once'];
 
 export function RepeatModeSelector({ rm, setRm, showRepeatConfig, setShowRepeatConfig, cycleRef, children }: Props) {
   const s = makeStyles(useColors());
+  const { t } = useT();
   const secondary = SECONDARY_ORDER
     .map(id => REPEAT.find(r => r.id === id))
     .filter((r): r is typeof REPEAT[number] => !!r);
@@ -42,7 +45,7 @@ export function RepeatModeSelector({ rm, setRm, showRepeatConfig, setShowRepeatC
                   style={[s.pill, active && s.pillActive]}
                   onPress={() => setRm(r.id)}
                 >
-                  <Text style={[s.pillText, active && s.pillTextActive]}>{r.label}</Text>
+                  <Text style={[s.pillText, active && s.pillTextActive]}>{t(r.label)}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -52,7 +55,7 @@ export function RepeatModeSelector({ rm, setRm, showRepeatConfig, setShowRepeatC
         </>
       )}
 
-      <Text style={s.sLabel}>반복 방식</Text>
+      <Text style={s.sLabel}>{t('반복 방식')}</Text>
 
       <View style={s.repeatPrimaryRow}>
         {PRIMARY.map(p => {
@@ -65,8 +68,8 @@ export function RepeatModeSelector({ rm, setRm, showRepeatConfig, setShowRepeatC
               onPress={() => { setRm(p.id); setShowRepeatConfig(true); }}
             >
               <Text style={s.repeatPrimaryIcon}>{p.icon}</Text>
-              <Text style={[s.repeatPrimaryLabel, active && s.repeatPrimaryLabelActive]}>{p.label}</Text>
-              <Text style={[s.repeatPrimaryHint, active && s.repeatPrimaryHintActive]}>{p.hint}</Text>
+              <Text style={[s.repeatPrimaryLabel, active && s.repeatPrimaryLabelActive]}>{t(p.label)}</Text>
+              <Text style={[s.repeatPrimaryHint, active && s.repeatPrimaryHintActive]}>{t(p.hint)}</Text>
             </TouchableOpacity>
           );
         })}

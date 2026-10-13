@@ -1,5 +1,6 @@
 import { Alarm, WorkSegment, SoundMode, VibMode, SHIFTS, ShiftPeriod } from '../constants';
 import { shiftPrefixFor } from './index';
+import { t } from '../i18n/translate';
 
 // 근무 시간대 로테이션 그룹은 항상 최대 2개 알람(출근/퇴근)만 갖는다 — 블록별로 알람을
 // 따로 만들지 않는다. 어느 블록이 활성인지는 매 날짜마다 resolveSegment/effectiveTime이
@@ -36,11 +37,13 @@ export function mergeOrAppendSegment(sequence: WorkSegment[], seg: WorkSegment):
   return [...sequence, seg];
 }
 
-// 알림 제목에 쓰일 "{시간대} 출근/퇴근" — shiftPrefixFor는 뒤에 공백을 붙여 반환하므로
-// 그대로 이어붙이면 "초번 출근"처럼 자연스럽게 조합됨
+// 알림 제목에 쓰일 "{시간대} 출근/퇴근" — 언어마다 어순이 달라 문장 키로 조립한다.
+// shiftPrefixFor는 번역된 근무조 이름 + 공백(해당없음·빈 기타면 '')을 돌려주므로 이름만 떼어 넣는다.
+// 한국어 결과는 기존과 동일("초번 출근", 근무조 없으면 "출근").
 export function roleLabel(shiftInfo: { shift: ShiftPeriod; shiftCustom?: string }, role: 'commute' | 'offwork'): string {
-  const base = role === 'commute' ? '출근' : '퇴근';
-  return `${shiftPrefixFor(shiftInfo.shift, shiftInfo.shiftCustom)}${base}`;
+  const shift = shiftPrefixFor(shiftInfo.shift, shiftInfo.shiftCustom).trim();
+  if (role === 'commute') return shift ? t('{shift} 출근', { shift }) : t('출근');
+  return shift ? t('{shift} 퇴근', { shift }) : t('퇴근');
 }
 
 // 팝업/미리보기용 — "초번 2일(06:00) → 말번 2일(14:00, 퇴근 없음) → 비번 1일 반복"
@@ -48,13 +51,14 @@ export function workPatternPreviewLabel(pattern: WorkSegment[]): string {
   if (!pattern.length) return '';
   const pad = (n: number) => String(n).padStart(2, '0');
   const parts = pattern.map(seg => {
-    if (seg.isRest) return `비번 ${seg.days}일`;
-    const label = seg.shift === 'custom' ? (seg.shiftCustom?.trim() || '기타') : SHIFTS.find(s => s.id === seg.shift)!.label;
+    if (seg.isRest) return t('비번 {n}일', { n: seg.days });
+    const label = seg.shift === 'custom' ? (seg.shiftCustom?.trim() || t('기타')) : t(SHIFTS.find(s => s.id === seg.shift)!.label);
     const time = seg.commuteTime ? `${pad(seg.commuteTime.hour)}:${pad(seg.commuteTime.min)}` : '';
-    const off = seg.hasOffwork ? '' : ', 퇴근 없음';
-    return `${label} ${seg.days}일(${time}${off})`;
+    return seg.hasOffwork
+      ? t('{label} {n}일({time})', { label, n: seg.days, time })
+      : t('{label} {n}일({time}, 퇴근 없음)', { label, n: seg.days, time });
   });
-  return `${parts.join(' → ')} 반복`;
+  return t('{pattern} 반복', { pattern: parts.join(' → ') });
 }
 
 function buildRoleAlarm(

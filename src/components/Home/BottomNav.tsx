@@ -3,6 +3,7 @@ import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from '../common/AppText';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
+import { useT } from '../../i18n';
 
 export type HomeTab = 'alarms' | 'calendar' | 'add' | 'settings';
 
@@ -10,27 +11,28 @@ export type HomeTab = 'alarms' | 'calendar' | 'add' | 'settings';
 // 달력이 메인 화면이라 첫 자리에 둔다
 export function BottomNav({ tab, setTab, bottomInset }: { tab: HomeTab; setTab: (t: HomeTab) => void; bottomInset: number }) {
   const s = makeStyles(useColors());
+  const { t } = useT();
   return (
     <View style={[s.nav, { paddingBottom: Math.max(bottomInset, 14) }]}>
       <TouchableOpacity style={s.navBtn} onPress={()=>setTab('calendar')}>
         <View style={[s.navI, tab==='calendar' && s.navIA]}>
           <Text style={s.navIT}>📅</Text>
         </View>
-        <Text style={[s.navL, tab==='calendar' && s.navLA]}>달력</Text>
+        <Text style={[s.navL, tab==='calendar' && s.navLA]}>{t('달력')}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={s.navBtn} onPress={()=>setTab('alarms')}>
         <View style={[s.navI, tab==='alarms' && s.navIA]}>
           <Text style={s.navIT}>⏰</Text>
         </View>
-        <Text style={[s.navL, tab==='alarms' && s.navLA]}>알람</Text>
+        <Text style={[s.navL, tab==='alarms' && s.navLA]}>{t('알람')}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={s.navBtn} onPress={()=>setTab('settings')}>
         <View style={[s.navI, tab==='settings' && s.navIA]}>
           <Text style={s.navIT}>⚙️</Text>
         </View>
-        <Text style={[s.navL, tab==='settings' && s.navLA]}>설정</Text>
+        <Text style={[s.navL, tab==='settings' && s.navLA]}>{t('설정')}</Text>
       </TouchableOpacity>
     </View>
   );

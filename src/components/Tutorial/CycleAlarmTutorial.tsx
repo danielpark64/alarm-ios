@@ -3,6 +3,7 @@ import { View, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-n
 import { Text } from '../common/AppText';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
+import { useT } from '../../i18n';
 
 export interface SpotlightRect { x: number; y: number; width: number; height: number }
 export interface TutorialStep { icon: string; text: string; cta: string | null }
@@ -24,6 +25,7 @@ const BUBBLE_WIDTH = 260;
 export function CycleAlarmTutorial({ steps, step, rect, onAdvance, onSkip }: Props) {
   const C = useColors();
   const s = makeStyles(C);
+  const { t } = useT();
   const { width: sw, height: sh } = useWindowDimensions();
   const current = steps[step];
   if (!current) return null;
@@ -37,10 +39,10 @@ export function CycleAlarmTutorial({ steps, step, rect, onAdvance, onSkip }: Pro
             <Text style={s.closeBtnT}>✕</Text>
           </TouchableOpacity>
           <Text style={s.icon}>{current.icon}</Text>
-          <Text style={[s.text, { flex: 0, textAlign: 'center', marginTop: 10 }]}>{current.text}</Text>
+          <Text style={[s.text, { flex: 0, textAlign: 'center', marginTop: 10 }]}>{t(current.text)}</Text>
           {current.cta && (
             <TouchableOpacity style={[s.ctaBtn, { marginTop: 14 }]} onPress={onAdvance}>
-              <Text style={s.ctaBtnT}>{current.cta}</Text>
+              <Text style={s.ctaBtnT}>{t(current.cta)}</Text>
             </TouchableOpacity>
           )}
           <Dots steps={steps} step={step} s={s} />
@@ -83,13 +85,13 @@ export function CycleAlarmTutorial({ steps, step, rect, onAdvance, onSkip }: Pro
         </TouchableOpacity>
         <View style={s.bubbleRow}>
           <Text style={s.icon}>{current.icon}</Text>
-          <Text style={s.text}>{current.text}</Text>
+          <Text style={s.text}>{t(current.text)}</Text>
         </View>
         <View style={s.bubbleBottomRow}>
           <Dots steps={steps} step={step} s={s} />
           {current.cta && (
             <TouchableOpacity style={s.ctaBtn} onPress={onAdvance}>
-              <Text style={s.ctaBtnT}>{current.cta}</Text>
+              <Text style={s.ctaBtnT}>{t(current.cta)}</Text>
             </TouchableOpacity>
           )}
         </View>

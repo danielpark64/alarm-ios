@@ -3,6 +3,7 @@ import { View, TouchableOpacity, StyleSheet, Modal, Vibration, Platform } from '
 import { Text } from './common/AppText';
 import * as Notifications from 'expo-notifications';
 import { SNOOZE_ENABLED } from '../constants';
+import { useT } from '../i18n';
 
 interface Props {
   visible: boolean;
@@ -16,6 +17,7 @@ interface Props {
 const REPEAT_INTERVAL_MS = 24000;
 
 export function AlarmRinging({ visible, title, body, source = 'expo', onStop, onSnooze }: Props) {
+  const { t } = useT();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingIdsRef = useRef<string[]>([]);
 
@@ -81,11 +83,11 @@ export function AlarmRinging({ visible, title, body, source = 'expo', onStop, on
         <View style={s.btns}>
           {SNOOZE_ENABLED && (
             <TouchableOpacity style={s.snooze} onPress={snooze}>
-              <Text style={s.snoozeT}>5분 후</Text>
+              <Text style={s.snoozeT}>{t('5분 후')}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity style={s.stop} onPress={stop}>
-            <Text style={s.stopT}>끄기</Text>
+            <Text style={s.stopT}>{t('끄기')}</Text>
           </TouchableOpacity>
         </View>
       </View>

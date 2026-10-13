@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Alert } from 'react-native';
-import { Alarm, ShiftPeriod, WorkSegment, SoundMode, VibMode } from '../constants';
+import { Alarm, ShiftPeriod, WorkSegment, SoundMode, VibMode, MONTH_KEYS } from '../constants';
 import { getType, pad, todayStr, lunarToSolarInYear, shiftPrefixFor } from '../utils';
 import { newBlockId } from '../utils/workPattern';
 import { fmtDisplayDate } from '../components/common/CalendarPicker';
+import { useT } from '../i18n';
 
 function defaultBlock(seed?: { shift?: ShiftPeriod; hour?: number; min?: number; days?: number }): WorkSegment {
   return {
@@ -57,6 +58,7 @@ export function useAlarmFormState(
   onSubmitPattern?: (groupId: number | undefined, pattern: WorkSegment[], sd: string, snd: SoundMode, vib: VibMode) => void,
   onRepeatConfigClose?: () => void,
 ) {
+  const { t } = useT();
   const [typeId,   setTypeId]  = useState(initial.typeId  ?? 'commute');
   const [hour,     setHour]    = useState(initial.hour    ?? 7);
   const [min,      setMin]     = useState(initial.min     ?? 0);
@@ -253,10 +255,10 @@ export function useAlarmFormState(
         // 근무 블록이 하나도 없으면 알람이 안 생기니 저장 불가 — 조용히 무시하면 사용자가
         // 저장이 왜 안 되는지 알 수 없으므로 이유와 다음 행동을 안내한다
         Alert.alert(
-          '근무 블록이 필요해요',
+          t('근무 블록이 필요해요'),
           initial.id != null
-            ? '비번만으로는 알람이 울릴 수 없어요.\n근무 블록을 추가하거나, 이 근무표를 없애려면 아래 "이 알람 삭제"를 눌러주세요.'
-            : '비번만으로는 알람이 울릴 수 없어요.\n＋ 버튼으로 근무 블록을 추가해주세요.',
+            ? t('비번만으로는 알람이 울릴 수 없어요.\n근무 블록을 추가하거나, 이 근무표를 없애려면 아래 "이 알람 삭제"를 눌러주세요.')
+            : t('비번만으로는 알람이 울릴 수 없어요.\n＋ 버튼으로 근무 블록을 추가해주세요.'),
         );
         return;
       }
@@ -293,8 +295,8 @@ export function useAlarmFormState(
   const [, sdM, sdD] = sd.split('-').map(Number);
   // 매년+음력이면 달력에서 고른 월/일을 "음력 M월 D일"로 해석 — 연도는 무의미하므로 표시 안 함
   const dateLabel  = (rm === 'yearly' && lunar)
-    ? `음력 ${sdM}월 ${sdD}일`
-    : isToday ? `오늘 · ${fmtDisplayDate(sd)}` : `${fmtDisplayDate(sd)}부터`;
+    ? t('음력 {month} {d}일', { month: t(MONTH_KEYS[sdM - 1]), d: sdD })
+    : isToday ? t('오늘 · {date}', { date: fmtDisplayDate(sd) }) : t('{date}부터', { date: fmtDisplayDate(sd) });
   const dateLocked = rm === 'monthly' && lastDay;
   const isLeapDay  = !lunar && sd.endsWith('-02-29');
   // 음력 기준일 때 올해(선택한 연도) 기준 실제 양력 날짜 미리보기
@@ -304,16 +306,19 @@ export function useAlarmFormState(
 
   // 매월/매년/N일 주기/N일 후 휴식 반복 요약 텍스트 — cycle/rest는 팝업이 닫혀있는 동안
   // 폼에 아무 요약도 안 남으면 지금 설정이 뭔지 알 수 없으므로 여기서 요약 한 줄을 채워준다.
+  const hhmm = `${pad(hour)}:${pad(min)}`;
   const repeatSummary = rm === 'monthly'
     ? (lastDay
-      ? `🗓️ 매월 말일 ${pad(hour)}:${pad(min)}`
-      : `🗓️ 매월 ${sdD}일 ${pad(hour)}:${pad(min)}`)
+      ? `🗓️ ${t('매월 말일 {time}', { time: hhmm })}`
+      : `🗓️ ${t('매월 {d}일 {time}', { d: sdD, time: hhmm })}`)
     : rm === 'yearly'
-      ? `🗓️ 매년 ${lunar ? '음력 ' : ''}${sdM}월 ${sdD}일 ${pad(hour)}:${pad(min)}`
+      ? (lunar
+        ? `🗓️ ${t('매년 음력 {month} {d}일 {time}', { month: t(MONTH_KEYS[sdM - 1]), d: sdD, time: hhmm })}`
+        : `🗓️ ${t('매년 {month} {d}일 {time}', { month: t(MONTH_KEYS[sdM - 1]), d: sdD, time: hhmm })}`)
       : rm === 'cycle'
-        ? `🔁 ${cd}일마다 반복`
+        ? `🔁 ${t('{n}일마다 반복', { n: cd })}`
         : rm === 'rest'
-          ? `🔁 ${cd}일 알람 → ${rd}일 휴식 반복`
+          ? `🔁 ${t('{cd}일 알람 → {rd}일 휴식 반복', { cd, rd })}`
           : '';
 
   // ── 소리+진동 3-way ──

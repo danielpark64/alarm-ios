@@ -8,6 +8,8 @@ import { getAlarmDefaults } from './useAlarmDefaults';
 import { getDayOverridesCache } from '../utils/dayOverrideStore';
 import { todayStr } from '../utils';
 import { getHolidayVersion } from '../constants/holidays';
+// 문구가 리스너 콜백 안에 있어 훅(useT)이 아니라 순수 번역 함수를 쓴다. 지역 변수 t와 겹치지 않게 tr로 가져온다
+import { t as tr } from '../i18n/translate';
 
 const { AlarmModule } = NativeModules;
 
@@ -114,7 +116,7 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
         setRinging(prev => {
           if (prev?.source === 'native') return prev;
           return {
-            title: title ?? '⏰ 알람', body: body ?? '',
+            title: title ?? tr('⏰ 알람'), body: body ?? '',
             alarmId: d?.alarmId, groupKey: d?.groupKey,
           };
         });
@@ -154,7 +156,7 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       if (r.actionIdentifier === 'snooze') {
         // Android 전용 — iOS는 스누즈 버튼 없음
         Notifications.scheduleNotificationAsync({
-          content: { title: '⏰ 스누즈', body: r.notification.request.content.body ?? undefined, sound: __DEV__ ? true : 'alarm_long.wav', categoryIdentifier: 'alarm' },
+          content: { title: tr('⏰ 스누즈'), body: r.notification.request.content.body ?? undefined, sound: __DEV__ ? true : 'alarm_long.wav', categoryIdentifier: 'alarm' },
           trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(Date.now()+5*60*1000) },
         });
       } else {
@@ -183,7 +185,7 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       lastRescheduleKeyRef.current = null; // 울림 → 다음 포그라운드 복귀 때 rep 재생성 보장
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       setRinging({
-        title: e.title ?? '⏰ 알람', body: e.body ?? '',
+        title: e.title ?? tr('⏰ 알람'), body: e.body ?? '',
         alarmId: e.alarmId >= 0 ? e.alarmId : undefined,
         baseAlarmId: (e.baseAlarmId ?? -1) >= 0 ? e.baseAlarmId : undefined,
         source: 'native',
@@ -207,7 +209,7 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       const info = await AlarmModule.getCurrentRinging();
       if (info) {
         setRinging({
-          title: info.title ?? '⏰ 알람', body: info.body ?? '',
+          title: info.title ?? tr('⏰ 알람'), body: info.body ?? '',
           alarmId: info.alarmId >= 0 ? info.alarmId : undefined,
           baseAlarmId: (info.baseAlarmId ?? -1) >= 0 ? info.baseAlarmId : undefined,
           source: 'native',
@@ -269,7 +271,7 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
     }
     if (ringing)
       Notifications.scheduleNotificationAsync({
-        content: { title: '⏰ 스누즈', body: ringing.body, sound: 'alarm_long.wav' },
+        content: { title: tr('⏰ 스누즈'), body: ringing.body, sound: 'alarm_long.wav' },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(Date.now() + 5 * 60 * 1000) },
       });
     setRinging(null);

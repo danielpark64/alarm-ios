@@ -2,12 +2,13 @@ import React, { memo, useEffect, useRef, useState } from 'react';
 import { Animated, Platform } from 'react-native';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from './common/AppText';
-import { Alarm } from '../constants';
+import { Alarm, DAYS_DISPLAY } from '../constants';
 import { Palette } from '../constants/colors';
 import { useColors } from '../hooks/useTheme';
 import { getType, getSound, getVib, repeatLabel, pad, todayStr, effectiveShift, effectiveTime, isOvernight } from '../utils';
 import { roleLabel } from '../utils/workPattern';
 import { VibIcon } from './VibIcon';
+import { useT } from '../i18n';
 
 interface Props {
   alarm: Alarm; onToggle: ()=>void; onEdit: ()=>void;
@@ -16,12 +17,13 @@ interface Props {
   highlighted?: boolean; repLimited?: boolean;
 }
 
-function fmtDisplayDate(s: string): string {
+// "10.13 (화)부터" — 시작일 줄. 어순이 언어마다 달라 '부터'까지 문장 통째로 키로 둔다.
+function fmtSinceDate(s: string, t: (key: string, params?: Record<string, string | number>) => string): string {
   const str = s || todayStr();
   const [,m,d] = str.split('-');
   const date = new Date(str);
-  const dow = ['일','월','화','수','목','금','토'][date.getDay()];
-  return `${m}.${d} (${dow})`;
+  const dow = t(DAYS_DISPLAY[date.getDay()]);
+  return t('{m}.{d} ({dow})부터', { m, d, dow });
 }
 
 // N일 후 휴식 — 근무/휴식 패턴 점 표시 (최대 8개)
@@ -42,6 +44,7 @@ function RestDots({ cd, rd, s }: { cd: number; rd: number; s: ReturnType<typeof 
 export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, selectMode, selected, onSelect, onLongPressSelect, highlighted, repLimited }: Props) {
   const C = useColors();
   const s = makeStyles(C);
+  const { t } = useT();
   const type = getType(alarm.typeId);
   const snd  = getSound(alarm.snd ?? 'default');
   const vib  = getVib(alarm.vib);
@@ -54,7 +57,7 @@ export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, sele
   // 대신 계산해서 "이 그룹이 시작하면 어떤 모습일지" 미리 보여준다.
   const resolveDate = alarm.sd && alarm.sd > todayStr() ? alarm.sd : todayStr();
   const patternShift = alarm.rm === 'pattern' ? effectiveShift(alarm, resolveDate) : null;
-  const displayLabel = patternShift ? roleLabel(patternShift, alarm.groupRole ?? 'commute') : (alarm.label || type.label);
+  const displayLabel = patternShift ? roleLabel(patternShift, alarm.groupRole ?? 'commute') : (alarm.label || t(type.label));
   // 로테이션 알람의 alarm.hour/min은 항상 첫 블록(예: 초번) 시각으로 고정된 레거시 폴백값 —
   // 카드에 보여줄 시각도 위와 같은 기준 날짜로 다시 계산해야 라벨과 시각이 일치한다
   const patternTime = alarm.rm === 'pattern' ? effectiveTime(alarm, resolveDate) : null;
@@ -125,13 +128,13 @@ export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, sele
           <Text style={[s.time, !alarm.active && s.dim]}>
             {pad(dispHour)}<Text style={s.timeColon}>:</Text>{pad(dispMin)}
           </Text>
-          <Text style={[s.label, { color: type.color }]} numberOfLines={1}>{displayLabel}{nextDayMark ? ' · 다음날' : ''}</Text>
+          <Text style={[s.label, { color: type.color }]} numberOfLines={1}>{nextDayMark ? t('{label} · 다음날', { label: displayLabel }) : displayLabel}</Text>
         </View>
         {/* 소리·진동 아이콘은 짧은 "…부터" 줄에 붙인다. 반복 문구 줄에 두면 그 줄의 가용 폭을
             가져가서, 글자크기 "크게"에서 "매년 음력 7월 29일 (양력 9월 10일)" 같은 긴 문구가
             한글 9~10자마다 끊기고 결국 잘렸다(줄 수만 늘리면 "7월 / 29일"처럼 더 지저분해짐). */}
         <View style={s.row2}>
-          <Text style={s.metaT} numberOfLines={1}>{fmtDisplayDate(sd) + '부터'}</Text>
+          <Text style={s.metaT} numberOfLines={1}>{fmtSinceDate(sd, t)}</Text>
           <View style={s.snVibRow}>
             {alarm.snd !== 'none' && <Text style={s.snVib}>{snd.icon}</Text>}
             {alarm.vib !== 'none' && <VibIcon size={18} color={C.txt3} />}
@@ -143,7 +146,7 @@ export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, sele
               보여주므로 점(RestDots)은 정보 중복 — 단순 "N일 후 휴식"(rest)에서만 유지 */}
           {alarm.rm === 'rest' && <RestDots cd={alarm.cd ?? 2} rd={alarm.rd ?? 1} s={s} />}
           {repLimited && alarm.active && (
-            <View style={s.badgeWarn}><Text style={s.badgeWarnT}>⚠ 1회만</Text></View>
+            <View style={s.badgeWarn}><Text style={s.badgeWarnT}>{t('⚠ 1회만')}</Text></View>
           )}
         </View>
         {expanded && segRows.length > 0 && (
@@ -151,7 +154,7 @@ export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, sele
             {segRows.map((r, i) => (
               <View key={i} style={s.segRow}>
                 <Text style={s.segLabel}>{r.label}</Text>
-                <Text style={s.segTime}>{r.nextDay ? '다음날 ' : ''}{pad(r.time.hour)}:{pad(r.time.min)}</Text>
+                <Text style={s.segTime}>{r.nextDay ? t('다음날 {time}', { time: `${pad(r.time.hour)}:${pad(r.time.min)}` }) : `${pad(r.time.hour)}:${pad(r.time.min)}`}</Text>
               </View>
             ))}
           </View>

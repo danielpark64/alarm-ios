@@ -11,6 +11,7 @@ import {
   ErrorCode,
 } from 'react-native-iap';
 import type { ProductAndroid, PurchaseError } from 'react-native-iap';
+import { t } from '../i18n/translate';
 
 // Play Console에 등록할 인앱 상품 ID
 const PRODUCT_ID = 'coffee_tip_01';
@@ -38,7 +39,7 @@ export function useCoffeeTip() {
 
         errorListener = purchaseErrorListener((err: PurchaseError) => {
           if (err.code !== ErrorCode.UserCancelled) {
-            setError('결제 중 오류가 발생했습니다');
+            setError(t('결제 중 오류가 발생했습니다'));
           }
           setPurchasing(false);
         });

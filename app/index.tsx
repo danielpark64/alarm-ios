@@ -10,7 +10,7 @@ import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
 import { useT } from '../src/i18n';
 import { syncWidget } from '../src/utils/widgetSync';
-import { rescheduleAll } from '../src/utils/notifications';
+import { rescheduleAll, registerNotificationCategories } from '../src/utils/notifications';
 import * as Notifications from 'expo-notifications';
 import { useAlarms } from '../src/hooks/useAlarms';
 import { useDayOverrides } from '../src/hooks/useDayOverrides';
@@ -205,11 +205,11 @@ export default function App() {
   }, [rotationTutorialStep, tab, insets.top]);
 
   const showOverlayPrompt = () => Alert.alert(
-    '표시 권한 설정 방법',
-    '알람이 울릴 때 화면에 바로 떠서 끄기 버튼을 누를 수 있게 하려면 권한이 필요해요.\n\n"설정으로 이동"을 누르면 "다른 앱 위에 표시"라는 제목의 화면이 열려요.\n\n1. 그 목록에서 "알람"을 찾아주세요\n2. "알람" 옆에 있는 스위치를 켜주세요\n3. 켠 다음에는 화면 왼쪽 위 ← 버튼을 눌러 앱으로 돌아와주세요',
+    t('표시 권한 설정 방법'),
+    t('알람이 울릴 때 화면에 바로 떠서 끄기 버튼을 누를 수 있게 하려면 권한이 필요해요.\n\n"설정으로 이동"을 누르면 "다른 앱 위에 표시"라는 제목의 화면이 열려요.\n\n1. 그 목록에서 "알람"을 찾아주세요\n2. "알람" 옆에 있는 스위치를 켜주세요\n3. 켠 다음에는 화면 왼쪽 위 ← 버튼을 눌러 앱으로 돌아와주세요'),
     [
-      { text: '취소', style: 'cancel' },
-      { text: '설정으로 이동', onPress: requestOverlayPermission },
+      { text: t('취소'), style: 'cancel' },
+      { text: t('설정으로 이동'), onPress: requestOverlayPermission },
     ]
   );
 
@@ -222,11 +222,13 @@ export default function App() {
   // 언어가 바뀌면 알림·위젯 문구를 새 언어로 다시 만든다 — 예약된 알림의 제목/본문과 위젯 payload는
   // 예약 시점의 언어로 굳어 있어서, 재예약하지 않으면 화면만 바뀌고 알림은 이전 언어로 뜬다.
   // 첫 로드 때는 useAlarms가 이미 (언어 설정을 읽은 뒤) 재예약하므로 건너뛴다.
-  const { lang } = useT();
+  const { lang, t } = useT();
   const langRef = useRef(lang);
   useEffect(() => {
     if (!loaded || langRef.current === lang) { langRef.current = lang; return; }
     langRef.current = lang;
+    // 알림 액션 버튼('알람 끄기')도 등록 시점 언어로 굳으므로 카테고리부터 다시 등록한다.
+    registerNotificationCategories().catch(() => {});
     syncWidget(alarms, overrides);
     rescheduleAll(alarms, overrides);
   }, [lang, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -317,11 +319,11 @@ export default function App() {
       if (seen) return;
       await AsyncStorage.setItem(TUTORIAL_PROMPT_KEY, '1');
       Alert.alert(
-        '처음이시군요!',
-        '근무표 만들기 따라하기를 해볼까요?\n(설정에서 언제든 보실 수 있습니다)',
+        t('처음이시군요!'),
+        t('근무표 만들기 따라하기를 해볼까요?\n(설정에서 언제든 보실 수 있습니다)'),
         [
-          { text: '나중에', style: 'cancel' },
-          { text: '네', onPress: () => setRotationTutorialStep(0) },
+          { text: t('나중에'), style: 'cancel' },
+          { text: t('네'), onPress: () => setRotationTutorialStep(0) },
         ],
       );
     })();
@@ -334,14 +336,14 @@ export default function App() {
       alarms.filter(a => ids.has(a.id) && a.groupId != null).map(a => a.groupId!)
     );
     if (!groups.size) return '';
-    return '\n(근무 시간대 알람은 출근·퇴근 세트로 함께 삭제됩니다)';
+    return '\n' + t('(근무 시간대 알람은 출근·퇴근 세트로 함께 삭제됩니다)');
   };
 
   const handleDeleteSelected = () => {
     if (!selectedIds.size) return;
-    Alert.alert('알람 삭제', `선택한 ${selectedIds.size}개를 삭제할까요?${groupDeleteNotice(selectedIds)}`, [
-      { text:'취소', style:'cancel' },
-      { text:'삭제', style:'destructive', onPress: async () => {
+    Alert.alert(t('알람 삭제'), t('선택한 {k}개를 삭제할까요?', { k: selectedIds.size }) + groupDeleteNotice(selectedIds), [
+      { text:t('취소'), style:'cancel' },
+      { text:t('삭제'), style:'destructive', onPress: async () => {
         await deleteAlarms(selectedIds);
         exitSelectMode();
       }},
@@ -349,9 +351,9 @@ export default function App() {
   };
 
   const handleDeleteOne = (id: number) => {
-    Alert.alert('알람 삭제', `이 알람을 삭제할까요?${groupDeleteNotice(new Set([id]))}`, [
-      { text:'취소', style:'cancel' },
-      { text:'삭제', style:'destructive', onPress: async () => {
+    Alert.alert(t('알람 삭제'), t('이 알람을 삭제할까요?') + groupDeleteNotice(new Set([id])), [
+      { text:t('취소'), style:'cancel' },
+      { text:t('삭제'), style:'destructive', onPress: async () => {
         await deleteAlarms(new Set([id]));
         if (tutorialStep !== null) exitTutorial();
         else setEditAlarm(null);
@@ -365,12 +367,12 @@ export default function App() {
       return;
     }
     Alert.alert(
-      '저장하지 않을까요?',
+      t('저장하지 않을까요?'),
       '',
       [
-        { text: '계속하기', style: 'cancel' },
-        { text: '저장 안 함', style: 'destructive', onPress: () => setEditAlarm(null) },
-        { text: '저장', onPress: () => editFormRef.current?.submit() },
+        { text: t('계속하기'), style: 'cancel' },
+        { text: t('저장 안 함'), style: 'destructive', onPress: () => setEditAlarm(null) },
+        { text: t('저장'), onPress: () => editFormRef.current?.submit() },
       ],
     );
   };
@@ -391,22 +393,22 @@ export default function App() {
     // "저장" 선택지를 주지 않는다 — 계속하거나 그냥 나가는(저장 안 함) 것만 가능
     if (activeFormRef.current?.isWizardActive()) {
       Alert.alert(
-        '설정을 그만둘까요?',
+        t('설정을 그만둘까요?'),
         '',
         [
-          { text: '계속하기', style: 'cancel' },
-          { text: '그만두기', style: 'destructive', onPress: () => finishNav(target) },
+          { text: t('계속하기'), style: 'cancel' },
+          { text: t('그만두기'), style: 'destructive', onPress: () => finishNav(target) },
         ],
       );
       return;
     }
     Alert.alert(
-      '저장하지 않을까요?',
+      t('저장하지 않을까요?'),
       '',
       [
-        { text: '계속하기', style: 'cancel' },
-        { text: '저장 안 함', style: 'destructive', onPress: () => finishNav(target) },
-        { text: '저장', onPress: () => { setPendingNav(target); activeFormRef.current?.submit(); } },
+        { text: t('계속하기'), style: 'cancel' },
+        { text: t('저장 안 함'), style: 'destructive', onPress: () => finishNav(target) },
+        { text: t('저장'), onPress: () => { setPendingNav(target); activeFormRef.current?.submit(); } },
       ],
     );
   };
@@ -459,12 +461,12 @@ export default function App() {
         <View style={s.permRow}>
           {!notifGranted && (
             <TouchableOpacity style={s.permChip} onPress={requestPermission}>
-              <Text style={s.permChipT}>🔔 알림 권한 허용</Text>
+              <Text style={s.permChipT}>{t('🔔 알림 권한 허용')}</Text>
             </TouchableOpacity>
           )}
           {Platform.OS === 'android' && !overlayGranted && (
             <TouchableOpacity style={s.permChip} onPress={showOverlayPrompt}>
-              <Text style={s.permChipT}>📱 표시 권한 허용</Text>
+              <Text style={s.permChipT}>{t('📱 표시 권한 허용')}</Text>
             </TouchableOpacity>
           )}
         </View>

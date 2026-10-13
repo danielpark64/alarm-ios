@@ -13,7 +13,7 @@
 ## 단계
 - [x] 1. 자정 넘는 근무(야간·24시간) + 야간(night) 근무조 추가 — 로직 변경, 가장 위험. alarm-logic 리뷰 필수
 - [x] 2. 번역 틀(src/i18n: lang.ts, index.tsx, dicts.ts) + 설정 화면 언어 선택 + 언어 변경 시 재예약
-- [ ] 3. 화면·알림 문구를 t()로 감싸기 (한국어 표시는 그대로여야 함)
+- [x] 3. 화면·알림 문구를 t()로 감싸기 (한국어 표시는 그대로여야 함)
 - [ ] 4. 8개 언어 사전 작성 (en ja zh-Hans zh-Hant es fr de pt)
 - [ ] 5. 지역별 차이: 근무조 이름 묶음, 근무표 프리셋, 하루 근무 변경 종류(대체휴무·대기근무 추가, 반반차는 ko만),
         한국 전용 숨김(공휴일·휴일근무 집계·음력·24절기·후원 계좌), 달력 주 시작 설정
@@ -41,3 +41,14 @@
   app/index.tsx가 언어 변경 시 syncWidget+rescheduleAll, 설정 화면에 언어 칩(시스템 + 9개).
 - scripts/i18n-keys.js: 키 추출(src/i18n/keys.json) / `--check` 사전 누락·자리표시자·{time} 선두 검사.
 - 3단계 규칙: docs/i18n-conventions.md (감싸기 작업자는 이 문서를 따른다).
+
+### 3단계 완료 (2026-10-13)
+- 5개 묶음(홈·설정 / 달력 / 알람 폼 / 유틸·알림·위젯 / 도움말·튜토리얼)을 에이전트로 병렬 처리. 키 328개(src/i18n/keys.json, `node scripts/i18n-keys.js`로 재생성).
+- 한국어 출력 동일: logic-tests 33, 정적 54 통과. core.ts·useAlarmNotifications·WorkPatternBuilder·CalendarPicker는 지역 변수 t와 충돌해 번역 함수를 `tr`로 import.
+- overrideLabel()/dayOverrideDisplay().label은 한국어 원문 반환 유지(달력 집계가 Map 키·정렬에 사용) — 표시 시점에 t().
+- 5단계에서 처리할 것으로 넘긴 항목:
+  (a) 저장되는 기본 라벨이 한국어("출근", "초번 출근") — useAlarmFormState의 label 초기값/handleTypeChange/handleShiftChange/setLabelGuarded/applyShiftGate/handleSubmit.
+      shiftPrefixFor는 이제 번역된 접두어를 돌려주는데 getType().label은 원문이라 비한국어에서 "Early 출근"처럼 섞일 수 있음 → 표시용 alarmDisplayLabel + 폼 로직을 현재 언어 기준으로 통일 필요.
+  (b) 한국 전용 숨김: 공휴일(표시·건너뛰기·휴일근무 집계), 음력(토글·yearly 음력 옵션·repeatLabel 음력 분기), 24절기, PromoBanner(후원·채널), CoffeeTipScreen,
+      도움말 항목 '음력 생일·제사 알람' '공휴일이 자동으로 반영돼요' '공휴일엔 출퇴근 알람이 쉬어요' + '교대근무자도, 일반인도' 본문의 음력 구절.
+  (c) 위젯 네이티브 문구(WidgetListService.kt dayNames·"비번"), 알림 버튼 "끄기"(AlarmService.kt), CoverAlarmActivity "끄기" → 6단계.
