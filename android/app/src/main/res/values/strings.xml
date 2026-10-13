@@ -1,3 +1,4 @@
 <resources>
-  <string name="app_name">교대알람</string>
+  <!-- 홈 화면 앱 이름: 한국어 기기(values-ko)만 교대알람, 그 외 모든 언어는 ShiftWake로 통일(2026-10-14) -->
+  <string name="app_name">ShiftWake</string>
 </resources>

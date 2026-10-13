@@ -46,7 +46,7 @@ export const <이미 있는 export 이름>: Record<string, string> = {
 | 하루 근무 변경 | 특정 날짜 하루만 근무를 바꾸는 기능 | Change this day | この日だけ変更 | 当天班次调整 | 當日班次調整 | Tag ändern | Cambiar este día | Modifier ce jour | Alterar este dia |
 | 이날 끄기 | 그 날짜만 알람 끄기 | Skip this day | この日はオフ | 当天关闭 | 當天關閉 | Diesen Tag aus | Omitir este día | Ignorer ce jour | Pular este dia |
 | 근무표 / 근무 순환표 | 교대 순환 패턴 | Shift pattern / Rotation | シフト表 / ローテーション | 排班表 / 轮班表 | 班表 / 輪班表 | Schichtplan / Rotation | Turnos / Rotación | Planning / Rotation | Escala / Rodízio |
-| 교대알람 | 앱 이름 | Shift Alarm | 交代アラーム | 轮班闹钟 | 輪班鬧鐘 | Schichtwecker | Alarma de Turnos | Réveil Posté | Alarme de Turnos |
+| 교대알람 | 앱 이름 | **ShiftWake** — 8개 언어 모두 같은 이름(번역하지 않음). 한국어만 "교대알람", 한국 스토어 제목은 "교대알람(ShiftWake)" |
 
 프리셋 이름: `"2-2-3 (피트먼)"` → "2-2-3 (Pitman)", `"듀폰"` → "DuPont", `"주야비휴"` → 그 언어로 "Day · Night · Off · Off" 식 설명형 이름.
 
