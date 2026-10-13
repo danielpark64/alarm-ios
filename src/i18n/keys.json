@@ -426,6 +426,12 @@
   ]
  },
  {
+  "key": "⏰ 다음 알람",
+  "files": [
+   "src/utils/widgetSync.ts"
+  ]
+ },
+ {
   "key": "⏰ 스누즈",
   "files": [
    "src/hooks/useAlarmNotifications.ts"
@@ -711,7 +717,8 @@
  {
   "key": "끄기",
   "files": [
-   "src/components/AlarmRinging.tsx"
+   "src/components/AlarmRinging.tsx",
+   "src/utils/widgetSync.ts"
   ]
  },
  {
@@ -1059,7 +1066,8 @@
    "src/components/AlarmForm/RotationWizard.tsx",
    "src/components/AlarmForm/WorkPatternBuilder.tsx",
    "src/components/Home/CalendarView.tsx",
-   "src/components/Home/TodayShiftRow.tsx"
+   "src/components/Home/TodayShiftRow.tsx",
+   "src/utils/widgetSync.ts"
   ]
  },
  {
@@ -1072,6 +1080,18 @@
   "key": "비번 {n}일",
   "files": [
    "src/utils/workPattern.ts"
+  ]
+ },
+ {
+  "key": "비번 {n}일 후",
+  "files": [
+   "src/utils/widgetSync.ts"
+  ]
+ },
+ {
+  "key": "비번 없음",
+  "files": [
+   "src/utils/widgetSync.ts"
   ]
  },
  {
@@ -1333,6 +1353,12 @@
   ]
  },
  {
+  "key": "알람 울림",
+  "files": [
+   "src/utils/widgetSync.ts"
+  ]
+ },
+ {
   "key": "알람 추가",
   "files": [
    "src/components/AlarmForm/index.tsx",
@@ -1531,6 +1557,12 @@
   "key": "오늘 · {date}",
   "files": [
    "src/hooks/useAlarmFormState.ts"
+  ]
+ },
+ {
+  "key": "오늘 비번! 🎉",
+  "files": [
+   "src/utils/widgetSync.ts"
   ]
  },
  {

@@ -8,7 +8,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
-import { useT } from '../src/i18n';
+import { useT, LANGS, type LanguageSetting } from '../src/i18n';
 import { syncWidget } from '../src/utils/widgetSync';
 import { rescheduleAll, registerNotificationCategories } from '../src/utils/notifications';
 import * as Notifications from 'expo-notifications';
@@ -222,7 +222,7 @@ export default function App() {
   // 언어가 바뀌면 알림·위젯 문구를 새 언어로 다시 만든다 — 예약된 알림의 제목/본문과 위젯 payload는
   // 예약 시점의 언어로 굳어 있어서, 재예약하지 않으면 화면만 바뀌고 알림은 이전 언어로 뜬다.
   // 첫 로드 때는 useAlarms가 이미 (언어 설정을 읽은 뒤) 재예약하므로 건너뛴다.
-  const { lang, t } = useT();
+  const { lang, t, setSetting: setLangSetting } = useT();
   const langRef = useRef(lang);
   useEffect(() => {
     if (!loaded || langRef.current === lang) { langRef.current = lang; return; }
@@ -250,6 +250,12 @@ export default function App() {
     handledUrlRef.current = url;
     const q = Linking.parse(url).queryParams ?? {};
     if (q.k !== DEV_LINK_KEY) return; // 잠금 키가 없으면 무시(constants의 DEV_LINK_KEY 주석 참고)
+    // alarmapp://?k=…&lang=en|ja|…|system — 언어 설정을 바꾼다(기기 테스트에서 언어별 화면을 찍는 용도).
+    if (typeof q.lang === 'string' && (q.lang === 'system' || (LANGS as readonly string[]).includes(q.lang))) {
+      setLangSetting(q.lang as LanguageSetting);
+      if (typeof q.tab === 'string' && ['calendar', 'alarms', 'settings', 'add'].includes(q.tab)) setTab(q.tab as any);
+      return;
+    }
     // alarmapp://?k=…&testPattern=night — 오늘 시작 "야간 2일(22:00~다음날 06:00) → 비번 2일" 근무표(진동만)를 만든다.
     // 자정 넘는 근무의 퇴근이 근무일 다음 날로 예약되는지 dumpsys alarm으로 확인하는 용도.
     if (q.testPattern === 'night') {

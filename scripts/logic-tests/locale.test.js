@@ -27,3 +27,29 @@ module.exports = (U, M) => {
   check('translate 자리표시자', translate.translate('ko', '{n}일 주기', { n: 3 }) === '3일 주기');
   setLang('ko');
 };
+// (추가) 사전이 채워진 뒤의 실제 번역 결과 — 근무조·출퇴근 라벨, 알림 본문, 기본 라벨 현지화
+module.exports = ((prev) => (U, M) => {
+  prev(U, M);
+  const fmt = d => d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` : 'null';
+  const T = (h, m = 0) => ({ hour: h, min: m });
+  const { translate } = M.translate;
+  for (const lang of M.lang.LANGS) {
+    const body = translate(lang, '{time} 알람', { time: '06:00' });
+    check(`${lang}: 알림 본문이 시각으로 시작(네이티브 끄기 정규식)`, /^\d{2}:\d{2}/.test(body), body);
+    check(`${lang}: 근무조 이름이 서로 다름`, new Set(['초번','중번','말번','주간','야간'].map(k => translate(lang, k))).size === 5);
+  }
+  setLang('en');
+  check('en: alarmLabel 기본 라벨 현지화(한국어로 저장된 "초번 출근")', U.alarmLabel({ label: '초번 출근', typeId: 'commute' }) === 'Early Clock in', U.alarmLabel({ label: '초번 출근', typeId: 'commute' }));
+  check('en: alarmLabel 사용자 라벨 유지', U.alarmLabel({ label: '아침 약 먹기', typeId: 'custom' }) === '아침 약 먹기');
+  const pattern = [{ blockId: 'a', shift: 'night', days: 2, commuteTime: T(22), hasOffwork: true, offworkTime: T(6) }, { blockId: 'b', shift: 'none', days: 2, isRest: true, hasOffwork: false }];
+  const off = { id: 2, typeId: 'offwork', groupRole: 'offwork', label: '', rm: 'pattern', days: [], cd: 2, rd: 2, snd: 'none', vib: 'pulse', sd: '2026-10-12', active: true, pattern, hour: 6, min: 0 };
+  withNow('2026-10-14T03:00:00', () => {
+    const p = U.nextAlarmParts([off]);
+    check('en: 헤더 라벨에 한글이 없음', p && !/[가-힣]/.test(p.label + p.when), JSON.stringify(p));
+    check('en: 시각은 언어와 무관하게 동일(10/14 06:00)', fmt(U.getNextFireDate(off)) === '2026-10-14 06:00');
+  });
+  setLang('ja');
+  check('ja: alarmLabel(영어로 저장된 기본 라벨도 현재 언어로)', U.alarmLabel({ label: 'Clock in', typeId: 'commute' }) === translate('ja', '출근'), U.alarmLabel({ label: 'Clock in', typeId: 'commute' }));
+  setLang('ko');
+  check('ko: alarmLabel(영어로 저장된 기본 라벨 → 한국어)', U.alarmLabel({ label: 'Early Clock in', typeId: 'commute' }) === '초번 출근', U.alarmLabel({ label: 'Early Clock in', typeId: 'commute' }));
+})(module.exports);

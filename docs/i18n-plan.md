@@ -14,7 +14,7 @@
 - [x] 1. 자정 넘는 근무(야간·24시간) + 야간(night) 근무조 추가 — 로직 변경, 가장 위험. alarm-logic 리뷰 필수
 - [x] 2. 번역 틀(src/i18n: lang.ts, index.tsx, dicts.ts) + 설정 화면 언어 선택 + 언어 변경 시 재예약
 - [x] 3. 화면·알림 문구를 t()로 감싸기 (한국어 표시는 그대로여야 함)
-- [ ] 4. 8개 언어 사전 작성 (en ja zh-Hans zh-Hant es fr de pt)
+- [x] 4. 8개 언어 사전 작성 (en ja zh-Hans zh-Hant es fr de pt)
 - [x] 5. 지역별 차이: 근무조 이름 묶음, 근무표 프리셋, 하루 근무 변경 종류(대체휴무·대기근무 추가, 반반차는 ko만),
         한국 전용 숨김(공휴일·휴일근무 집계·음력·24절기·후원 계좌), 달력 주 시작 설정
 - [x] 6. 네이티브 문구(Android strings.xml values-xx, 알림 버튼·위젯), 앱 이름 현지화 플러그인
@@ -65,3 +65,9 @@
 - 정적 체크 ㉑~㉔ 추가(㉒는 사전이 다 채워져야 PASS).
 - 남은 일: 사전 완성 후 `node scripts/i18n-keys.js --check` 통과 확인(위젯용 새 키 6개 '끄기' '알람 울림' '오늘 비번! 🎉' '비번 {n}일 후' '비번 없음' '⏰ 다음 알람'은
   에이전트 시작 뒤에 추가돼 사전에 없을 수 있음 → 직접 채울 것), verify-fix, 32·노트 빌드·언어 전환 스크린샷, iPhone 빌드, bug-tracker, 최종 보고.
+
+### 4단계 완료 (2026-10-13)
+- 8개 언어 사전(src/i18n/locales/*.ts) 각 366키, `node scripts/i18n-keys.js --check` 누락 없음. logic-tests 129, 정적 58 통과.
+- 개발 딥링크 추가: alarmapp://?k=<키>&lang=en&tab=calendar (언어 전환 + 탭 이동, 스크린샷용).
+- 번역 에이전트들이 공통으로 짚은 것(7단계에서 실기기로 확인): 독일어 탭 "Einstellungen", 근무 변경 종류 칩(de/fr/es/pt가 김), 근무조 칩(es "Intermedio", pt "Intermediário"),
+  "{date}부터"의 MM.DD 고정 순서, 복수형 미지원("1 days" → 칩은 "d"/"j"/"Tg." 약어로 회피), 권한 안내문 속 앱 이름.
