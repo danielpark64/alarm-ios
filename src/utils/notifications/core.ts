@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { Alarm, DayOverrides, ShiftPeriod, IOS_REP_INTERVAL_SEC, ANDROID_REP_COUNT } from '../../constants';
-import { getType, pad, getNextFireDate, lunarToSolarInYear, effectiveShift, effectiveTime, dayWorkFor, isOverridableAlarm, isHolidaySkipped, skipsStatutoryHoliday, overnightFrom, alarmLabel } from '../index';
+import { getType, pad, getNextFireDate, lunarToSolarInYear, effectiveShift, effectiveTime, dayWorkFor, isOverridableAlarm, isHolidaySkipped, skipsStatutoryHoliday, overnightFrom, alarmLabel, workDateOfFire } from '../index';
 import { isStatutoryHoliday } from '../../constants/holidays';
 import { roleLabel } from '../workPattern';
 import { scheduleNative } from './android';
@@ -350,9 +350,18 @@ export async function schedulePatternAlarmReps(alarm: Alarm, overrides: DayOverr
   if (Platform.OS !== 'ios' || !alarm.active || count <= 0) return;
   const next = getNextFireDate(alarm, overrides);
   if (!next) return;
-  const type = getType(alarm.typeId);
+  // 제목은 본 알림과 같은 규칙 — "근무일"의 근무조로 만든다(자정 넘는 퇴근은 발화일이 근무일 다음 날).
+  // alarmLabel만 쓰면 본 알림은 "야간 출근"인데 30초 뒤 보조는 "출근"으로 달라진다.
+  let label = alarmLabel(alarm);
+  if (alarm.rm === 'pattern') {
+    const ds = workDateOfFire(alarm, next, overrides);
+    const dw = dayWorkFor(alarm, overrides[ds]);
+    const shiftInfo = dw?.shift ? { shift: dw.shift } : effectiveShift(alarm, ds);
+    // 근무조를 못 찾으면 본 알림과 같은 폴백(타입 이름)
+    label = shiftInfo ? roleLabel(shiftInfo, alarm.groupRole ?? 'commute') : tr(getType(alarm.typeId).label);
+  }
   const repBase = {
-    title: `⏰ ${alarmLabel(alarm)}`,
+    title: `⏰ ${label}`,
     body: tr('{time} 알람', { time: `${pad(next.getHours())}:${pad(next.getMinutes())}` }),
     sound: notifSound(alarm.snd === 'default'),
     categoryIdentifier: 'alarm',

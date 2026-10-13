@@ -526,6 +526,13 @@ printf "  로직 시나리오 테스트(node scripts/logic-tests/run.js) ... "
 _LT=$(cd "$ROOT" && node scripts/logic-tests/run.js 2>&1)
 if echo "$_LT" | grep -q "/ 0 실패"; then ok "$(echo "$_LT" | tail -1)"; else fail "로직 테스트 실패"; echo "$_LT" | grep -E "FAIL|Error" | head -8; fi
 
+# 로테이션 보조 알림 제목(2026-10-13) — iOS 보조 알림(schedulePatternAlarmReps)도 본 알림처럼 "근무일" 근무조로
+#    제목을 만든다. alarmLabel만 쓰면 본 알림은 "야간 출근"인데 30초 뒤 보조는 "출근"으로 달라진다.
+printf "  로테이션 보조 알림 제목이 근무조 기준(roleLabel)인지 ... "
+if awk '/export async function schedulePatternAlarmReps/,/^}/' "$ROOT/src/utils/notifications/core.ts" 2>/dev/null | grep -q "roleLabel(" \
+  && awk '/export async function schedulePatternAlarmReps/,/^}/' "$ROOT/src/utils/notifications/core.ts" 2>/dev/null | grep -q "workDateOfFire("; then ok ""
+else fail "schedulePatternAlarmReps 제목이 근무일 근무조(roleLabel+workDateOfFire)를 쓰지 않음"; fi
+
 # ㉑ 다국어(2026-10-13) — 순수 모듈(utils·constants)은 i18n 인덱스(React·AsyncStorage)를 import하면 안 된다
 #    (scripts/logic-tests가 node에서 못 돈다). 번역은 '../i18n/translate', 표식은 '../i18n/lang'만.
 printf "  utils·constants가 i18n 인덱스를 import하지 않는지 ... "

@@ -251,6 +251,34 @@ export default function App() {
     handledUrlRef.current = url;
     const q = Linking.parse(url).queryParams ?? {};
     if (q.k !== DEV_LINK_KEY) return; // 잠금 키가 없으면 무시(constants의 DEV_LINK_KEY 주석 참고)
+    // alarmapp://?k=…&report=1 — 현재 상태(언어·알람·대기/표시된 알림)를 AsyncStorage 'dev_report'에 JSON으로 남긴다.
+    // 화면을 캡처할 수 없는 기기(iPad·iPhone)에서 터미널로 결과를 확인하는 용도:
+    //   xcrun devicectl device copy from --device <id> --domain-type appDataContainer --domain-identifier com.danielpark.alarmapp \
+    //     --source "Library/Application Support/com.danielpark.alarmapp/RCTAsyncLocalStorage_V1/manifest.json" --destination <파일>
+    if (q.report != null) {
+      (async () => {
+        const fmtT = (tr: any) => {
+          if (tr?.type === 'timeInterval' && typeof tr?.seconds === 'number') return new Date(Date.now() + tr.seconds * 1000).toISOString();
+          if (typeof tr?.value === 'number') return new Date(tr.value).toISOString();
+          const dc = tr?.dateComponents;
+          if (dc?.year != null) return new Date(dc.year, (dc.month ?? 1) - 1, dc.day ?? 1, dc.hour ?? 0, dc.minute ?? 0, dc.second ?? 0).toISOString();
+          if (dc?.weekday != null) return `weekly:${dc.weekday} ${dc.hour}:${dc.minute}`;
+          return JSON.stringify(tr ?? null).slice(0, 60);
+        };
+        const pending = await Notifications.getAllScheduledNotificationsAsync().catch(() => []);
+        const presented = await Notifications.getPresentedNotificationsAsync().catch(() => []);
+        const report = {
+          at: new Date().toISOString(), platform: Platform.OS, lang, langSetting: await AsyncStorage.getItem('language_v1'),
+          header: next ? `${next.label} · ${next.when}` : null,
+          alarms: alarms.map(a => ({ id: a.id, typeId: a.typeId, rm: a.rm, label: a.label, active: a.active, snd: a.snd, vib: a.vib, role: a.groupRole })),
+          pending: pending.map(n => ({ id: n.identifier, when: fmtT(n.trigger), title: n.content.title, body: n.content.body, sound: (n.content as any).sound ?? null }))
+            .sort((a, b) => String(a.when).localeCompare(String(b.when))),
+          presented: presented.map(n => ({ id: n.request.identifier, title: n.request.content.title, body: n.request.content.body, date: new Date(n.date).toISOString() })),
+        };
+        await AsyncStorage.setItem('dev_report', JSON.stringify(report));
+      })();
+      return;
+    }
     // alarmapp://?k=…&lang=en|ja|…|system — 언어 설정을 바꾼다(기기 테스트에서 언어별 화면을 찍는 용도).
     if (typeof q.lang === 'string' && (q.lang === 'system' || (LANGS as readonly string[]).includes(q.lang))) {
       setLangSetting(q.lang as LanguageSetting);
@@ -300,7 +328,8 @@ export default function App() {
     }
     // alarmapp://?clearTestAlarms=1 — 위 testAlarm으로 만든 '테스트 알람'을 전부 삭제(정리용).
     if (q.clearTestAlarms != null) {
-      const ids = new Set(alarms.filter(a => a.label === '테스트 알람').map(a => a.id));
+      // testAlarm이 만든 '테스트 알람'과 testPattern=night가 만든 근무표(blockId 'tn1')만 지운다 — 사용자의 알람은 건드리지 않는다.
+      const ids = new Set(alarms.filter(a => a.label === '테스트 알람' || a.pattern?.[0]?.blockId === 'tn1').map(a => a.id));
       if (ids.size) deleteAlarms(ids);
       setTab('alarms');
       return;
