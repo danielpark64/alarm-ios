@@ -386,7 +386,8 @@ class AlarmService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val ch = NotificationChannel(CHANNEL_ID, "알람 울림", NotificationManager.IMPORTANCE_HIGH).apply {
+            // 채널 이름은 시스템 알림 설정 화면에 보인다. 같은 id로 다시 만들면 이름만 갱신된다(언어 변경 반영).
+            val ch = NotificationChannel(CHANNEL_ID, NativeStrings.get(this, "channel", "알람 울림"), NotificationManager.IMPORTANCE_HIGH).apply {
                 setSound(null, null)
                 enableVibration(false)
             }
@@ -431,7 +432,7 @@ class AlarmService : Service() {
             .setContentIntent(openPi)
             // 갤럭시 Z 플립 커버 화면의 축소 알림 뷰는 액션이 2개면 커스텀 액션 대신
             // 기본 "앱 열기" 버튼만 보여주는 것으로 보여, 액션을 "끄기" 1개로 줄여 테스트
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "끄기", stopPi)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, NativeStrings.get(this, "stop", "끄기"), stopPi)
             // ⚠️ setOngoing(true)인 알림은 Wear OS로 브릿지되지 않는다(공식 문서: ongoing/localOnly 제외).
             // 즉 워치에서 보이는 건 이 알림이 아니라 Expo 쪽 알림("알람 끄기" 액션, notifications/index.ts
             // registerNotificationCategories)이다. 워치에서 그 액션을 누르면 Expo 응답 리스너 →

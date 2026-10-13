@@ -1,0 +1,4 @@
+<resources>
+  <!-- 홈 화면 앱 이름(기기 언어 기준). 기본값(values/)은 교대알람 -->
+  <string name="app_name">Shift Alarm</string>
+</resources>

@@ -15,9 +15,9 @@
 - [x] 2. 번역 틀(src/i18n: lang.ts, index.tsx, dicts.ts) + 설정 화면 언어 선택 + 언어 변경 시 재예약
 - [x] 3. 화면·알림 문구를 t()로 감싸기 (한국어 표시는 그대로여야 함)
 - [ ] 4. 8개 언어 사전 작성 (en ja zh-Hans zh-Hant es fr de pt)
-- [ ] 5. 지역별 차이: 근무조 이름 묶음, 근무표 프리셋, 하루 근무 변경 종류(대체휴무·대기근무 추가, 반반차는 ko만),
+- [x] 5. 지역별 차이: 근무조 이름 묶음, 근무표 프리셋, 하루 근무 변경 종류(대체휴무·대기근무 추가, 반반차는 ko만),
         한국 전용 숨김(공휴일·휴일근무 집계·음력·24절기·후원 계좌), 달력 주 시작 설정
-- [ ] 6. 네이티브 문구(Android strings.xml values-xx, 알림 버튼·위젯), 앱 이름 현지화 플러그인
+- [x] 6. 네이티브 문구(Android strings.xml values-xx, 알림 버튼·위젯), 앱 이름 현지화 플러그인
 - [ ] 7. 최종: 정적 체크 추가, verify-fix, bug-tracker 기록, 32·폰 빌드 설치, 사용자 보고(커밋/푸시/출시 여부 질문)
 
 ## 진행 메모
@@ -52,3 +52,16 @@
   (b) 한국 전용 숨김: 공휴일(표시·건너뛰기·휴일근무 집계), 음력(토글·yearly 음력 옵션·repeatLabel 음력 분기), 24절기, PromoBanner(후원·채널), CoffeeTipScreen,
       도움말 항목 '음력 생일·제사 알람' '공휴일이 자동으로 반영돼요' '공휴일엔 출퇴근 알람이 쉬어요' + '교대근무자도, 일반인도' 본문의 음력 구절.
   (c) 위젯 네이티브 문구(WidgetListService.kt dayNames·"비번"), 알림 버튼 "끄기"(AlarmService.kt), CoverAlarmActivity "끄기" → 6단계.
+
+### 5·6단계 구현 완료 (2026-10-13) — 사전(4단계)은 언어별 에이전트가 작성 중
+- 5(b) 한국 전용 게이트: holidays.getHoliday/statutoryHolidaysInYear, solarTerms.getSolarTerm, useHolidaySync, 달력 음력 토글·음력 줄,
+  DateSection 음력 옵션, AlarmsTab PromoBanner, 도움말 krOnly/bodyIntl. (isKoreanLocale = 현재 언어가 ko)
+- 5(a) alarmLabel/localizeDefaultLabel(utils): 저장된 기본 라벨("출근", "초번 출근" 등 어느 언어든)을 현재 언어로 표시. 폼(useAlarmFormState)도 현재 언어 기준.
+- 주간(day) 근무조 추가(2교대 낮 근무, 야간과 짝). 근무표 프리셋(src/constants/shiftPresets.ts + PresetModal, 새 근무표 만들 때 "자주 쓰는 근무표에서 고르기").
+- 하루 근무 변경 종류: 대체휴무(comp, 끄는 갈래)·대기근무(oncall, 근무조·시각 고르는 갈래) 추가, 반반차는 ko에서만 선택 가능(pickableOverrideKinds).
+- 달력 주 시작: useWeekStart(auto|sun|mon, auto는 de·fr·es·pt·zh-Hans가 월요일). 메인 달력·날짜 선택 달력에만 적용, 위젯 주간 줄은 일~토 고정.
+- 6: NativeStrings.kt + WidgetModule.saveNativeStrings ← widgetSync.ts(끄기·채널 이름·위젯 라벨·요일). 앱 이름은 Android values-<lang>/strings.xml(기기 언어 기준).
+  iOS 앱 이름 현지화(lproj)는 미구현 — ios/가 gitignore라 플러그인으로 pbxproj에 등록해야 함(남은 일).
+- 정적 체크 ㉑~㉔ 추가(㉒는 사전이 다 채워져야 PASS).
+- 남은 일: 사전 완성 후 `node scripts/i18n-keys.js --check` 통과 확인(위젯용 새 키 6개 '끄기' '알람 울림' '오늘 비번! 🎉' '비번 {n}일 후' '비번 없음' '⏰ 다음 알람'은
+  에이전트 시작 뒤에 추가돼 사전에 없을 수 있음 → 직접 채울 것), verify-fix, 32·노트 빌드·언어 전환 스크린샷, iPhone 빌드, bug-tracker, 최종 보고.

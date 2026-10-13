@@ -526,6 +526,33 @@ printf "  로직 시나리오 테스트(node scripts/logic-tests/run.js) ... "
 _LT=$(cd "$ROOT" && node scripts/logic-tests/run.js 2>&1)
 if echo "$_LT" | grep -q "/ 0 실패"; then ok "$(echo "$_LT" | tail -1)"; else fail "로직 테스트 실패"; echo "$_LT" | grep -E "FAIL|Error" | head -8; fi
 
+# ㉑ 다국어(2026-10-13) — 순수 모듈(utils·constants)은 i18n 인덱스(React·AsyncStorage)를 import하면 안 된다
+#    (scripts/logic-tests가 node에서 못 돈다). 번역은 '../i18n/translate', 표식은 '../i18n/lang'만.
+printf "  utils·constants가 i18n 인덱스를 import하지 않는지 ... "
+if grep -rnE "from '(\.\./)+i18n'" "$ROOT/src/utils" "$ROOT/src/constants" >/dev/null 2>&1; then
+  fail "src/utils 또는 src/constants가 '…/i18n' 인덱스를 import함 — '…/i18n/translate'로 바꿀 것"
+else ok ""; fi
+
+# ㉒ 사전 누락 검사 — 코드의 모든 t()/N() 키가 8개 언어 사전에 있고, 자리표시자·{time} 선두 규칙을 지키는지.
+printf "  번역 사전 누락·자리표시자 검사(node scripts/i18n-keys.js --check) ... "
+_IK=$(cd "$ROOT" && node scripts/i18n-keys.js --check 2>&1)
+if echo "$_IK" | grep -q "누락 없음"; then ok "$(echo "$_IK" | tail -1)"; else fail "사전에 문제"; echo "$_IK" | head -12; fi
+
+# ㉓ 한국 전용 기능 게이트 — 공휴일 표는 한국어일 때만(getHoliday). 이 게이트가 빠지면 해외 사용자의 출근 알람이
+#    한국 공휴일에 조용히 안 울린다. 알림 본문 키는 {time}으로 시작해야 네이티브 끄기 경로가 시각을 읽는다.
+printf "  한국 공휴일 게이트(isKoreanLocale) + 알림 본문 키 ... "
+grep -A3 "export const getHoliday" "$ROOT/src/constants/holidays.ts" 2>/dev/null | grep -q "isKoreanLocale()" \
+  && grep -q "'{time} 알람'" "$ROOT/src/utils/notifications/core.ts" 2>/dev/null \
+  && ok "" || { fail "getHoliday의 isKoreanLocale 게이트 또는 '{time} 알람' 키가 없음"; }
+
+# ㉔ 네이티브 문구 — 알림 "끄기" 버튼·위젯 라벨은 JS가 넘긴 현재 언어 문구(NativeStrings)를 쓴다.
+printf "  네이티브 문구가 NativeStrings를 거치는지 ... "
+_J="$ROOT/android/app/src/main/java/com/danielpark/alarmapp"
+grep -q 'NativeStrings.get(this, "stop"' "$_J/AlarmService.kt" 2>/dev/null \
+  && grep -q "saveNativeStrings" "$_J/WidgetModule.kt" 2>/dev/null \
+  && grep -q "saveNativeStrings" "$ROOT/src/utils/widgetSync.ts" 2>/dev/null \
+  && ok "" || { fail "AlarmService 끄기 버튼 또는 saveNativeStrings 연결이 없음"; }
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

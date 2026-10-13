@@ -1,5 +1,5 @@
 import { Platform, NativeModules } from 'react-native';
-import { Alarm, DayOverrides, SHIFTS } from '../constants';
+import { Alarm, DayOverrides, SHIFTS, DAYS_DISPLAY } from '../constants';
 import { pad, todayStr, getType, getNextFireDate, shiftForDate, isOffDay, shiftColorMap, alarmsForDate, isWorkAlarm, isHolidayOffWithOverride, effectiveShift, dayOverrideDisplay, alarmLabel } from './index';
 import { roleLabel } from './workPattern';
 import { t } from '../i18n/translate';
@@ -106,6 +106,19 @@ export async function syncWidget(alarms: Alarm[], overrides: DayOverrides = {}) 
     weekSchedule,
   });
 
+  // 네이티브가 직접 그리는 고정 문구(알림 "끄기" 버튼·커버 화면·위젯 라벨)를 현재 언어로 넘긴다 —
+  // NativeStrings.kt가 꺼내 쓰고, 저장된 적이 없으면 한국어 기본값을 쓴다. updateWidgetData보다 먼저 보내
+  // 위젯이 한 번에 새 문구로 그려지게 한다. offIn의 {n}은 네이티브가 숫자로 바꾼다.
+  WidgetModule.saveNativeStrings?.(JSON.stringify({
+    stop: t('끄기'),
+    channel: t('알람 울림'),
+    off: t('비번'),
+    offToday: t('오늘 비번! 🎉'),
+    offIn: t('비번 {n}일 후'),
+    noOff: t('비번 없음'),
+    nextAlarm: t('⏰ 다음 알람'),
+    days: DAYS_DISPLAY.map(d => t(d)), // 일~토 — WidgetListService의 위치 계약과 같은 순서
+  }));
   WidgetModule.updateWidgetData(payload);
 
   // 활성 알람 ID 목록을 네이티브에 전달 — AlarmReceiver가 비활성 알람을 차단하는 데 사용.

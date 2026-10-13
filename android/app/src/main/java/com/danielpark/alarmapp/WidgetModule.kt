@@ -23,6 +23,14 @@ class WidgetModule(private val reactContext: ReactApplicationContext) :
     // 그렇지 않으면 Direct Boot 구간에 게이트가 값을 못 읽어 fail-safe open으로 빠지고,
     // 꺼둔 알람까지 울리게 된다.
     // 기존 AlarmWidgetData 쪽에도 계속 써서 구버전 예약분(옛 경로로 읽는 예약)과 호환을 남긴다.
+    // 네이티브가 직접 그리는 문구(알림 "끄기" 버튼·위젯 라벨)를 앱 언어로 맞춘다 — NativeStrings 주석 참고.
+    // 위젯 문구가 여기 들어 있으므로 저장 후 위젯도 다시 그린다.
+    @ReactMethod
+    fun saveNativeStrings(json: String) {
+        NativeStrings.save(reactContext, json)
+        refreshAllWidgets(reactContext)
+    }
+
     @ReactMethod
     fun saveActiveAlarmIds(ids: String) {
         DeviceStorage.prefs(reactContext, DeviceStorage.PREFS_GATE)
