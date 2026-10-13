@@ -7,6 +7,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, Settings, I18nManager } from 'react-native';
 import { translate, t, resolveLang, type Params } from './translate';
+import { ALARMS_STORAGE_KEY } from '../constants';
 export { translate, t, resolveLang, type Params };
 import { LANGS, LANG_NATIVE_NAME, N, getLang, setCurrentLang, subscribeLang, systemLang, isKoreanLocale, setSystemLocaleProvider, markLanguageResolved, type Lang, type LanguageSetting } from './lang';
 export { LANGS, LANG_NATIVE_NAME, N, getLang, setCurrentLang, subscribeLang, systemLang, isKoreanLocale, type Lang, type LanguageSetting };
@@ -29,7 +30,7 @@ setSystemLocaleProvider(() => {
 });
 
 const KEY = 'language_v1';
-const ALARMS_KEY = 'alarms_v1_rn'; // useAlarms의 저장 키 — 기존 설치 판별용
+const ALARMS_KEY = ALARMS_STORAGE_KEY; // useAlarms와 같은 상수 — 기존 설치 판별용
 const SETTINGS: LanguageSetting[] = ['system', ...LANGS];
 
 // 저장된 언어 설정을 한 번 읽어 현재 언어에 반영한다. 앱 시작 시 알람 재예약(useAlarms)보다 먼저 끝나야

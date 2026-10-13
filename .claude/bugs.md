@@ -1,5 +1,118 @@
 # 버그 이력
 
+## 2026-10-13 · [중간·기존 결함] 자정 넘는 근무(야간 22~06, 24시간)의 퇴근 알람이 근무일 "당일" 시각으로 계산됨
+
+**증상**: 야간(22:00~06:00)·24시간 근무처럼 퇴근이 다음 날인 근무의 퇴근 알람이 근무일 당일
+06:00으로 잡혀, 이미 지난 시각이라 안 울리거나 엉뚱한 날 울림. 다국어화·해외 교대제도 대응
+작업 중 발견했지만 한국 근무표에도 원래 있던 누락(사용자 확인: "한국에도 있는데 빼먹었다").
+**원인**: 퇴근 시각을 근무일 날짜에 그대로 붙였다. "퇴근이 출근보다 이르면 다음 날"이라는 개념
+자체가 없었고, 같은 계산이 `core.ts` 예약 루프 2곳(로테이션·날짜기반)과 `getNextFireDate`
+세 곳에 각각 들어 있었다.
+**수정**: `isOvernight`(퇴근<=출근이면 다음 날) 도입 → `effectiveTime`/`dayWorkFor`가
+`dayOffset: 1`을 돌려줌. 예약 루프 2곳과 `getNextFireDate`는 퇴근 알람을 어제 근무일(i=-1,
+`overnightFrom`)부터 훑는다(어젯밤 근무의 퇴근이 오늘 아침이므로). 발화일에서 근무일을 되짚는
+`workDateOfFire` 추가. 시각 고정 시나리오 테스트 `scripts/logic-tests/overnight.test.js`,
+정적 체크 ⑱⑲⑳ 추가. 32·노트 실기기에서 예약 날짜 검증(커밋 `ebbf522`).
+남긴 것(낮음): 근무가 서로 겹칠 때만 `getNextFireDate` 순서 역전 가능, 퇴근이 실제로 울리는
+날의 달력 팝업엔 그 알람이 안 보임(근무일 기준 표시), 레거시 cycle/rest로 따로 만든 야간 퇴근
+알람은 출근 시각을 몰라 보정 안 됨.
+**파일**: `src/utils/index.ts`, `src/utils/notifications/core.ts`, `src/constants/index.ts`,
+`scripts/logic-tests/overnight.test.js`, `scripts/test-alarm-suite.sh`
+**재발 감시 포인트**: "근무일"과 "발화일"이 다른 날일 수 있다 — `skips`·dayOverride·알림
+식별자·네이티브 슬롯·정리 로직은 전부 **근무일** 기준으로 저장된다. 날짜를 키로 쓰는 새 코드는
+그 날짜가 근무일인지 발화일인지 먼저 정하고, 발화일에서 출발하면 `workDateOfFire`를 거칠 것.
+날짜를 훑는 새 루프는 0이 아니라 `overnightFrom(alarm)`에서 시작해야 어젯밤 근무의 퇴근을
+놓치지 않는다. 2026-09-12 항목의 "같은 판정을 여러 호출부가 각자 구현" 골격과 같은 자리
+(예약 루프 2곳 + `getNextFireDate`)라, 셋 중 하나만 고치면 표시와 발화가 어긋난다.
+
+## 2026-10-13 · [중간] "이날만 끄기"로 끈 야간 퇴근 알람이 자정 뒤 앱을 열면 되살아남
+
+**증상**: 야간 근무일의 퇴근 알람을 "이날만 끄기"로 껐는데, 자정이 지난 뒤 앱을 열면 그날 아침
+퇴근 알람이 다시 예약됨. 바로 위 항목(자정 넘는 근무)을 고치면서 생긴 구멍으로, alarm-logic
+리뷰가 출시 전에 발견.
+**원인**: `useAlarms.migrateAlarm`이 로드할 때 `skips`에서 오늘 이전 날짜를 전부 지웠다.
+`skips`는 근무일 기준인데 야간 퇴근은 근무일 다음 날 울리므로, 자정을 넘기는 순간 "어제"
+skip이 아직 필요한데도 지워졌다.
+**수정**: `pruneSkips`(어제까지 남김)로 교체. `overnight.test.js`에 시나리오 포함.
+**파일**: `src/utils/index.ts`, `src/hooks/useAlarms.ts`, `scripts/logic-tests/overnight.test.js`
+**재발 감시 포인트**: 위 항목과 같은 전제(근무일 ≠ 발화일). "지난 날짜는 필요 없다"고 보고
+오늘 기준으로 잘라내는 정리 로직(`skips`, dayOverride, 원장 청소 등)을 새로 쓰거나 고칠 때는
+경계를 "어제"로 잡았는지 확인. 날짜 계산 방식을 바꾸는 수정은 예약 경로만 보지 말고 그 날짜를
+키로 쓰는 저장·정리 경로까지 같이 훑을 것 — 이번 건은 예약 쪽만 고치고 정리 쪽을 놓친 사례.
+
+## 2026-10-13 · [높음·출시 전 차단] 한국어 iPhone에서 앱이 영어로 뜨고 공휴일 건너뛰기가 꺼질 수 있음
+
+**증상**: 기기 언어가 한국어인 iPhone에서 앱이 영어로 표시되고, 한국 전용 기능(공휴일
+건너뛰기 등)이 함께 꺼질 수 있음. verify-fix가 코드·프로젝트 설정을 읽어 발견했고, 실기기에서
+재현하기 전에 예방 수정함(iPhone 빌드에서의 한국어 표시 확인은 기록 시점에 아직 남은 일).
+**원인**: 기기 언어를 `Intl.DateTimeFormat().resolvedOptions().locale`로만 읽었다. iOS는 앱이
+선언한 언어(`CFBundleLocalizations`, 당시 en뿐) 안에서 로캘을 정하므로 한국어 기기에서도 en이
+나온다. 그 결과가 `isKoreanLocale` 게이트로 이어져 표시 언어뿐 아니라 공휴일 건너뛰기라는
+알람 동작까지 바뀐다.
+**수정**: `setSystemLocaleProvider`로 네이티브 값을 우선 읽음(iOS `Settings`의
+`AppleLanguages` / Android `I18nManager`의 `localeIdentifier`, `Intl`은 마지막 폴백).
+`app.json`과 Info.plist의 `CFBundleLocalizations`에 9개 언어 선언. 정적 체크 ㉕ 추가
+(커밋 `ca7b275`).
+**파일**: `src/i18n/lang.ts`, `src/i18n/index.tsx`, `app.json`, `scripts/logic-tests/locale.test.js`,
+`scripts/test-alarm-suite.sh`
+**재발 감시 포인트**: 한국 전용 기능이 언어 게이트에 묶여 있어 "언어 판정이 틀리면 알람 동작이
+바뀐다". 언어 판정 경로(`lang.ts`, `i18n/index.tsx`, `loadLanguageSetting` 호출 순서)를 고칠
+때는 `scripts/logic-tests/locale.test.js`와 정적 체크 ㉓㉕를 확인. 지원 언어를 추가하면
+`CFBundleLocalizations`에도 같이 넣을 것. `ios/`는 gitignore라 Info.plist 수동 수정은 prebuild에서
+사라진다 — 진짜 소스는 `app.json`. 기기 언어를 `Intl`에서 직접 읽는 코드를 새로 만들지 말 것.
+
+## 2026-10-13 · [중간] 폰을 영어 등으로 쓰는 기존 한국 사용자가 업데이트 뒤 영어로 바뀌고 공휴일 건너뛰기가 꺼짐
+
+**증상**: 기기 언어가 한국어가 아닌 기존 사용자가 다국어 버전으로 업데이트하면, 언어 설정
+기본값 '시스템' 때문에 앱이 영어 등으로 바뀌고 공휴일 건너뛰기가 아무 안내 없이 꺼짐 →
+공휴일에 출근 알람이 울림. verify-fix가 출시 전에 발견.
+**원인**: 이전 버전은 한국어 전용이라 언어 설정 값이 없는데, 값이 없을 때의 기본값을 신규
+설치와 기존 설치 구분 없이 '시스템'으로 뒀다.
+**수정**: `loadLanguageSetting`이 언어 설정 없는 첫 실행에서 기존 알람 데이터(`alarms_v1_rn`)가
+있으면 'ko'로 고정하고 값을 즉시 저장(다음 실행부터는 판별 없이 그 값을 씀). 알림 카테고리
+등록·공휴일 갱신보다 `loadLanguageSetting`을 먼저 부르도록 순서도 맞춤. 정적 체크 ㉕.
+**파일**: `src/i18n/index.tsx`, `src/hooks/useAlarmNotifications.ts`, `src/hooks/useHolidaySync.ts`,
+`app/index.tsx`, `scripts/test-alarm-suite.sh`
+**재발 감시 포인트**: 위 항목과 같은 전제(언어 판정 = 알람 동작). 새 설정 항목의 기본값을 정할
+때 "설정 값이 없는 기존 설치"가 지금까지와 똑같이 동작하는지 따로 따져볼 것. 기존 설치 판별이
+`i18n/index.tsx`에 따로 적어 둔 저장 키 문자열 `alarms_v1_rn`에 기대고 있어, `useAlarms`의
+저장 키를 바꾸면 이 보호가 조용히 풀린다(같은 값을 두 곳이 각자 들고 있는 구조). 언어를
+읽는 코드(알림 문구·공휴일·위젯)는 `loadLanguageSetting`이 끝난 뒤에 돌아야 한다.
+
+## 2026-10-13 · [중간] 언어를 바꾼 뒤 기존 알람을 편집하면 이름 입력칸이 잠김
+
+**증상**: 한국어에서 만든 알람(예: "출근 준비")을 영어 등 다른 언어로 바꾼 뒤 편집하면 이름
+입력칸에 어떤 글자도 입력·삭제되지 않음.
+**원인**: `setLabelGuarded`가 현재 언어의 타입 이름 접두어로 시작하는 입력만 받았다. 저장된
+라벨은 만든 시점의 언어("출근 …")인데 가드는 현재 언어("Clock in …")를 요구해, 어떤 입력도
+조건을 만족할 수 없었다.
+**수정**: 지금 라벨이 그 접두어로 시작할 때만 가드를 건다
+(`!prev.startsWith(requiredPrefix) || text.startsWith(requiredPrefix)`).
+**파일**: `src/hooks/useAlarmFormState.ts`
+**재발 감시 포인트**: 저장 데이터(`alarm.label`)는 만든 시점의 언어로 굳는다. 라벨을 현재
+언어 문자열과 직접 비교하거나 `startsWith`로 가드하는 코드는 언어 전환 뒤 깨지므로, 비교·가드·
+표시는 `localizeDefaultLabel`/`alarmLabel`을 거칠 것. `overrideLabel()`·
+`dayOverrideDisplay().label`처럼 한국어 원문을 Map 키·정렬에 쓰는 값도 같은 부류 — 키는 원문
+그대로 두고 표시 시점에만 `t()`.
+
+## 2026-10-13 · [낮음] 번역 누락·잘림 — 오늘 근무 줄·달력 칩이 원문 표시, 카드 라벨 "· next day" 잘림
+
+**증상**: (a) 오늘 근무 줄(TodayShiftRow)의 하루 근무 변경 이름이 비한국어에서도 한국어 원문으로
+표시. (b) 달력 칩의 알람 이름이 저장된 원문 그대로 표시. (c) 영어·독일어·스페인어 등에서 알람
+카드의 "· next day" 같은 라벨이 잘림. android-build의 32·노트 언어별 스크린샷에서 발견.
+**원인**: (a)(b) 표시 경로 두 곳이 `ov.label`·`al.label`을 번역 함수 없이 그대로 찍었다 —
+다른 표시 경로는 이미 `t()`/`alarmLabel`을 거치는데 이 둘만 빠짐. (c) 한국어 길이에 맞춘 칸에
+더 긴 번역이 들어감.
+**수정**: (a) `t(ov.label)`, (b) `alarmLabel(al)`, 달력 집계 memo 의존성에 `lang` 추가.
+(c) 사전에서 단축('{label} · 다음날' → "+1d" 등, '알람 추가', 경조사 메모 placeholder, es/pt
+중번, de 기타·출근·퇴근). 32·노트 재설치 후 잘림 재확인은 기록 시점에 아직 남은 일.
+**파일**: `src/components/Home/TodayShiftRow.tsx`, `src/components/Home/CalendarView.tsx`,
+`src/i18n/locales/*.ts`
+**재발 감시 포인트**: 새 표시 화면에서 `.label`을 그대로 찍지 말 것 — 알람은 `alarmLabel(al)`,
+근무 변경·상수 라벨은 `t()`. 언어에 따라 달라지는 값을 `useMemo`로 묶으면 의존성에 `lang`을
+넣어야 언어 전환 직후 갱신된다. 새 문구를 추가하면 칸이 좁은 곳(카드·칩·탭)은 de/fr/es/pt
+스크린샷으로 길이를 확인. 2026-09-12 항목의 "표시 계층 여러 곳 중 일부만 누락"과 같은 골격.
+
 ## 2026-10-10 · [치명] iOS "진동만" 알람이 무음 배너로만 뜸 — 소리 없는 알림엔 iOS가 진동도 안 울림
 
 **증상**: 소리를 "진동만"으로 둔 알람이 iOS에서 울릴 시각에 소리도 진동도 없이 배너만 조용히 뜸.

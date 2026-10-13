@@ -165,3 +165,7 @@ export const DEV_LINK_KEY = '1ef80163d089870d';
 // 하루 근무 변경 선택지에 보일 종류 — 반반차는 한국에만 있는 제도라 한국어일 때만 고를 수 있다.
 // (이미 기록된 반반차는 언어와 무관하게 OVERRIDE_KINDS 전체에서 라벨을 찾아 그대로 표시된다)
 export const pickableOverrideKinds = (lang: string) => OVERRIDE_KINDS.filter(k => k.id !== 'quarter' || lang === 'ko');
+
+// 알람 목록 저장 키(AsyncStorage). useAlarms와 i18n(기존 설치 판별 → 한국어 고정)이 함께 쓴다 —
+// 각자 문자열로 들고 있으면 키를 바꿀 때 한쪽만 바뀌어 기존 사용자 보호가 조용히 풀린다.
+export const ALARMS_STORAGE_KEY = 'alarms_v1_rn';

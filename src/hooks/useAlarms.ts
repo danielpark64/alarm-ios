@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alarm, WorkSegment, SoundMode, VibMode } from '../constants';
+import { Alarm, WorkSegment, SoundMode, VibMode, ALARMS_STORAGE_KEY } from '../constants';
 import { todayStr, pruneSkips } from '../utils';
 import { rescheduleAll } from '../utils/notifications';
 import { syncWidget } from '../utils/widgetSync';
@@ -8,7 +8,7 @@ import { reconcileWorkPattern } from '../utils/workPattern';
 import { getDayOverridesCache, loadDayOverrides } from '../utils/dayOverrideStore';
 import { loadLanguageSetting } from '../i18n';
 
-const KEY = 'alarms_v1_rn';
+const KEY = ALARMS_STORAGE_KEY;
 // 처음 설치 시에는 알람 없이 시작 — 첫 알람은 "따라하기" 튜토리얼에서 직접 만들도록 유도
 const DEFAULT: Alarm[] = [];
 
