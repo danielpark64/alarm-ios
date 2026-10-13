@@ -6,6 +6,7 @@ import { rescheduleAll } from '../utils/notifications';
 import { syncWidget } from '../utils/widgetSync';
 import { reconcileWorkPattern } from '../utils/workPattern';
 import { getDayOverridesCache, loadDayOverrides } from '../utils/dayOverrideStore';
+import { loadLanguageSetting } from '../i18n';
 
 const KEY = 'alarms_v1_rn';
 // 처음 설치 시에는 알람 없이 시작 — 첫 알람은 "따라하기" 튜토리얼에서 직접 만들도록 유도
@@ -52,6 +53,8 @@ export function useAlarms() {
       // 연차·대근 같은 override를 앱 시작 시점부터 반영한다. useDayOverrides 훅도 자기 마운트
       // 시 같은 키를 다시 로드하지만, AsyncStorage 읽기는 멱등이라 순서와 무관하게 안전하다.
       await loadDayOverrides();
+      // 저장된 언어 설정도 먼저 — 알림 제목·본문과 위젯 문구는 예약 시점의 언어로 굳는다.
+      await loadLanguageSetting();
       // syncWidget이 먼저 — 여기서 저장하는 activeAlarmIds가 네이티브 차단 게이트의 기준이라,
       // 예약보다 나중에 쓰면 그 사이에 발화한 알람이 게이트 판정을 못 받는다
       // (다른 경로도 save() → rescheduleAll 순서라 여기만 반대였다).

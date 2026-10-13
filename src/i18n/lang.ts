@@ -51,3 +51,8 @@ export function subscribeLang(fn: (l: Lang) => void): () => void {
 
 /** 한국 전용 기능(법정공휴일 건너뛰기·휴일근무 집계·음력·24절기·후원 계좌)을 보일지 — 언어가 한국어일 때만. */
 export function isKoreanLocale(): boolean { return currentLang === 'ko'; }
+
+/** 번역 대상 표식(아무 일도 안 함). 상수 배열의 라벨처럼 모듈 최상위에서 만들어져 그 자리에서 t()를 못 부르는 문자열을
+ *  N('초번')으로 감싸 둔다 — 표시할 때 t(x.label)로 번역하고, 키 추출 스크립트(scripts/i18n-keys.js)는 N()과 t()의
+ *  문자열 리터럴만 모으므로 이 표식이 없으면 사전에서 빠진다. */
+export const N = (s: string): string => s;

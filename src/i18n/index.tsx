@@ -7,8 +7,8 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { translate, t, resolveLang, type Params } from './translate';
 export { translate, t, resolveLang, type Params };
-import { LANGS, LANG_NATIVE_NAME, getLang, setCurrentLang, subscribeLang, systemLang, isKoreanLocale, type Lang, type LanguageSetting } from './lang';
-export { LANGS, LANG_NATIVE_NAME, getLang, setCurrentLang, subscribeLang, systemLang, isKoreanLocale, type Lang, type LanguageSetting };
+import { LANGS, LANG_NATIVE_NAME, N, getLang, setCurrentLang, subscribeLang, systemLang, isKoreanLocale, type Lang, type LanguageSetting } from './lang';
+export { LANGS, LANG_NATIVE_NAME, N, getLang, setCurrentLang, subscribeLang, systemLang, isKoreanLocale, type Lang, type LanguageSetting };
 
 const KEY = 'language_v1';
 const SETTINGS: LanguageSetting[] = ['system', ...LANGS];
@@ -55,4 +55,4 @@ export function useT() {
   return useContext(LangContext);
 }
 /** 설정 화면 선택지 라벨. 'system'만 번역 대상이고 나머지는 각 언어의 자기 이름. */
-export const LANGUAGE_LABEL: Record<LanguageSetting, string> = { system: '시스템', ...LANG_NATIVE_NAME };
+export const LANGUAGE_LABEL: Record<LanguageSetting, string> = { system: N('시스템'), ...LANG_NATIVE_NAME };

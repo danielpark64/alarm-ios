@@ -8,6 +8,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
+import { useT } from '../src/i18n';
+import { syncWidget } from '../src/utils/widgetSync';
+import { rescheduleAll } from '../src/utils/notifications';
 import * as Notifications from 'expo-notifications';
 import { useAlarms } from '../src/hooks/useAlarms';
 import { useDayOverrides } from '../src/hooks/useDayOverrides';
@@ -215,6 +218,18 @@ export default function App() {
   useEffect(() => {
     if (overlayGranted === false) showOverlayPrompt();
   }, [overlayGranted]);
+
+  // 언어가 바뀌면 알림·위젯 문구를 새 언어로 다시 만든다 — 예약된 알림의 제목/본문과 위젯 payload는
+  // 예약 시점의 언어로 굳어 있어서, 재예약하지 않으면 화면만 바뀌고 알림은 이전 언어로 뜬다.
+  // 첫 로드 때는 useAlarms가 이미 (언어 설정을 읽은 뒤) 재예약하므로 건너뛴다.
+  const { lang } = useT();
+  const langRef = useRef(lang);
+  useEffect(() => {
+    if (!loaded || langRef.current === lang) { langRef.current = lang; return; }
+    langRef.current = lang;
+    syncWidget(alarms, overrides);
+    rescheduleAll(alarms, overrides);
+  }, [lang, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 알람이 하나도 없는 신규 사용자는 빈 달력 대신 알람 탭(빈 상태 안내)에서 시작
   useEffect(() => {

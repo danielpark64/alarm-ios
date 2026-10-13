@@ -12,7 +12,7 @@
 
 ## 단계
 - [x] 1. 자정 넘는 근무(야간·24시간) + 야간(night) 근무조 추가 — 로직 변경, 가장 위험. alarm-logic 리뷰 필수
-- [ ] 2. 번역 틀(src/i18n: lang.ts, index.tsx, dicts.ts) + 설정 화면 언어 선택 + 언어 변경 시 재예약
+- [x] 2. 번역 틀(src/i18n: lang.ts, index.tsx, dicts.ts) + 설정 화면 언어 선택 + 언어 변경 시 재예약
 - [ ] 3. 화면·알림 문구를 t()로 감싸기 (한국어 표시는 그대로여야 함)
 - [ ] 4. 8개 언어 사전 작성 (en ja zh-Hans zh-Hant es fr de pt)
 - [ ] 5. 지역별 차이: 근무조 이름 묶음, 근무표 프리셋, 하루 근무 변경 종류(대체휴무·대기근무 추가, 반반차는 ko만),
@@ -34,3 +34,10 @@
 - 개발용 딥링크는 잠금 키 필요: alarmapp://?k=<src/constants의 DEV_LINK_KEY>&testAlarm=3 | testPattern=night | clearAll=1 | dumpPending=1 | clearTestAlarms=1
   (같은 URL은 한 번만 처리되므로 반복 시 &n=<숫자>를 붙일 것). Android: adb shell am start -a android.intent.action.VIEW -d "<url>" com.danielpark.alarmapp
 - src/i18n/(lang.ts, translate.ts, index.tsx, dicts.ts, locales/*.ts 빈 사전)는 2단계 뼈대로 만들어 둠 — 아직 어디에도 연결 안 됨.
+
+### 2단계 완료 (2026-10-13)
+- src/i18n: lang.ts(언어 상태·N 표식·isKoreanLocale), translate.ts(순수 t), index.tsx(LanguageProvider·useT·loadLanguageSetting),
+  dicts.ts + locales/<lang>.ts(아직 빈 사전). app/_layout.tsx에 프로바이더, useAlarms가 재예약 전에 언어 설정 로드,
+  app/index.tsx가 언어 변경 시 syncWidget+rescheduleAll, 설정 화면에 언어 칩(시스템 + 9개).
+- scripts/i18n-keys.js: 키 추출(src/i18n/keys.json) / `--check` 사전 누락·자리표시자·{time} 선두 검사.
+- 3단계 규칙: docs/i18n-conventions.md (감싸기 작업자는 이 문서를 따른다).

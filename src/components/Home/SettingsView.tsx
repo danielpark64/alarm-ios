@@ -7,6 +7,7 @@ import { Palette } from '../../constants/colors';
 import { useColors, useThemeSetting, ThemeName } from '../../hooks/useTheme';
 import { useAlarmDefaults } from '../../hooks/useAlarmDefaults';
 import { useFontScale, FontScaleName } from '../../hooks/useFontScale';
+import { useT, LANGS, LANGUAGE_LABEL, type LanguageSetting } from '../../i18n';
 
 const FONT_SCALES: { id: FontScaleName; label: string }[] = [
   { id: 'small',  label: '작게' },
@@ -25,6 +26,7 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp }: Props) {
   const { theme, setTheme } = useThemeSetting();
   const { fontScale, setFontScale } = useFontScale();
   const { defaults, setDefaults } = useAlarmDefaults();
+  const { t, setting: langSetting, setSetting: setLangSetting } = useT();
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false}>
@@ -58,6 +60,27 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp }: Props) {
               </TouchableOpacity>
             ))}
           </View>
+        </View>
+        <View style={s.divider} />
+        {/* 언어 — 세이람과 같은 방식: '시스템'은 폰 언어를 따르고, 나머지는 각 언어의 자기 이름으로 보여준다.
+            선택지가 10개라 한 줄 세그먼트 대신 줄바꿈되는 칩으로 둔다. */}
+        <View style={{ paddingVertical: 13, paddingHorizontal: 14 }}>
+          <Text style={s.rowLabel}>{t('언어')}</Text>
+          <View style={s.langWrap}>
+            {(['system', ...LANGS] as LanguageSetting[]).map(l => (
+              <TouchableOpacity
+                key={l}
+                style={[s.langChip, langSetting === l && s.segBtnActive]}
+                onPress={() => setLangSetting(l)}
+                accessibilityLabel={`${t('언어')} ${l === 'system' ? t(LANGUAGE_LABEL[l]) : LANGUAGE_LABEL[l]}`}
+              >
+                <Text style={[s.segBtnText, langSetting === l && s.segBtnTextActive]}>
+                  {l === 'system' ? t(LANGUAGE_LABEL[l]) : LANGUAGE_LABEL[l]}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={s.langSub}>{t('시스템은 폰의 언어를 따라요')}</Text>
         </View>
       </View>
 
@@ -139,6 +162,9 @@ function makeStyles(C: Palette) {
     segment: { flexDirection: 'row', gap: 4, backgroundColor: C.bg3, borderRadius: 10, padding: 3 },
     segBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
     segBtnActive: { backgroundColor: C.accent2 },
+    langWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
+    langChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, backgroundColor: C.bg3 },
+    langSub: { fontSize: 11, color: C.txt3, marginTop: 8 },
     segBtnText: { fontSize: 12, color: C.txt3, fontWeight: '700' },
     segBtnTextActive: { color: '#fff' },
     androidBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(162,155,254,0.15)' },
