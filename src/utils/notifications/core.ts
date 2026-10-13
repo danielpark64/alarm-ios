@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { Alarm, DayOverrides, ShiftPeriod, IOS_REP_INTERVAL_SEC, ANDROID_REP_COUNT } from '../../constants';
-import { getType, pad, getNextFireDate, lunarToSolarInYear, effectiveShift, effectiveTime, dayWorkFor, isOverridableAlarm, isHolidaySkipped, skipsStatutoryHoliday, overnightFrom } from '../index';
+import { getType, pad, getNextFireDate, lunarToSolarInYear, effectiveShift, effectiveTime, dayWorkFor, isOverridableAlarm, isHolidaySkipped, skipsStatutoryHoliday, overnightFrom, alarmLabel } from '../index';
 import { isStatutoryHoliday } from '../../constants/holidays';
 import { roleLabel } from '../workPattern';
 import { scheduleNative } from './android';
@@ -126,7 +126,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
   }
 
   const type     = getType(alarm.typeId);
-  const title    = `${type.icon} ${alarm.label || tr(type.label)}`;
+  const title    = `${type.icon} ${alarmLabel(alarm)}`;
   const bodyText = tr('{time} 알람', { time: `${pad(alarm.hour)}:${pad(alarm.min)}` });
   const soundOn  = alarm.snd === 'default';
   const vibOn    = alarm.vib === 'pulse';
@@ -316,8 +316,8 @@ export async function scheduleGroupReps(group: Alarm[], overrides: DayOverrides 
 
   // 묶음 라벨: 알람이 여러 개면 합침
   const label = active.length === 1
-    ? (active[0].label || tr(getType(active[0].typeId).label))
-    : active.map(a => a.label || tr(getType(a.typeId).label)).join(' · ');
+    ? alarmLabel(active[0])
+    : active.map(a => alarmLabel(a)).join(' · ');
   const hasSound = active.some(a => a.snd === 'default');
   const hasVib   = active.some(a => a.vib === 'pulse');
 
@@ -352,7 +352,7 @@ export async function schedulePatternAlarmReps(alarm: Alarm, overrides: DayOverr
   if (!next) return;
   const type = getType(alarm.typeId);
   const repBase = {
-    title: `⏰ ${alarm.label || tr(type.label)}`,
+    title: `⏰ ${alarmLabel(alarm)}`,
     body: tr('{time} 알람', { time: `${pad(next.getHours())}:${pad(next.getMinutes())}` }),
     sound: notifSound(alarm.snd === 'default'),
     categoryIdentifier: 'alarm',

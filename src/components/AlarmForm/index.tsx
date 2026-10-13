@@ -1,4 +1,4 @@
-import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { View, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { Text } from '../common/AppText';
 import { Alarm, ShiftPeriod, WorkSegment, SoundMode, VibMode } from '../../constants';
@@ -6,6 +6,9 @@ import { useColors } from '../../hooks/useTheme';
 import { useAlarmFormState } from '../../hooks/useAlarmFormState';
 import { TypeSelector } from './TypeSelector';
 import { ShiftSelector } from './ShiftSelector';
+import { PresetModal } from './PresetModal';
+import { presetToSegments } from '../../constants/shiftPresets';
+import { newBlockId } from '../../utils/workPattern';
 import { WorkPatternBuilder } from './WorkPatternBuilder';
 import { RotationWizard, RotationTutorialEvent } from './RotationWizard';
 import { SndVibSelector } from './SndVibSelector';
@@ -73,6 +76,7 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
     const C = useColors();
     const s = makeStyles(C);
     const { t } = useT();
+    const [showPresets, setShowPresets] = useState(false);
     const isCycleRest = form.rm === 'cycle' || form.rm === 'rest';
     const isEdit = initial.id != null;
 
@@ -176,6 +180,7 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
                   <Text style={s.wpGateBannerText}>{t('교대근무 알람 · 아래 블록에서 조정')}</Text>
                 </View>
               ) : (
+                <>
                 <ShiftSelector
                   shift={form.shift}
                   onChange={(newShift) => { requestShiftGate(newShift); onShiftPick?.(newShift); }}
@@ -183,7 +188,19 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
                   onCustomChange={form.handleShiftCustomChange}
                   gridRef={shiftGridRef}
                 />
+                {/* 새 근무표를 만들 때만 — 나라별 대표 순환 패턴을 한 번에 채우는 지름길 */}
+                {form.isNewPatternEntry && (
+                  <TouchableOpacity onPress={() => setShowPresets(true)} style={{ paddingTop: 10, alignItems: 'center' }}>
+                    <Text style={s.wpEditHint}>{t('자주 쓰는 근무표에서 고르기')} ›</Text>
+                  </TouchableOpacity>
+                )}
+                </>
               )}
+              <PresetModal
+                visible={showPresets}
+                onClose={() => setShowPresets(false)}
+                onPick={(p) => { setShowPresets(false); form.applyPreset(presetToSegments(p, newBlockId)); }}
+              />
             </View>
 
             {form.isPatternMode ? (

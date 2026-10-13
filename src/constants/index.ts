@@ -16,6 +16,8 @@ export const SHIFTS = [
   { id: 'early',  label: N('초번'), color: '#2F80ED' },
   { id: 'mid',    label: N('중번'), color: '#27AE60' },
   { id: 'late',   label: N('말번'), color: '#D98A4A' },
+  // 주간(2026-10-13) — 2교대의 낮 근무(Day/日勤/Tagschicht). 초·중·말번(3교대 이름)과 별개로, 야간과 짝을 이룬다.
+  { id: 'day',    label: N('주간'), color: '#E0A106' },
   // 야간(2026-10-13) — 자정을 넘겨 다음 날 퇴근하는 근무. 해외(Night/夜勤/Nachtschicht)는 물론 한국 2교대·3교대에도 있다.
   { id: 'night',  label: N('야간'), color: '#5B6BD6' },
   { id: 'custom', label: N('기타'), color: '#9B51E0' },
@@ -26,6 +28,7 @@ export const SHIFTS = [
 export const DEFAULT_SHIFT_TIMES: Record<string, { commute: { hour: number; min: number }; offwork: { hour: number; min: number } }> = {
   early: { commute: { hour: 5,  min: 40 }, offwork: { hour: 15, min: 0 } },
   late:  { commute: { hour: 13, min: 40 }, offwork: { hour: 23, min: 0 } },
+  day:   { commute: { hour: 7,  min: 0 },  offwork: { hour: 19, min: 0 } },
   // 퇴근(06:00)이 출근(22:00)보다 이르다 = 다음 날 퇴근. isOvernight가 이걸 보고 퇴근 알람을 근무일 다음 날로 민다.
   night: { commute: { hour: 22, min: 0 },  offwork: { hour: 6,  min: 0 } },
 };
@@ -126,7 +129,8 @@ export interface Alarm {
 // 필요한 경우는 이미 경조사(family)가 커버한다.
 export type OverrideKind =
   | 'annual' | 'half' | 'quarter' | 'sick'   // 연차 반차 반반차 병가
-  | 'substitute' | 'special' | 'night' | 'extend';       // 대근 특근 야근 연장
+  | 'substitute' | 'special' | 'night' | 'extend'        // 대근 특근 야근 연장
+  | 'comp' | 'oncall';                                   // 대체휴무(Comp day/代休) 대기근무(On-call/待機) — 2026-10-13, 해외 제도 대응
 
 export const OVERRIDE_KINDS: { id: OverrideKind; label: string }[] = [
   { id: 'annual',     label: N('연차') },
@@ -137,6 +141,8 @@ export const OVERRIDE_KINDS: { id: OverrideKind; label: string }[] = [
   { id: 'special',    label: N('특근') },
   { id: 'night',      label: N('야근') },
   { id: 'extend',     label: N('연장') },
+  { id: 'comp',       label: N('대체휴무') },   // work 없음 = 그날 근무 알람 끔(연차와 같은 갈래)
+  { id: 'oncall',     label: N('대기근무') },   // 근무조·시각을 고르는 갈래(대근·특근과 같음)
 ];
 
 // work 없음 = 그날 근무 알람 끔(연차 등 기본값). UI가 기본값을 미리 채워줄 뿐,
@@ -155,3 +161,7 @@ export type DayOverrides = Record<string, DayOverride>; // key = 'YYYY-MM-DD'
 // 개발용 딥링크(alarmapp://?k=<키>&testAlarm=3 등) 잠금 키. 출시 빌드에도 들어가는 코드라, 키 없이 열면 아무 웹페이지나
 // 링크 하나로 사용자 폰에 알람을 만들 수 있다. 번들에서 꺼낼 수는 있어도 무심코 걸리는 남용은 막는다.
 export const DEV_LINK_KEY = '1ef80163d089870d';
+
+// 하루 근무 변경 선택지에 보일 종류 — 반반차는 한국에만 있는 제도라 한국어일 때만 고를 수 있다.
+// (이미 기록된 반반차는 언어와 무관하게 OVERRIDE_KINDS 전체에서 라벨을 찾아 그대로 표시된다)
+export const pickableOverrideKinds = (lang: string) => OVERRIDE_KINDS.filter(k => k.id !== 'quarter' || lang === 'ko');

@@ -1,11 +1,11 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { View, FlatList, TouchableOpacity, Modal, StyleSheet, useWindowDimensions, NativeSyntheticEvent, NativeScrollEvent, LayoutChangeEvent, TextInput, ScrollView, Keyboard, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '../common/AppText';
-import { Alarm, DAYS, DAYS_DISPLAY, MONTH_KEYS, DayOverride, DayOverrides, OverrideKind, OVERRIDE_KINDS, SHIFTS, DEFAULT_SHIFT_TIMES, DEFAULT_SHIFT_TIME_FALLBACK, ShiftPeriod } from '../../constants';
+import { Alarm, DAYS, DAYS_DISPLAY, MONTH_KEYS, DayOverride, DayOverrides, OverrideKind, OVERRIDE_KINDS, pickableOverrideKinds, SHIFTS, DEFAULT_SHIFT_TIMES, DEFAULT_SHIFT_TIME_FALLBACK, ShiftPeriod } from '../../constants';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
 import { useFontScale } from '../../hooks/useFontScale';
-import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, isOverridableAlarm, isHolidayOffWithOverride, isHolidayWorkDay, shiftForDate, isOffDay, isOvernight, shiftToneIndexMap, shiftPeriodLabel, shiftPeriodId, effectiveShift, effectiveTime, dayWorkFor, lunarDateText, lunarShortText, dayOverrideDisplay, overrideLabel } from '../../utils';
+import { pad, todayStr, getType, alarmsForDate, isWorkAlarm, isOverridableAlarm, isHolidayOffWithOverride, isHolidayWorkDay, shiftForDate, isOffDay, isOvernight, alarmLabel, shiftToneIndexMap, shiftPeriodLabel, shiftPeriodId, effectiveShift, effectiveTime, dayWorkFor, lunarDateText, lunarShortText, dayOverrideDisplay, overrideLabel } from '../../utils';
 import { roleLabel } from '../../utils/workPattern';
 import { getHoliday, getHolidayShort, statutoryHolidaysInYear } from '../../constants/holidays';
 import { useHolidayVersion } from '../../hooks/useHolidayVersion';
@@ -318,7 +318,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
   // 세그먼트를 다시 조회해야 정확한 시간대 이름/색이 나온다 — 셀 렌더링과 동일한 방식 재사용.
   const selResolvedShift = (selInfo?.shift && selDate) ? effectiveShift(selInfo.shift, selDate) : null;
   const selShiftLabel = selInfo?.shift
-    ? (selResolvedShift ? shiftPeriodLabel(selInfo.shift, selResolvedShift) : (selInfo.shift.label || t(getType(selInfo.shift.typeId).label)))
+    ? (selResolvedShift ? shiftPeriodLabel(selInfo.shift, selResolvedShift) : alarmLabel(selInfo.shift))
     : '';
   // 팝업도 셀과 같은 배지 톤을 쓴다 — 달력에서 보던 색과 팝업 색이 다르면 같은 근무조로 안 읽힌다
   const selShiftTone = selInfo?.shift
@@ -343,7 +343,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
   // 대근·특근 — 원래 비번인 날이라 "복사할 오늘 스케줄"이 없다. 근무조를 먼저 고르게 해서
   // 표준 시각(DEFAULT_SHIFT_TIMES)을 초안으로 채우고, 그 다음 시간 편집 모달에서 사용자가
   // 직접 출퇴근 시각을 조정할 수 있게 한다(대근·특근도 실제 근무 시간이 표준과 다를 수 있음).
-  const isWorkKind = (k: OverrideKind) => k === 'substitute' || k === 'special';
+  const isWorkKind = (k: OverrideKind) => k === 'substitute' || k === 'special' || k === 'oncall';
   const presetShiftTimes = (shift: ShiftPeriod) => DEFAULT_SHIFT_TIMES[shift] ?? DEFAULT_SHIFT_TIME_FALLBACK;
 
   // 반차·반반차·야근·연장 — 이미 근무가 정해진 날이라 근무조를 새로 고를 필요는 없지만,
@@ -671,7 +671,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
                   <>
                     <Text style={cv.ovSectionLabel}>{t('하루 근무 변경')}</Text>
                     <View style={cv.ovChipRow}>
-                      {OVERRIDE_KINDS.map(k => (
+                      {pickableOverrideKinds(lang).map(k => (
                         <TouchableOpacity key={k.id} style={cv.ovChip} onPress={() => pickKind(k.id)}>
                           <Text style={cv.ovChipText}>{t(k.label)}</Text>
                         </TouchableOpacity>
@@ -728,7 +728,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
               // 합성 행은 "원래 알람이 없던 날에 새로 생긴 근무"(대근·특근)에서만 필요하다.
               // 반차·야근·연장(copy-kind)은 그날 실제 알람이 이미 selInfo.alarms에 들어있으므로
               // 여기서 또 합성하면 같은 시각이 두 줄로 중복 표시된다.
-              const isSubstituteKind = selOverride?.kind === 'substitute' || selOverride?.kind === 'special';
+              const isSubstituteKind = selOverride?.kind === 'substitute' || selOverride?.kind === 'special' || selOverride?.kind === 'oncall';
               const ovWork = (selOv && !selOv.isOff && isSubstituteKind) ? selOverride?.work : undefined;
               const hasAny = (selInfo && selInfo.alarms.length > 0) || !!ovWork;
               // 종류·근무조·시각을 고르는 중이라면 "알람 없음"을 띄우지 않는다 — 비번날에
@@ -818,7 +818,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
                       const dispMin  = ovTime?.min  ?? patternTime?.min  ?? al.min;
                       const dispLabel = patternShift
                         ? roleLabel(patternShift, (al.groupRole ?? 'commute'))
-                        : (al.label || t(alType.label));
+                        : alarmLabel(al);
                       // 접미 조각을 이어붙이지 않고 문장 키로 만든다(언어마다 어순이 다르다). 사용자 입력이 섞일 수 있는
                       // label은 마지막에 치환해, 그 안의 중괄호가 다른 자리표시로 다시 읽히지 않게 한다.
                       const dayLabel = nextDay ? t('{label} · 다음날', { label: dispLabel }) : dispLabel;

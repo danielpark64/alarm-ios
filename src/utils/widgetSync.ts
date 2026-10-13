@@ -1,6 +1,6 @@
 import { Platform, NativeModules } from 'react-native';
 import { Alarm, DayOverrides, SHIFTS } from '../constants';
-import { pad, todayStr, getType, getNextFireDate, shiftForDate, isOffDay, shiftColorMap, alarmsForDate, isWorkAlarm, isHolidayOffWithOverride, effectiveShift, dayOverrideDisplay } from './index';
+import { pad, todayStr, getType, getNextFireDate, shiftForDate, isOffDay, shiftColorMap, alarmsForDate, isWorkAlarm, isHolidayOffWithOverride, effectiveShift, dayOverrideDisplay, alarmLabel } from './index';
 import { roleLabel } from './workPattern';
 import { t } from '../i18n/translate';
 
@@ -83,7 +83,7 @@ export async function syncWidget(alarms: Alarm[], overrides: DayOverrides = {}) 
       .filter(a => !a.skips?.includes(ds))
       .filter(a => !isHolidayOffWithOverride(a, ds, overrides[ds]))
       .filter(a => !isWorkAlarm(a))
-      .map(a => a.label || t(getType(a.typeId).label))
+      .map(a => alarmLabel(a))
       .filter(Boolean)
       .slice(0, 2); // 최대 2개
     return {

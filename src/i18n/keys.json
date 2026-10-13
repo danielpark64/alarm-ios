@@ -54,6 +54,36 @@
   ]
  },
  {
+  "key": "12시간 근무, 28일 주기. 야간 4 → 휴무 3 → 주간 3 → 휴무 1 → 야간 3 → 휴무 3 → 주간 4 → 휴무 7",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "12시간 근무. 2일 근무 → 2일 휴무",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "12시간 근무. 2일 근무 → 2일 휴무 → 3일 근무 → 2일 휴무 → 2일 근무 → 3일 휴무",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "12시간 근무. 주간 2일 → 야간 2일 → 휴무 2일",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "12시간 근무. 주간 4일 → 휴무 4일 → 야간 4일 → 휴무 4일",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
   "key": "12월",
   "files": [
    "src/constants/index.ts"
@@ -66,9 +96,45 @@
   ]
  },
  {
+  "key": "2-2-3 (피트먼)",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "24시간 근무 1일 → 휴무 2일 (소방·구급)",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "24시간 근무 · 48시간 휴무",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "2교대 (주간·장시간 야간)",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
   "key": "2월",
   "files": [
    "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "2일 근무 2일 휴무",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "3교대 전진 순환",
+  "files": [
+   "src/constants/shiftPresets.ts"
   ]
  },
  {
@@ -81,6 +147,18 @@
   "key": "4월",
   "files": [
    "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "4일 근무 4일 휴무",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "4조 3교대 (3근 1휴)",
+  "files": [
+   "src/constants/shiftPresets.ts"
   ]
  },
  {
@@ -445,6 +523,12 @@
   ]
  },
  {
+  "key": "고른 뒤 시각과 일수를 내 근무에 맞게 고칠 수 있어요",
+  "files": [
+   "src/components/AlarmForm/PresetModal.tsx"
+  ]
+ },
+ {
   "key": "공휴일엔 출퇴근 알람이 쉬어요",
   "files": [
    "src/content/help.ko.ts"
@@ -458,6 +542,12 @@
  },
  {
   "key": "교대 근무가 아니어도 괜찮아요. 반복 알람, 이날만 끄기, 음력 생일·제사 알람까지 — 일상의 모든 알람을 이 앱 하나로 관리할 수 있어요.",
+  "files": [
+   "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "교대 근무가 아니어도 괜찮아요. 반복 알람, 이날만 끄기까지 — 일상의 모든 알람을 이 앱 하나로 관리할 수 있어요.",
   "files": [
    "src/content/help.ko.ts"
   ]
@@ -755,6 +845,24 @@
   "key": "대근",
   "files": [
    "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "대기근무",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "대체휴무",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "듀폰",
+  "files": [
+   "src/constants/shiftPresets.ts"
   ]
  },
  {
@@ -1601,6 +1709,18 @@
   ]
  },
  {
+  "key": "자주 쓰는 근무표",
+  "files": [
+   "src/components/AlarmForm/PresetModal.tsx"
+  ]
+ },
+ {
+  "key": "자주 쓰는 근무표에서 고르기",
+  "files": [
+   "src/components/AlarmForm/index.tsx"
+  ]
+ },
+ {
   "key": "작게",
   "files": [
    "src/components/Home/SettingsView.tsx"
@@ -1651,9 +1771,39 @@
   ]
  },
  {
+  "key": "주간",
+  "files": [
+   "src/constants/index.ts"
+  ]
+ },
+ {
+  "key": "주간 1일 → 야간 1일 → 비번 2일 (4조 2교대)",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "주간 2 · 야간 2 · 휴무 2",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "주간 2일 → 야간 1일(16시간) → 휴무 2일",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
   "key": "주말",
   "files": [
    "src/utils/index.ts"
+  ]
+ },
+ {
+  "key": "주야비휴",
+  "files": [
+   "src/constants/shiftPresets.ts"
   ]
  },
  {
@@ -1692,6 +1842,30 @@
   "files": [
    "src/constants/index.ts",
    "src/i18n/lang.ts"
+  ]
+ },
+ {
+  "key": "초번 1일 → 말번 1일 → 비번 1일",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "초번 2일 → 말번 2일 → 야간 2일 → 비번 2일",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "초번 3일 → 휴무 1일 → 말번 3일 → 휴무 1일 → 야간 3일 → 휴무 1일",
+  "files": [
+   "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "초번·말번·비번",
+  "files": [
+   "src/constants/shiftPresets.ts"
   ]
  },
  {
@@ -1770,6 +1944,7 @@
   "key": "취소",
   "files": [
    "src/components/AlarmForm/AddShiftModal.tsx",
+   "src/components/AlarmForm/PresetModal.tsx",
    "src/components/AlarmForm/RotationWizard.tsx",
    "src/components/AlarmForm/WorkPatternBuilder.tsx",
    "src/components/AlarmForm/index.tsx",

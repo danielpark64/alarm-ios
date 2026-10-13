@@ -10,7 +10,7 @@ const BLOCK_SHIFTS = SHIFTS.filter(s => s.id !== 'none');
 // RotationWizard/WorkPatternBuilder와 동일한 순서(초·말·비·중·기타) — 대부분의 교대근무자가
 // 이 순서로 근무하므로 버튼도 이 순서로 배치
 // night(야간)는 2026-10-13 추가 — 여기 목록이 하드코딩이라 SHIFTS에만 넣으면 이 팝업에 안 나온다.
-const BUTTON_ORDER: (ShiftPeriod | 'REST')[] = ['early', 'late', 'night', 'REST', 'mid', 'custom'];
+const BUTTON_ORDER: (ShiftPeriod | 'REST')[] = ['early', 'late', 'day', 'night', 'REST', 'mid', 'custom'];
 
 interface Props {
   visible: boolean;

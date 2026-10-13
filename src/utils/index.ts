@@ -1,6 +1,7 @@
 import KoreanLunarCalendar from 'korean-lunar-calendar';
 import { Alarm, TYPES, SOUNDS, VIBS, DAYS, MONTH_KEYS, SHIFTS, ShiftPeriod, WorkSegment, DayOverride, DayOverrides, OverrideKind, OVERRIDE_KINDS } from '../constants';
-import { t } from '../i18n/translate';
+import { t, translate } from '../i18n/translate';
+import { LANGS } from '../i18n/lang';
 import { isStatutoryHoliday } from '../constants/holidays';
 export const pad = (n: number) => String(n).padStart(2, '0');
 export const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
@@ -41,6 +42,36 @@ export const shiftPrefixFor = (shift: ShiftPeriod, shiftCustom?: string): string
   if (shift === 'custom') return shiftCustom?.trim() ? `${shiftCustom.trim()} ` : '';
   return `${t(SHIFTS.find(s => s.id === shift)!.label)} `;
 };
+// ─── 알람 기본 라벨의 언어 맞춤 ────────────────────────────────────────────────
+// 알람을 만들 때 라벨 입력칸에는 기본 라벨("출근", "초번 출근")이 채워져 alarm.label로 저장된다. 이 값은 만든 시점의
+// 언어로 굳어 있어서, 언어를 바꾸면 카드·알림 제목에 이전 언어가 남는다. 저장값이 "어느 언어로든 기본 라벨과 똑같은"
+// 경우에만 현재 언어의 기본 라벨로 바꿔 보여 준다 — 사용자가 직접 고쳐 쓴 라벨은 손대지 않는다.
+// 조립 규칙은 폼(useAlarmFormState)과 같다: shiftPrefixFor(…) + 타입 라벨 = "<근무조> <타입>".
+let defaultLabelIndex: Map<string, { typeLabel: string; shiftLabel?: string }> | null = null;
+function buildDefaultLabelIndex() {
+  const idx = new Map<string, { typeLabel: string; shiftLabel?: string }>();
+  const shifts = SHIFTS.filter(s => s.id !== 'none' && s.id !== 'custom');
+  for (const lang of LANGS) {
+    for (const ty of TYPES) {
+      idx.set(translate(lang, ty.label), { typeLabel: ty.label });
+      for (const sh of shifts) idx.set(`${translate(lang, sh.label)} ${translate(lang, ty.label)}`, { typeLabel: ty.label, shiftLabel: sh.label });
+    }
+  }
+  return idx;
+}
+export function localizeDefaultLabel(label: string | undefined | null): string {
+  const raw = (label ?? '').trim();
+  if (!raw) return '';
+  if (!defaultLabelIndex) defaultLabelIndex = buildDefaultLabelIndex();
+  const hit = defaultLabelIndex.get(raw);
+  if (!hit) return label as string;
+  return hit.shiftLabel ? `${t(hit.shiftLabel)} ${t(hit.typeLabel)}` : t(hit.typeLabel);
+}
+/** 화면·알림에 보여 줄 알람 이름 — 저장된 라벨(기본 라벨이면 현재 언어로), 없으면 타입 이름. */
+export function alarmLabel(a: Pick<Alarm, 'label' | 'typeId'>): string {
+  return localizeDefaultLabel(a.label) || t(getType(a.typeId).label);
+}
+
 export const repeatLabel = (al: Alarm): string => {
   if (al.rm==='once') return t('한 번');
   if (al.rm==='wdcustom' || al.rm==='daily' || al.rm==='weekdays' || al.rm==='weekends') {
@@ -569,6 +600,6 @@ export const nextAlarmParts = (
     ? (alarm.groupRole === 'offwork'
         ? (shiftName ? t('{shift} 퇴근', { shift: shiftName }) : t('퇴근'))
         : (shiftName ? t('{shift} 출근', { shift: shiftName }) : t('출근')))
-    : (alarm.label || t(type.label));
+    : alarmLabel(alarm);
   return { icon: type.icon, label, when };
 };

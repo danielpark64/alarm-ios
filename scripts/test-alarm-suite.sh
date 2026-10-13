@@ -515,7 +515,7 @@ fi
 # (OVERRIDE_KINDS에도 id:'night'(야근)가 있어 파일 전체 grep은 거짓 통과한다 — SHIFTS 블록만 잘라 본다.
 #  "+" 근무 추가 팝업(AddShiftModal BUTTON_ORDER)은 목록이 하드코딩이라 거기에도 있어야 고를 수 있다.)
 printf "  야간(night) 근무조가 SHIFTS·다크·라이트 색상표·근무 추가 팝업에 모두 있는지 ... "
-grep -q "BUTTON_ORDER.*'night'" "$ROOT/src/components/AlarmForm/AddShiftModal.tsx" 2>/dev/null || { fail "AddShiftModal BUTTON_ORDER에 night 없음 — 근무표에 야간 블록을 추가할 수 없음"; }
+grep -q "BUTTON_ORDER.*'day'.*'night'" "$ROOT/src/components/AlarmForm/AddShiftModal.tsx" 2>/dev/null || { fail "AddShiftModal BUTTON_ORDER에 day/night 없음 — 근무표에 주간·야간 블록을 추가할 수 없음"; }
 awk '/^export const SHIFTS/,/as const/' "$ROOT/src/constants/index.ts" 2>/dev/null | grep -q "id: 'night'" \
   && [ "$(grep -c "^  night:" "$ROOT/src/constants/colors.ts" 2>/dev/null)" -ge 2 ] \
   && ok "" || { fail "night 근무조가 SHIFTS 또는 colors.ts(DARK_SHIFT/LIGHT_SHIFT)에 없음"; }

@@ -5,7 +5,7 @@ import { Text } from './common/AppText';
 import { Alarm, DAYS_DISPLAY } from '../constants';
 import { Palette } from '../constants/colors';
 import { useColors } from '../hooks/useTheme';
-import { getType, getSound, getVib, repeatLabel, pad, todayStr, effectiveShift, effectiveTime, isOvernight } from '../utils';
+import { getType, getSound, getVib, repeatLabel, pad, todayStr, effectiveShift, effectiveTime, isOvernight, alarmLabel } from '../utils';
 import { roleLabel } from '../utils/workPattern';
 import { VibIcon } from './VibIcon';
 import { useT } from '../i18n';
@@ -57,7 +57,7 @@ export const AlarmCard = memo(function AlarmCard({ alarm, onToggle, onEdit, sele
   // 대신 계산해서 "이 그룹이 시작하면 어떤 모습일지" 미리 보여준다.
   const resolveDate = alarm.sd && alarm.sd > todayStr() ? alarm.sd : todayStr();
   const patternShift = alarm.rm === 'pattern' ? effectiveShift(alarm, resolveDate) : null;
-  const displayLabel = patternShift ? roleLabel(patternShift, alarm.groupRole ?? 'commute') : (alarm.label || t(type.label));
+  const displayLabel = patternShift ? roleLabel(patternShift, alarm.groupRole ?? 'commute') : alarmLabel(alarm);
   // 로테이션 알람의 alarm.hour/min은 항상 첫 블록(예: 초번) 시각으로 고정된 레거시 폴백값 —
   // 카드에 보여줄 시각도 위와 같은 기준 날짜로 다시 계산해야 라벨과 시각이 일치한다
   const patternTime = alarm.rm === 'pattern' ? effectiveTime(alarm, resolveDate) : null;

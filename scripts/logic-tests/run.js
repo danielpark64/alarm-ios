@@ -32,7 +32,7 @@ global.withNow = (iso, fn) => {
 };
 const opt = rel => { const p = path.join(OUT, rel); return fs.existsSync(p) ? require(p) : null; };
 // 테스트가 직접 들여다볼 모듈들(없으면 null)
-const M = { holidays: opt('src/constants/holidays.js'), solarTerms: opt('src/constants/solarTerms.js'), translate: opt('src/i18n/translate.js'), lang: I18N, constants: opt('src/constants/index.js') };
+const M = { holidays: opt('src/constants/holidays.js'), solarTerms: opt('src/constants/solarTerms.js'), translate: opt('src/i18n/translate.js'), lang: I18N, constants: opt('src/constants/index.js'), presets: opt('src/constants/shiftPresets.js') };
 for (const f of fs.readdirSync(__dirname).filter(f => /\.test\.js$/.test(f)).sort()) { setLang('ko'); require(path.join(__dirname, f))(U, M); }
 try { fs.rmSync(OUT, { recursive: true, force: true }); } catch {}
 console.log(`logic-tests: ${pass} 통과 / ${fail} 실패`);
