@@ -1,7 +1,7 @@
 # Play locale: fr-FR (also use for fr-CA)
 
 ## Title (max 30)
-{{APP}} : alarme de poste
+RotaWake : alarme de poste
 
 ## Short description (max 80)
 Des alarmes qui suivent votre planning. Réglez votre roulement une seule fois.
@@ -9,7 +9,7 @@ Des alarmes qui suivent votre planning. Réglez votre roulement une seule fois.
 ## Full description (max 4000)
 ⏰ Un réveil conçu pour le travail posté
 
-Avec des horaires en roulement, les applis de réveil classiques ne servent à rien. Une alarme « du lundi au vendredi à 7 h » ne peut pas suivre un planning qui change tous les quelques jours. {{APP}}, si : réglez votre roulement une seule fois et la bonne alarme sonne le bon jour, à chaque fois.
+Avec des horaires en roulement, les applis de réveil classiques ne servent à rien. Une alarme « du lundi au vendredi à 7 h » ne peut pas suivre un planning qui change tous les quelques jours. RotaWake, si : réglez votre roulement une seule fois et la bonne alarme sonne le bon jour, à chaque fois.
 
 Elle sonne même écran éteint ou en mode économie d'énergie. L'appli utilise toutes les méthodes de programmation autorisées par votre téléphone pour sonner à l'heure. Et quand vous désactivez une alarme, tout ce qui était programmé est annulé. Fini les « je l'avais coupée mais elle a sonné » ou « elle était activée mais n'a pas sonné ».
 
@@ -45,7 +45,7 @@ Ni inscription ni connexion. Vos postes et vos alarmes sont enregistrés uniquem
 ⌚ Compatible avec votre montre connectée
 Quand l'alarme sonne sur le téléphone, votre montre vous prévient aussi.
 
-Si vos horaires irréguliers font de chaque réglage d'alarme une corvée, laissez {{APP}} réunir vos alarmes et votre planning.
+Si vos horaires irréguliers font de chaque réglage d'alarme une corvée, laissez RotaWake réunir vos alarmes et votre planning.
 
 ## What's new (max 500)
 • Désormais en 9 langues

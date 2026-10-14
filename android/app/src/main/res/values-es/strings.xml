@@ -1,6 +1,6 @@
 <resources>
-  <!-- 앱 이름은 전 세계 공통 ShiftWake(한국어만 values-ko에서 교대알람) -->
-  <string name="app_name">ShiftWake</string>
+  <!-- 앱 이름은 전 세계 공통 RotaWake(한국어만 values-ko에서 교대알람) -->
+  <string name="app_name">RotaWake</string>
   <!-- 위젯 선택 화면에 보이는 위젯 이름(도움말 번역과 같은 표기) -->
   <string name="widget_medium">Alarma de turnos (mediano)</string>
   <string name="widget_large">Alarma de turnos (grande)</string>

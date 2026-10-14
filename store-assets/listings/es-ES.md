@@ -1,7 +1,7 @@
 # Play locale: es-ES (also use for es-419, es-US)
 
 ## Title (max 30)
-{{APP}}: alarma de turnos
+RotaWake: alarma de turnos
 
 ## Short description (max 80)
 Alarmas que siguen tu cuadrante. Configura tu rotación una vez y no te duermas.
@@ -9,7 +9,7 @@ Alarmas que siguen tu cuadrante. Configura tu rotación una vez y no te duermas.
 ## Full description (max 4000)
 ⏰ Un despertador pensado para quienes trabajan a turnos
 
-Con turnos rotativos, las apps de alarma normales no sirven. Una alarma de «lunes a viernes a las 7» no puede seguir un cuadrante que cambia cada pocos días. {{APP}} sí: configura tu rotación una sola vez y cada día sonará la alarma que toca.
+Con turnos rotativos, las apps de alarma normales no sirven. Una alarma de «lunes a viernes a las 7» no puede seguir un cuadrante que cambia cada pocos días. RotaWake sí: configura tu rotación una sola vez y cada día sonará la alarma que toca.
 
 Suena aunque la pantalla esté apagada o el ahorro de batería activado. La app usa todos los métodos de programación que permite tu teléfono para sonar a su hora. Y cuando apagas una alarma, se cancela todo lo que estaba programado. Se acabó el «la apagué y sonó» o el «estaba activada y no sonó».
 
@@ -45,7 +45,7 @@ Sin registro y sin inicio de sesión. Tus turnos y alarmas se guardan solo en tu
 ⌚ Compatible con tu reloj inteligente
 Cuando la alarma suena en el teléfono, tu reloj también te avisa.
 
-Si los horarios irregulares hacen que poner alarmas sea un fastidio, deja que {{APP}} lleve juntas tus alarmas y tu calendario de turnos.
+Si los horarios irregulares hacen que poner alarmas sea un fastidio, deja que RotaWake lleve juntas tus alarmas y tu calendario de turnos.
 
 ## What's new (max 500)
 • Ahora en 9 idiomas

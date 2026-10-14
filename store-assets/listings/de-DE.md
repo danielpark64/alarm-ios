@@ -1,7 +1,7 @@
 # Play locale: de-DE
 
 ## Title (max 30)
-{{APP}}: Schichtwecker
+RotaWake: Schichtwecker
 
 ## Short description (max 80)
 Wecker, die deinem Schichtplan folgen. Einmal einstellen, nie mehr verschlafen.
@@ -9,7 +9,7 @@ Wecker, die deinem Schichtplan folgen. Einmal einstellen, nie mehr verschlafen.
 ## Full description (max 4000)
 ⏰ Ein Wecker für die Schichtarbeit
 
-Bei Wechselschicht helfen normale Wecker-Apps nicht weiter. Ein Wecker „werktags um 7“ kann keinem Dienstplan folgen, der sich alle paar Tage ändert. {{APP}} schon: Stell deinen Schichtrhythmus einmal ein, und an jedem Tag klingelt der richtige Wecker.
+Bei Wechselschicht helfen normale Wecker-Apps nicht weiter. Ein Wecker „werktags um 7“ kann keinem Dienstplan folgen, der sich alle paar Tage ändert. RotaWake schon: Stell deinen Schichtrhythmus einmal ein, und an jedem Tag klingelt der richtige Wecker.
 
 Er klingelt auch bei ausgeschaltetem Bildschirm und im Energiesparmodus. Die App nutzt jede Planungsmethode, die dein Handy erlaubt, damit der Wecker pünktlich losgeht. Schaltest du einen Wecker aus, wird alles Geplante gelöscht. Schluss mit „ausgeschaltet und trotzdem geklingelt“ oder „eingeschaltet und stumm geblieben“.
 
@@ -45,7 +45,7 @@ Keine Registrierung, kein Login. Schichten und Wecker liegen nur auf deinem Ger�
 ⌚ Funktioniert mit deiner Smartwatch
 Klingelt der Wecker auf dem Handy, meldet sich auch die Uhr.
 
-Wenn unregelmäßige Arbeitszeiten das Weckerstellen zur Last machen, hält {{APP}} Wecker und Schichtkalender für dich zusammen.
+Wenn unregelmäßige Arbeitszeiten das Weckerstellen zur Last machen, hält RotaWake Wecker und Schichtkalender für dich zusammen.
 
 ## What's new (max 500)
 • Jetzt in 9 Sprachen

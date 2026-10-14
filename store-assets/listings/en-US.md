@@ -1,7 +1,7 @@
 # Play locale: en-US (also use for en-GB, en-AU, en-CA, en-IN)
 
 ## Title (max 30)
-{{APP}}: Shift Work Alarm
+RotaWake: Shift Work Alarm
 
 ## Short description (max 80)
 Alarms that follow your rota. Set your shift pattern once, never miss a shift.
@@ -9,7 +9,7 @@ Alarms that follow your rota. Set your shift pattern once, never miss a shift.
 ## Full description (max 4000)
 ⏰ An alarm clock built for shift workers
 
-Rotating shifts make ordinary alarm apps useless. A "weekdays at 7" alarm cannot follow a rota that changes every few days. {{APP}} can. Set your shift pattern once, and the right alarm rings on the right day, every time.
+Rotating shifts make ordinary alarm apps useless. A "weekdays at 7" alarm cannot follow a rota that changes every few days. RotaWake can. Set your shift pattern once, and the right alarm rings on the right day, every time.
 
 It rings even when the screen is off or battery saver is on. The app uses every scheduling method your phone allows so the alarm fires on time. When you turn an alarm off, every scheduled trigger is cancelled. No more "I turned it off but it rang" or "it was on but stayed silent".
 
@@ -45,7 +45,7 @@ No sign-up and no login. Your shifts and alarms are stored only on your device.
 ⌚ Works with your smartwatch
 When the alarm rings on your phone, your watch is notified too.
 
-If irregular hours make setting alarms a chore, let {{APP}} keep your alarms and your shift calendar together.
+If irregular hours make setting alarms a chore, let RotaWake keep your alarms and your shift calendar together.
 
 ## What's new (max 500)
 • Now in 9 languages
