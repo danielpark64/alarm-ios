@@ -344,7 +344,7 @@ export const PT: Record<string, string> = {
   "하루 근무 변경 해제": "Desfazer alteração do dia",
   "한 번": "Uma vez",
   "해당없음": "Nenhum",
-  "홈 화면 빈 곳을 길게 누르면 위젯 메뉴가 나와요. \"교대알람\"을 찾으면 위젯 두 개가 있어요.\n• 교대근무 알람 (중): 다음 알람 시간 · 오늘 근무조 · 다음 비번\n• 교대근무 알람 (대): 중간 위젯 내용 + 이번 주 일정 스크롤\n위젯을 누르면 앱이 바로 열려요.": "Segure o dedo num espaço vazio da tela inicial e o menu de widgets aparece. Procure \"ShiftWake\": há dois widgets.\n• Alarme de turnos (médio): hora do próximo alarme · turno de hoje · próxima folga\n• Alarme de turnos (grande): o mesmo do médio + a agenda da semana com rolagem\nTocando no widget, o app abre na hora.",
+  "홈 화면 빈 곳을 길게 누르면 위젯 메뉴가 나와요. \"교대알람\"을 찾으면 위젯 두 개가 있어요.\n• 교대근무 알람 (중): 다음 알람 시간 · 오늘 근무조 · 다음 비번\n• 교대근무 알람 (대): 중간 위젯 내용 + 이번 주 일정 스크롤\n위젯을 누르면 앱이 바로 열려요.": "Segure o dedo num espaço vazio da tela inicial e o menu de widgets aparece. Procure \"RotaWake\": há dois widgets.\n• Alarme de turnos (médio): hora do próximo alarme · turno de hoje · próxima folga\n• Alarme de turnos (grande): o mesmo do médio + a agenda da semana com rolagem\nTocando no widget, o app abre na hora.",
   "홈 화면 위젯 (안드로이드)": "Widgets da tela inicial (Android)",
   "화": "ter",
   "화면": "Tela",

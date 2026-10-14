@@ -65,13 +65,13 @@
     <service android:name=".WidgetListService"
       android:permission="android.permission.BIND_REMOTEVIEWS"
       android:exported="false" />
-    <receiver android:name=".AlarmWidgetMedium" android:exported="true" android:label="교대근무 알람 (중)">
+    <receiver android:name=".AlarmWidgetMedium" android:exported="true" android:label="@string/widget_medium">
       <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
       </intent-filter>
       <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_medium_info"/>
     </receiver>
-    <receiver android:name=".AlarmWidgetLarge" android:exported="true" android:label="교대근무 알람 (대)">
+    <receiver android:name=".AlarmWidgetLarge" android:exported="true" android:label="@string/widget_large">
       <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
       </intent-filter>
