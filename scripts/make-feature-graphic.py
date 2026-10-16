@@ -39,7 +39,13 @@ for lang, (title, tag, font) in ROWS.items():
     tf = fit(title, LATIN if title == name else font, 84)
     sf = fit(tag, font, 31)
     x = 485
-    d.text((x, 228), title, font=tf, fill=(255, 255, 255), anchor='ls')
-    d.text((x, 300), tag, font=sf, fill=(232, 228, 255), anchor='ls')
+    if lang == 'ko-KR':
+        # 한국 스토어 제목이 "교대알람(RotaWake)"라 이미지에도 해외용 이름을 작게 함께 쓴다
+        d.text((x, 215), title, font=tf, fill=(255, 255, 255), anchor='ls')
+        d.text((x + 2, 268), name, font=ImageFont.truetype(LATIN, 40), fill=(214, 208, 255), anchor='ls')
+        d.text((x, 325), tag, font=sf, fill=(232, 228, 255), anchor='ls')
+    else:
+        d.text((x, 228), title, font=tf, fill=(255, 255, 255), anchor='ls')
+        d.text((x, 300), tag, font=sf, fill=(232, 228, 255), anchor='ls')
     im.save(os.path.join(out, lang + '.png'), optimize=True)
     print(lang, im.size)
