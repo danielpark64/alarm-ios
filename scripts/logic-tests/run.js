@@ -12,6 +12,7 @@ function emit(rel) {
 for (const f of fs.readdirSync(path.join(ROOT, 'src/constants'))) if (/\.ts$/.test(f)) emit('src/constants/' + f);
 emit('src/utils/index.ts');
 if (fs.existsSync(path.join(ROOT, 'src/utils/sayramShare.ts'))) emit('src/utils/sayramShare.ts');
+if (fs.existsSync(path.join(ROOT, 'src/utils/promoSlides.ts'))) emit('src/utils/promoSlides.ts');
 // i18n은 순수 모듈(.ts)만 — index.tsx(React·AsyncStorage)는 제외한다. utils는 '../i18n/translate'만 가져온다.
 for (const dir of ['src/i18n', 'src/i18n/locales']) {
   if (!fs.existsSync(path.join(ROOT, dir))) continue;
@@ -33,7 +34,7 @@ global.withNow = (iso, fn) => {
 };
 const opt = rel => { const p = path.join(OUT, rel); return fs.existsSync(p) ? require(p) : null; };
 // 테스트가 직접 들여다볼 모듈들(없으면 null)
-const M = { holidays: opt('src/constants/holidays.js'), solarTerms: opt('src/constants/solarTerms.js'), translate: opt('src/i18n/translate.js'), lang: I18N, constants: opt('src/constants/index.js'), presets: opt('src/constants/shiftPresets.js'), sayramShare: opt('src/utils/sayramShare.js') };
+const M = { holidays: opt('src/constants/holidays.js'), solarTerms: opt('src/constants/solarTerms.js'), translate: opt('src/i18n/translate.js'), lang: I18N, constants: opt('src/constants/index.js'), presets: opt('src/constants/shiftPresets.js'), sayramShare: opt('src/utils/sayramShare.js'), promoSlides: opt('src/utils/promoSlides.js') };
 for (const f of fs.readdirSync(__dirname).filter(f => /\.test\.js$/.test(f)).sort()) { setLang('ko'); require(path.join(__dirname, f))(U, M); }
 try { fs.rmSync(OUT, { recursive: true, force: true }); } catch {}
 console.log(`logic-tests: ${pass} 통과 / ${fail} 실패`);

@@ -373,4 +373,7 @@ export const FR: Record<string, string> = {
   "같은 폰의 세이람 일정이 달력에, 근무가 세이람 달력에 보여요. 한쪽 앱에서만 켜도 돼요.": "Les événements de SayRam s'affichent dans ce calendrier et vos postes dans celui de SayRam (même téléphone). Il suffit de l'activer dans l'une des deux applis.",
   "세이람에서 켜 둬서 지금 공유 중이에요": "Partage actif : activé dans SayRam",
   "세이람 일정": "Événements SayRam",
+  // 홍보 배너 세이람 소개(2026-10-18)
+  "말로 하는 일정·알람, 세이람": "SayRam : agenda et alarmes à la voix",
+  "말하면 일정이 되는 앱 보러 가기": "Voir l'appli qui transforme la voix en rendez-vous",
 };

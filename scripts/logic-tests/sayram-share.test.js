@@ -98,4 +98,14 @@ module.exports = (U, M) => {
   // 아주 긴 기간 일정이 달력을 덮지 않게 상한
   const long = S.parseSiblingEvents(JSON.stringify({ v: 1, t: 1, e: [{ d: '2026-01-01', e: '2027-12-31', n: '긴 일정' }] }));
   check('기간 일정은 최대 366일까지만 펼친다', long && Object.keys(long).length <= 366, long ? String(Object.keys(long).length) : 'null');
+  // v3 — 열 때는 받은 파일만 읽고, 직접 가져오기는 처음·상대가 옛 버전일 때만(실행당 1번) (2026-10-18)
+  check('needsPull 함수가 있다', typeof S.needsPull === 'function');
+  if (typeof S.needsPull === 'function') {
+    check('이번 실행에 이미 가져왔으면 안 가져온다', S.needsPull(null, true) === false && S.needsPull('{"share":false}', true) === false);
+    check('받은 게 없으면(처음) 가져온다', S.needsPull(null, false) === true);
+    check('상대가 옛 버전(push 표시 없음)이면 가져온다', S.needsPull('{"share":true,"t":1}', false) === true);
+    check('상대가 v3(push:1)이면 안 가져온다', S.needsPull('{"share":false,"push":1,"t":1}', false) === false);
+    check('깨진 JSON이면 가져온다', S.needsPull('{oops', false) === true);
+  }
+  check('config 읽기가 push 표시를 지킨다', S.parseShareConfig('{"share":true,"push":1,"t":5}')?.push === 1);
 };

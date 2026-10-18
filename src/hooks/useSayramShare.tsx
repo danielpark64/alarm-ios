@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { readSiblingEvents, siblingShareAvailable } from '../utils/sayramShareNative';
+import { pushOwnShare, readSiblingEvents, siblingShareAvailable } from '../utils/sayramShareNative';
 import { shareEnabled, type SiblingEvents } from '../utils/sayramShare';
 
 // 세이람과 일정 공유 스위치(기본 꺼짐)와, 같은 폰의 세이람에서 읽어 온 일정.
 // 한쪽 앱 설정만 켜도 공유된다 — 내 스위치가 꺼져 있어도 세이람 쪽이 켜져 있으면 일정을 보여 준다(siblingOn).
-// 근무표 쓰기는 알람·하루 근무 변경을 가진 app/index.tsx가 publishOwnShare로 한다.
+// 근무표 쓰기(내 파일)는 알람·하루 근무 변경을 가진 app/index.tsx가 publishOwnShare로 한다.
+// 세이람에 넣어 주기는 앱을 떠날 때(background) 여기서 한 번 — 바뀐 게 없으면 세이람을 건드리지 않는다(v3).
 const KEY = 'sayram_share_v1';
 
 interface Ctx {
@@ -46,11 +47,15 @@ export function SayramShareProvider({ children }: { children: React.ReactNode })
     setEvents(r.events);
   }, []);
 
-  // 시작할 때와 스위치를 바꿀 때 읽고, 앱이 앞으로 올 때마다 다시 읽는다(주기적으로 읽지 않는다)
+  // 시작할 때와 스위치를 바꿀 때 읽고, 앱이 앞으로 올 때마다 다시 읽는다(받은 파일만 읽는다 — 주기적으로 읽지 않는다).
+  // 떠날 때는 바뀐 것만 세이람에 넣어 준다.
   useEffect(() => { if (mineLoaded) refresh(); }, [mineLoaded, mine, refresh]);
   useEffect(() => {
     if (!siblingShareAvailable) return;
-    const sub = AppState.addEventListener('change', s => { if (s === 'active') refresh(); });
+    const sub = AppState.addEventListener('change', s => {
+      if (s === 'active') refresh();
+      else if (s === 'background') pushOwnShare(mineRef.current);
+    });
     return () => sub.remove();
   }, [refresh]);
 

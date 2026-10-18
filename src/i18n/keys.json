@@ -921,6 +921,12 @@
   ]
  },
  {
+  "key": "말로 하는 일정·알람, 세이람",
+  "files": [
+   "src/components/Home/PromoBanner.tsx"
+  ]
+ },
+ {
   "key": "말번",
   "files": [
    "src/constants/index.ts"
@@ -930,6 +936,12 @@
   "key": "말일",
   "files": [
    "src/components/AlarmForm/DateSection.tsx"
+  ]
+ },
+ {
+  "key": "말하면 일정이 되는 앱 보러 가기",
+  "files": [
+   "src/components/Home/PromoBanner.tsx"
   ]
  },
  {

@@ -56,7 +56,8 @@ export function buildShiftShare(alarms: Alarm[], overrides: DayOverrides, today:
   return JSON.stringify({ f: ymd(from), l, c, o, d, t: Date.now() });
 }
 
-export type ShareConfig = { share: boolean; t?: number };
+// push: 1 = 바뀔 때 넣어 주는 v3 앱 — 이 표시가 있으면 상대에게서 직접 가져오지 않는다(상대 앱을 깨우지 않게)
+export type ShareConfig = { share: boolean; push?: number; t?: number };
 
 /** 한쪽 앱 설정만 켜도 공유한다 */
 export function shareEnabled(mine: boolean, sibling: ShareConfig | null | undefined): boolean {
@@ -67,8 +68,20 @@ export function parseShareConfig(raw: string | null | undefined): ShareConfig | 
   if (!raw) return null;
   try {
     const v = JSON.parse(raw);
-    return v && typeof v === 'object' && typeof v.share === 'boolean' ? { share: v.share, t: typeof v.t === 'number' ? v.t : undefined } : null;
+    return v && typeof v === 'object' && typeof v.share === 'boolean'
+      ? { share: v.share, push: v.push === 1 ? 1 : undefined, t: typeof v.t === 'number' ? v.t : undefined } : null;
   } catch { return null; }
+}
+
+/**
+ * 세이람 창구에서 직접 가져와야 하는가(v3). 평소엔 세이람이 바뀔 때 넣어 준 파일(inbox)만 읽는다 — 직접 가져오면(query)
+ * 꺼져 있던 세이람 프로세스가 깨어나기 때문. 가져오는 건 받은 게 아직 없을 때(처음)와 세이람이 옛 버전(push 표시 없음)일 때만,
+ * 그것도 실행당 한 번(pulledThisRun).
+ */
+export function needsPull(inboxConfigRaw: string | null | undefined, pulledThisRun: boolean): boolean {
+  if (pulledThisRun) return false;
+  if (!inboxConfigRaw) return true;
+  try { return JSON.parse(inboxConfigRaw)?.push !== 1; } catch { return true; }
 }
 
 /** 교대알람 달력에 그릴 세이람 일정 — 날짜별. time은 "HH:MM"(시각 있는 일정만) */

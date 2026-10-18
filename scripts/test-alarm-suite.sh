@@ -612,6 +612,27 @@ printf "  세이람 공유에 주기적 폴링이 없는지 ... "
 grep -qE 'setInterval|setTimeout' "$ROOT/src/hooks/useSayramShare.tsx" "$ROOT/src/utils/sayramShareNative.ts" 2>/dev/null \
   && { fail "세이람 공유 코드에 타이머(폴링)가 있음 — AppState active일 때만 읽어야 함"; } || ok ""
 
+# 공유 v3(2026-10-18, "시스템에 부하는 절대 주면 안 돼") — 열 때마다 세이람 프로세스를 깨우지 않는다.
+# ⑤ 넣어 주기 창구(call push)도 세이람만, 받는 이름은 events·config만.
+printf "  넣어 주기 창구(call)가 세이람만 받는지 ... "
+grep -q 'override fun call(' "$SP/ShareProvider.kt" 2>/dev/null \
+  && awk '/override fun call\(/,/^  }/' "$SP/ShareProvider.kt" | grep -q 'caller !in ALLOWED' \
+  && grep -q 'val INBOX_NAMES = setOf("events", "config")$' "$SP/ShareFiles.kt" 2>/dev/null \
+  && ok "" || { fail "ShareProvider.call에 호출 앱 확인이 없거나 INBOX_NAMES가 events·config가 아님"; }
+
+# ⑥ 앱을 열 때는 받은 파일(readInbox)만 읽고, 직접 가져오기(pullToInbox)는 needsPull일 때만.
+printf "  열 때 세이람을 깨우지 않는지(needsPull일 때만 가져오기) ... "
+N="$ROOT/src/utils/sayramShareNative.ts"
+grep -vE '^\s*(//|\*)' "$N" 2>/dev/null | grep -q 'readSibling(' \
+  && { fail "sayramShareNative가 아직 readSibling(query)으로 매번 세이람을 부름"; } \
+  || { grep -q 'if (needsPull(' "$N" 2>/dev/null && ok "" || fail "pullToInbox 앞에 needsPull 확인이 없음"; }
+
+# ⑦ 홍보 배너의 세이람 설치 확인은 실행 때 한 번만 — 앞으로 올 때마다 확인하지 않는다.
+printf "  배너가 세이람 설치를 실행 때 한 번만 확인하는지 ... "
+grep -q 'installedCache' "$N" 2>/dev/null \
+  && ! grep -q 'AppState' "$ROOT/src/components/Home/PromoBanner.tsx" 2>/dev/null \
+  && ok "" || { fail "sayramInstalled 결과를 기억하지 않거나 PromoBanner가 AppState마다 다시 확인함"; }
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
