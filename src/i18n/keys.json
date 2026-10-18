@@ -474,6 +474,12 @@
   ]
  },
  {
+  "key": "같은 폰의 세이람 일정이 달력에, 근무가 세이람 달력에 보여요. 한쪽 앱에서만 켜도 돼요.",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
   "key": "개발자 응원하기",
   "files": [
    "src/components/Home/PromoBanner.tsx",
@@ -598,6 +604,12 @@
   "key": "그만두기",
   "files": [
    "app/index.tsx"
+  ]
+ },
+ {
+  "key": "근무",
+  "files": [
+   "src/utils/sayramShare.ts"
   ]
  },
  {
@@ -739,6 +751,12 @@
    "src/components/AlarmForm/RotationWizard.tsx",
    "src/components/AlarmForm/WorkPatternBuilder.tsx",
    "app/index.tsx"
+  ]
+ },
+ {
+  "key": "다른 앱",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
   ]
  },
  {
@@ -1067,6 +1085,7 @@
    "src/components/AlarmForm/WorkPatternBuilder.tsx",
    "src/components/Home/CalendarView.tsx",
    "src/components/Home/TodayShiftRow.tsx",
+   "src/utils/sayramShare.ts",
    "src/utils/widgetSync.ts"
   ]
  },
@@ -1179,6 +1198,24 @@
   "key": "설정을 그만둘까요?",
   "files": [
    "app/index.tsx"
+  ]
+ },
+ {
+  "key": "세이람 일정",
+  "files": [
+   "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "세이람과 일정 공유",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "세이람에서 켜 둬서 지금 공유 중이에요",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
   ]
  },
  {

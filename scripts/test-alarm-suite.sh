@@ -589,6 +589,29 @@ elif ! grep -q "existing ? 'ko' : 'system'" "$_IX" 2>/dev/null; then
   fail "기존 설치를 'ko'로 고정하는 첫 실행 판별이 없음(loadLanguageSetting)"
 else ok ""; fi
 
+# 세이람 자동 공유(v2) — 세이람 저장소 docs/shift-share-protocol.md (2026-10-18)
+# ① exported provider라 호출 앱 확인이 유일한 방어선이다. 허용 목록이 넓어지면 아무 앱이나 근무표를 읽는다.
+SP="$ROOT/modules/alarmapp-share/android/src/main/java/com/danielpark/alarmapp/share"
+printf "  공유 창구(provider)가 세이람 패키지만 허용하는지 ... "
+grep -q 'val ALLOWED = setOf("com.danielpark.sayram")$' "$SP/ShareProvider.kt" 2>/dev/null \
+  && grep -q 'caller !in ALLOWED' "$SP/ShareProvider.kt" 2>/dev/null \
+  && ok "" || { fail "ShareProvider 허용 목록이 세이람 하나가 아니거나 callingPackage 확인이 빠짐 — 다른 앱이 근무표를 읽을 수 있음"; }
+
+# ② 창구로 내보내는 파일 이름은 shifts·config 두 개뿐 — 경로를 넓히면 앱 내부 파일이 새어 나간다.
+printf "  공유 창구가 shifts·config만 내보내는지 ... "
+grep -q 'val NAMES = setOf("shifts", "config")$' "$SP/ShareFiles.kt" 2>/dev/null \
+  && ok "" || { fail "ShareFiles.NAMES가 shifts·config 외의 이름을 허용함"; }
+
+# ③ 공유가 꺼져 있으면(양쪽 스위치 모두 꺼짐) 세이람 일정을 읽지도 보여 주지도 않는다 — 문서의 "반드시 지킬 것".
+printf "  공유가 꺼져 있으면 세이람 일정을 읽지 않는지 ... "
+grep -q 'if (!shareEnabled(mine' "$ROOT/src/utils/sayramShareNative.ts" 2>/dev/null \
+  && ok "" || { fail "readSiblingEvents가 shareEnabled 확인 없이 세이람 일정을 읽음"; }
+
+# ④ 읽기는 시작·앱이 앞으로 올 때만 — 주기적 폴링 금지(배터리).
+printf "  세이람 공유에 주기적 폴링이 없는지 ... "
+grep -qE 'setInterval|setTimeout' "$ROOT/src/hooks/useSayramShare.tsx" "$ROOT/src/utils/sayramShareNative.ts" 2>/dev/null \
+  && { fail "세이람 공유 코드에 타이머(폴링)가 있음 — AppState active일 때만 읽어야 함"; } || ok ""
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

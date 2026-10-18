@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView, TouchableOpacity, Platform, StyleSheet } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Platform, StyleSheet, Switch } from 'react-native';
 import { Text } from '../common/AppText';
 import Slider from '@react-native-community/slider';
 import Constants from 'expo-constants';
@@ -9,6 +9,7 @@ import { useAlarmDefaults } from '../../hooks/useAlarmDefaults';
 import { useFontScale, FontScaleName } from '../../hooks/useFontScale';
 import { useT, N, LANGS, LANGUAGE_LABEL, type LanguageSetting } from '../../i18n';
 import { useWeekStart, type WeekStartSetting } from '../../hooks/useWeekStart';
+import { useSayramShare } from '../../hooks/useSayramShare';
 
 const FONT_SCALES: { id: FontScaleName; label: string }[] = [
   { id: 'small',  label: N('작게') },
@@ -35,6 +36,7 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp }: Props) {
   const { defaults, setDefaults } = useAlarmDefaults();
   const { t, setting: langSetting, setSetting: setLangSetting } = useT();
   const { setting: weekSetting, setSetting: setWeekSetting } = useWeekStart();
+  const share = useSayramShare();
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false}>
@@ -102,6 +104,32 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp }: Props) {
           </View>
         </View>
       </View>
+
+      {/* 세이람과 일정 공유 — 같은 폰의 세이람만 읽을 수 있는 창구로 근무표를 내보내고 세이람 일정을 읽는다(인터넷 없음).
+          한쪽 앱에서만 켜도 공유된다. 지금은 Android만 — iOS는 App Group(유료 개발자 계정)이 생기면 붙인다. */}
+      {share.available && (
+        <>
+          <Text style={s.sectionLabel}>{t('다른 앱')}</Text>
+          <View style={s.card}>
+            <View style={s.row}>
+              <View style={{ flex: 1, minWidth: 0, marginRight: 12 }}>
+                <Text style={s.rowLabel}>{t('세이람과 일정 공유')}</Text>
+                <Text style={s.rowSub}>{t('같은 폰의 세이람 일정이 달력에, 근무가 세이람 달력에 보여요. 한쪽 앱에서만 켜도 돼요.')}</Text>
+                {!share.mine && share.siblingOn && (
+                  <Text style={[s.rowSub, { color: C.accent }]}>{t('세이람에서 켜 둬서 지금 공유 중이에요')}</Text>
+                )}
+              </View>
+              <Switch
+                value={share.mine}
+                onValueChange={share.setMine}
+                trackColor={{ false: C.bg3, true: C.accent2 }}
+                thumbColor="#fff"
+                accessibilityLabel={t('세이람과 일정 공유')}
+              />
+            </View>
+          </View>
+        </>
+      )}
 
       {Platform.OS === 'android' && (
         <>
@@ -177,6 +205,7 @@ function makeStyles(C: Palette) {
     row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 13, paddingHorizontal: 14 },
     rowLabel: { fontSize: 14, fontWeight: '600', color: C.txt },
     rowValue: { fontSize: 13, color: C.txt3 },
+    rowSub: { fontSize: 11, color: C.txt3, marginTop: 3, lineHeight: 15 },
     divider: { height: 1, backgroundColor: C.border, marginHorizontal: 14 },
     segment: { flexDirection: 'row', gap: 4, backgroundColor: C.bg3, borderRadius: 10, padding: 3 },
     segBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },

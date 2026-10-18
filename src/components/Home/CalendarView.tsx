@@ -13,6 +13,8 @@ import { useWeekStart } from '../../hooks/useWeekStart';
 import { getSolarTerm } from '../../constants/solarTerms';
 import { OverrideTimeModal } from './OverrideTimeModal';
 import { useT, N } from '../../i18n';
+import { useSayramShare } from '../../hooks/useSayramShare';
+import type { SiblingEvents } from '../../utils/sayramShare';
 
 // 달력 화면 — 근무 알람(주기+출근/퇴근)은 배경색으로 근무조를 표시하고,
 // 그 외 알람만 칩으로 보여준다. 날짜를 누르면 하루 상세 팝업이 뜬다.
@@ -81,10 +83,12 @@ interface MonthGridProps {
   // 셀 안의 getHoliday(ds) 표기는 모듈 변수를 직접 읽어 memo가 변화를 모른다 — 공휴일 데이터
   // 버전을 prop으로 받아 API 갱신 시 memo가 깨지게 한다(값 자체는 쓰지 않는다).
   holidayVersion: number;
+  // 같은 폰의 세이람 일정(공유가 꺼져 있으면 null) — 알람 칩 자리를 같이 쓰고, 점선 테두리로 알람과 구분한다
+  sibling: SiblingEvents | null;
   onSelectDate: (ds: string) => void;
 }
 
-const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneIdxOf, density, cellScale, today, showLunar, width, cv, cellH, itemHeight, overrides, weekStart, onSelectDate }: MonthGridProps) {
+const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneIdxOf, density, cellScale, today, showLunar, width, cv, cellH, itemHeight, overrides, weekStart, sibling, onSelectDate }: MonthGridProps) {
   // memo 컴포넌트라 부모가 다시 그려져도 건너뛴다 — 언어 변경은 이 컨텍스트 구독으로 직접 받는다.
   const { t } = useT();
   const cells = useMemo(() => buildCells(year, month, weekStart), [year, month, weekStart]);
@@ -121,13 +125,16 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
         // 칸마다 들어가는 줄 수가 다르다(공휴일은 한 달에 한두 날뿐). 전체를 일괄로 줄이면
         // 대부분의 여유 있는 칸까지 손해를 보므로, **그 칸에 실제로 그려질 요소만** 세서
         // 날짜 아래 남는 높이에 맞춘다. 날짜 숫자는 칸마다 크기가 달라지면 어색하므로 제외.
-        const nChips = Math.min(chips.length, 2) + (chips.length > 2 ? 1 : 0);
+        const sib = sibling?.[ds] ?? [];
+        const nItems = chips.length + sib.length;
+        const nChips = Math.min(nItems, 2) + (nItems > 2 ? 1 : 0);
         // ⚠️ AppText가 style.fontSize에 설정 배율(작게 0.88 / 크게 1.30)을 한 번 더 곱한다.
         //    여기서 그걸 빼먹으면 "크게"에서 실제 글자가 30% 크게 렌더돼 칸을 넘긴다.
         const eff = density * cellScale;
         const subNeed = ((showLunar ? 9.5 : 0) + (holiday ? 9.5 : 0)
                          + ((info.shift && resolvedShift) || ovWorkTone ? 11.5 : 0)
-                         + (effOff ? 14 : 0) + nChips * 9.5) * 1.7 * eff;
+                         + (effOff ? 14 : 0) + nChips * 9.5) * 1.7 * eff
+                         + Math.min(sib.length, Math.max(0, 2 - Math.min(chips.length, 2))) * 2; // 세이람 칩 테두리(위아래 1px)
         const availH = cellH - 8 - 15.5 * eff * 1.55;
         const sd = subNeed > 0 ? Math.max(0.55, Math.min(1, availH / subNeed)) : 1;
         // 절기는 공휴일과 같은 슬롯을 재사용 — 겹치는 날엔 공휴일을 우선 보여주고 그 아래 절기를 덧붙인다.
@@ -207,8 +214,18 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
                 >{alarmLabel(al)}</Text>
               );
             })}
-            {chips.length > 2 && (
-              <Text style={cv.moreChip}>+{chips.length-2}</Text>
+            {/* 세이람 일정 — 알람 칩이 먼저, 남은 자리(최대 2칸)에. 점선 테두리라 알람 칩·근무 배지와 구분된다 */}
+            {sib.slice(0, Math.max(0, 2 - Math.min(chips.length, 2))).map((ev, ei) => (
+              <Text
+                key={`s${ei}`}
+                style={[cv.alarmChip, cv.siblingChip, { fontSize: 9.5 * density * sd }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >{ev.name}</Text>
+            ))}
+            {nItems > 2 && (
+              <Text style={cv.moreChip}>+{nItems-2}</Text>
             )}
             {/* 경조사 메모 — 근무 상태 배지와 무관하게 항상 작은 점으로만 표시(자리 차지 안 함,
                 subNeed 높이 계산에도 안 들어감 — absolute라 흐름 레이아웃 밖). */}
@@ -243,6 +260,8 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
   const [ovTimeEditFor, setOvTimeEditFor] = useState<{ kind: OverrideKind; shift?: ShiftPeriod; start?: { hour: number; min: number }; end?: { hour: number; min: number } } | null>(null);
   const [ovFamilyDraft, setOvFamilyDraft] = useState('');
   const { weekStart } = useWeekStart();
+  // 같은 폰의 세이람 일정(공유가 꺼져 있으면 null). 읽기만 한다 — 이 일정으로 알람을 만들지 않는다.
+  const { events: siblingEvents } = useSayramShare();
   const [showLunarRaw, setShowLunar] = useState(false);
   const isKR = lang === 'ko';
   const showLunar = showLunarRaw && isKR; // 음력 표기는 한국어일 때만
@@ -523,7 +542,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
           keyExtractor={(i) => String(i)}
           renderItem={({ item }) => {
             const { year: y, month: m } = indexToYearMonth(item);
-            return <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} itemHeight={itemHeight} overrides={overrides} weekStart={weekStart} holidayVersion={holidayVersion} onSelectDate={setSelDate} />;
+            return <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} itemHeight={itemHeight} overrides={overrides} weekStart={weekStart} holidayVersion={holidayVersion} sibling={siblingEvents} onSelectDate={setSelDate} />;
           }}
           getItemLayout={(_, index) => ({ length: winWidth, offset: winWidth * index, index })}
           initialScrollIndex={RANGE}
@@ -616,6 +635,17 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
             {selDate && getSolarTerm(selDate) && (
               <View style={cv.modalHolidayRow}>
                 <Text style={cv.modalHolidayText}>{getSolarTerm(selDate)}</Text>
+              </View>
+            )}
+            {selDate && !!siblingEvents?.[selDate]?.length && (
+              <View style={cv.siblingRow}>
+                <Text style={cv.siblingHead}>{t('세이람 일정')}</Text>
+                {siblingEvents[selDate].slice(0, 6).map((ev, i) => (
+                  <Text key={i} style={cv.siblingText} numberOfLines={1}>{ev.time ? `${ev.time}  ${ev.name}` : ev.name}</Text>
+                ))}
+                {siblingEvents[selDate].length > 6 && (
+                  <Text style={cv.siblingHead}>+{siblingEvents[selDate].length - 6}</Text>
+                )}
               </View>
             )}
             {selOv ? (
@@ -958,6 +988,12 @@ function makeStyles(C: Palette) {
                    borderRadius:99, paddingHorizontal:5, marginBottom:1,
                    overflow:'hidden', textAlign:'center', alignSelf:'center' },
     moreChip:    { fontSize:9.5, color:C.txt3, fontWeight:'700', textAlign:'center' },
+    // 세이람 일정 칩 — 채운 알람 칩과 달리 테두리만(테마 accent). Text의 점선 테두리는 Android에서 안 그려져 실선으로 둔다.
+    siblingChip: { color:C.txt2, backgroundColor:'transparent', borderWidth:1, borderColor:C.accent },
+    // 상세 팝업의 세이람 일정 목록
+    siblingRow:  { borderRadius:12, paddingVertical:7, paddingHorizontal:12, marginBottom:8, borderWidth:1, borderColor:C.accent, gap:3 },
+    siblingHead: { fontSize:11.5, fontWeight:'700', color:C.accent },
+    siblingText: { fontSize:13, fontWeight:'600', color:C.txt },
     modalBack:   { flex:1, backgroundColor:'rgba(0,0,0,0.55)', justifyContent:'center', padding:28 },
     modalCard:   { backgroundColor:C.bg2, borderRadius:20, padding:20, borderWidth:1, borderColor:C.border },
     modalTitle:  { fontSize:19, fontWeight:'800', color:C.txt, textAlign:'center' },

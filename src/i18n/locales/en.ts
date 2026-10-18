@@ -368,4 +368,11 @@ export const EN: Record<string, string> = {
   "비번 없음": "No days off",
   "알람 울림": "Alarm ringing",
   "오늘 비번! 🎉": "Off today! 🎉",
+  // 세이람과 일정 공유(2026-10-18)
+  "근무": "Work",
+  "다른 앱": "Other apps",
+  "세이람과 일정 공유": "Share with SayRam",
+  "같은 폰의 세이람 일정이 달력에, 근무가 세이람 달력에 보여요. 한쪽 앱에서만 켜도 돼요.": "SayRam events appear on this calendar and your shifts on SayRam’s calendar (same phone). Turning it on in either app is enough.",
+  "세이람에서 켜 둬서 지금 공유 중이에요": "Sharing now — it’s turned on in SayRam",
+  "세이람 일정": "SayRam events",
 };

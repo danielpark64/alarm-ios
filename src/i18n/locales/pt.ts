@@ -366,4 +366,11 @@ export const PT: Record<string, string> = {
   "비번 없음": "Sem folgas",
   "알람 울림": "Alarme tocando",
   "오늘 비번! 🎉": "Folga hoje! 🎉",
+  // 세이람과 일정 공유(2026-10-18)
+  "근무": "Turno",
+  "다른 앱": "Outros apps",
+  "세이람과 일정 공유": "Compartilhar com o SayRam",
+  "같은 폰의 세이람 일정이 달력에, 근무가 세이람 달력에 보여요. 한쪽 앱에서만 켜도 돼요.": "Os eventos do SayRam aparecem neste calendário e seus turnos no calendário do SayRam (mesmo celular). Basta ativar em um dos dois apps.",
+  "세이람에서 켜 둬서 지금 공유 중이에요": "Compartilhando — ativado no SayRam",
+  "세이람 일정": "Eventos do SayRam",
 };
