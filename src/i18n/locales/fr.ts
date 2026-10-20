@@ -376,4 +376,9 @@ export const FR: Record<string, string> = {
   // 홍보 배너 세이람 소개(2026-10-18)
   "말로 하는 일정·알람, 세이람": "SayRam : agenda et alarmes à la voix",
   "말하면 일정이 되는 앱 보러 가기": "Voir l'appli qui transforme la voix en rendez-vous",
+  // 달력 확대(2026-10-20)
+  "원래 크기": "Taille réelle",
+  "두 번 누르면 달력을 확대·원래 크기": "Touchez deux fois pour agrandir ou rétablir le calendrier",
+  "달력 크게 보기": "Agrandir le calendrier",
+  "글씨가 작으면 달력 위에서 두 손가락으로 벌려 화면을 확대하세요(최대 3배). 확대한 채로 한 손가락으로 밀어 여기저기 볼 수 있고, 위의 \"원래 크기\"를 누르면 돌아와요.\n요일 줄(일·월·화…)을 두 번 눌러도 커져요. 확대한 동안에는 옆으로 밀어도 달이 넘어가지 않으니, 달을 넘길 땐 ‹ › 버튼을 누르세요.": "Si le texte est petit, écartez deux doigts sur le calendrier pour l'agrandir (jusqu'à 3×). Une fois agrandi, faites glisser un doigt pour vous déplacer et touchez « Taille réelle » en haut pour revenir.\nToucher deux fois la ligne des jours (dim, lun, mar…) agrandit aussi. Pendant le zoom, glisser sur le côté ne change pas de mois : utilisez les boutons ‹ ›.",
 };
