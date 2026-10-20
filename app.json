@@ -62,13 +62,15 @@
         "CFBundleDisplayName": "RotaWake",
         "LSApplicationQueriesSchemes": [
           "mallo"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       },
       "entitlements": {
         "com.apple.security.application-groups": [
           "group.com.danielpark.shared"
         ]
-      }
+      },
+      "buildNumber": "1"
     },
     "plugins": [
       "expo-router",
