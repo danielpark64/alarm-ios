@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { View, FlatList, TouchableOpacity, Modal, StyleSheet, useWindowDimensions, NativeSyntheticEvent, NativeScrollEvent, LayoutChangeEvent, TextInput, ScrollView, Keyboard, KeyboardAvoidingView, Platform } from 'react-native';
+import { GestureDetector, usePanGesture, usePinchGesture, useSimultaneousGestures } from 'react-native-gesture-handler';
 import { Text } from '../common/AppText';
 import { Alarm, DAYS, DAYS_DISPLAY, MONTH_KEYS, DayOverride, DayOverrides, OverrideKind, OVERRIDE_KINDS, pickableOverrideKinds, SHIFTS, DEFAULT_SHIFT_TIMES, DEFAULT_SHIFT_TIME_FALLBACK, ShiftPeriod } from '../../constants';
 import { Palette } from '../../constants/colors';
@@ -13,6 +14,9 @@ import { useWeekStart } from '../../hooks/useWeekStart';
 import { getSolarTerm } from '../../constants/solarTerms';
 import { OverrideTimeModal } from './OverrideTimeModal';
 import { useT, N } from '../../i18n';
+import { useSayramShare } from '../../hooks/useSayramShare';
+import type { SiblingEvents } from '../../utils/sayramShare';
+import { doubleTapZoom, panZoom, pinchZoom, type Zoom } from '../../utils/calendarZoom';
 
 // 달력 화면 — 근무 알람(주기+출근/퇴근)은 배경색으로 근무조를 표시하고,
 // 그 외 알람만 칩으로 보여준다. 날짜를 누르면 하루 상세 팝업이 뜬다.
@@ -81,10 +85,12 @@ interface MonthGridProps {
   // 셀 안의 getHoliday(ds) 표기는 모듈 변수를 직접 읽어 memo가 변화를 모른다 — 공휴일 데이터
   // 버전을 prop으로 받아 API 갱신 시 memo가 깨지게 한다(값 자체는 쓰지 않는다).
   holidayVersion: number;
+  // 같은 폰의 세이람 일정(공유가 꺼져 있으면 null) — 알람 칩 자리를 같이 쓰고, 점선 테두리로 알람과 구분한다
+  sibling: SiblingEvents | null;
   onSelectDate: (ds: string) => void;
 }
 
-const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneIdxOf, density, cellScale, today, showLunar, width, cv, cellH, itemHeight, overrides, weekStart, onSelectDate }: MonthGridProps) {
+const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneIdxOf, density, cellScale, today, showLunar, width, cv, cellH, itemHeight, overrides, weekStart, sibling, onSelectDate }: MonthGridProps) {
   // memo 컴포넌트라 부모가 다시 그려져도 건너뛴다 — 언어 변경은 이 컨텍스트 구독으로 직접 받는다.
   const { t } = useT();
   const cells = useMemo(() => buildCells(year, month, weekStart), [year, month, weekStart]);
@@ -121,13 +127,16 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
         // 칸마다 들어가는 줄 수가 다르다(공휴일은 한 달에 한두 날뿐). 전체를 일괄로 줄이면
         // 대부분의 여유 있는 칸까지 손해를 보므로, **그 칸에 실제로 그려질 요소만** 세서
         // 날짜 아래 남는 높이에 맞춘다. 날짜 숫자는 칸마다 크기가 달라지면 어색하므로 제외.
-        const nChips = Math.min(chips.length, 2) + (chips.length > 2 ? 1 : 0);
+        const sib = sibling?.[ds] ?? [];
+        const nItems = chips.length + sib.length;
+        const nChips = Math.min(nItems, 2) + (nItems > 2 ? 1 : 0);
         // ⚠️ AppText가 style.fontSize에 설정 배율(작게 0.88 / 크게 1.30)을 한 번 더 곱한다.
         //    여기서 그걸 빼먹으면 "크게"에서 실제 글자가 30% 크게 렌더돼 칸을 넘긴다.
         const eff = density * cellScale;
         const subNeed = ((showLunar ? 9.5 : 0) + (holiday ? 9.5 : 0)
                          + ((info.shift && resolvedShift) || ovWorkTone ? 11.5 : 0)
-                         + (effOff ? 14 : 0) + nChips * 9.5) * 1.7 * eff;
+                         + (effOff ? 14 : 0) + nChips * 9.5) * 1.7 * eff
+                         + Math.min(sib.length, Math.max(0, 2 - Math.min(chips.length, 2))) * 2; // 세이람 칩 테두리(위아래 1px)
         const availH = cellH - 8 - 15.5 * eff * 1.55;
         const sd = subNeed > 0 ? Math.max(0.55, Math.min(1, availH / subNeed)) : 1;
         // 절기는 공휴일과 같은 슬롯을 재사용 — 겹치는 날엔 공휴일을 우선 보여주고 그 아래 절기를 덧붙인다.
@@ -207,8 +216,18 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
                 >{alarmLabel(al)}</Text>
               );
             })}
-            {chips.length > 2 && (
-              <Text style={cv.moreChip}>+{chips.length-2}</Text>
+            {/* 세이람 일정 — 알람 칩이 먼저, 남은 자리(최대 2칸)에. 점선 테두리라 알람 칩·근무 배지와 구분된다 */}
+            {sib.slice(0, Math.max(0, 2 - Math.min(chips.length, 2))).map((ev, ei) => (
+              <Text
+                key={`s${ei}`}
+                style={[cv.alarmChip, cv.siblingChip, { fontSize: 9.5 * density * sd }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >{ev.name}</Text>
+            ))}
+            {nItems > 2 && (
+              <Text style={cv.moreChip}>+{nItems-2}</Text>
             )}
             {/* 경조사 메모 — 근무 상태 배지와 무관하게 항상 작은 점으로만 표시(자리 차지 안 함,
                 subNeed 높이 계산에도 안 들어감 — absolute라 흐름 레이아웃 밖). */}
@@ -243,6 +262,8 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
   const [ovTimeEditFor, setOvTimeEditFor] = useState<{ kind: OverrideKind; shift?: ShiftPeriod; start?: { hour: number; min: number }; end?: { hour: number; min: number } } | null>(null);
   const [ovFamilyDraft, setOvFamilyDraft] = useState('');
   const { weekStart } = useWeekStart();
+  // 같은 폰의 세이람 일정(공유가 꺼져 있으면 null). 읽기만 한다 — 이 일정으로 알람을 만들지 않는다.
+  const { events: siblingEvents } = useSayramShare();
   const [showLunarRaw, setShowLunar] = useState(false);
   const isKR = lang === 'ko';
   const showLunar = showLunarRaw && isKR; // 음력 표기는 한국어일 때만
@@ -283,7 +304,93 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
 
   const { year, month } = indexToYearMonth(pageIndex);
 
+  // ── 화면 확대(사진처럼): 두 손가락 벌리기·오므리기, 확대 중 한 손가락으로 상하좌우 밀기, 요일 줄 두 번 탭 2배 ──
+  // 2026-10-20 사용자: "세이람처럼 달력을 확대해서 보는 기능". 칸이 넓어지는 게 아니라 화면 자체를 키운다(작은 글씨 보기).
+  // 계산은 src/utils/calendarZoom.ts(로직 테스트 있음). 확대 중에는 달 넘기기(가로 스와이프)를 멈춘다 —
+  // 한 손가락 가로 밀기가 "확대한 화면 옆 보기"로 쓰이기 때문. 날짜 칸 한 번 탭(그날 팝업)은 그대로 된다.
+  const zoomRef = useRef<Zoom>({ s: 1, tx: 0, ty: 0 });
+  // 확대 상태는 Animated 값이 아니라 일반 상태로 그린다 — Android에서 Animated(네이티브 드라이버) transform은 화면만 바뀌고
+  // 터치 판정은 원래 위치로 남아, 확대한 칸을 누르면 확대 전 그 자리의 엉뚱한 날짜가 열렸다(32 실측). 다시 그리는 건
+  // 바깥 상자뿐이고 달 그리드(MonthGrid)는 memo라 그대로라 가볍다.
+  const [zoomState, setZoomState] = useState<Zoom>({ s: 1, tx: 0, ty: 0 });
+  const [zoomed, setZoomed] = useState(false);
+  const [pinching, setPinching] = useState(false);
+  const zoomW = winWidth;
+  const zoomH = gridAreaH || 1;
+  const sizeRef = useRef({ w: zoomW, h: zoomH });
+  sizeRef.current = { w: zoomW, h: zoomH };
+  const applyZoom = useCallback((z: Zoom) => {
+    zoomRef.current = z;
+    setZoomState(z);
+  }, []);
+  const resetZoom = useCallback(() => {
+    if (zoomRef.current.s === 1) return;
+    applyZoom({ s: 1, tx: 0, ty: 0 });
+    setZoomed(false);
+  }, [applyZoom]);
+  // 제스처는 react-native-gesture-handler로 받는다 — 앱 루트가 GestureHandlerRootView라 Android에서 JS PanResponder가
+  // 첫 움직임 직후 네이티브 쪽에 빼앗겨(onPanResponderTerminate, 32 실측) 확대 화면을 옮길 수 없었다.
+  // 콜백은 JS에서 돈다(runOnJS).
+  // 핀치와 밀기의 시작 상태를 따로 둔다 — 밀다가 두 번째 손가락을 대면 핀치 시작이 밀기 기준을 덮어써 튀었다
+  const pinchStart = useRef<Zoom>({ s: 1, tx: 0, ty: 0 });
+  const panStart = useRef<Zoom>({ s: 1, tx: 0, ty: 0 });
+  const focal0 = useRef({ x: 0, y: 0 });
+  const endGesture = () => {
+    setPinching(false);
+    // 거의 원래 크기면 딱 맞춰 되돌린다
+    if (zoomRef.current.s < 1.08) applyZoom({ s: 1, tx: 0, ty: 0 });
+    setZoomed(zoomRef.current.s >= 1.08);
+  };
+  const pinch = usePinchGesture({
+    runOnJS: true,
+    onActivate: (e) => {
+      pinchStart.current = { ...zoomRef.current };
+      focal0.current = { x: e.focalX, y: e.focalY };
+      setPinching(true);
+    },
+    onUpdate: (e) => {
+      const { w, h } = sizeRef.current;
+      applyZoom(pinchZoom(pinchStart.current, focal0.current, { x: e.focalX, y: e.focalY }, e.scale, w, h));
+    },
+    onDeactivate: endGesture,
+  });
+  // 확대 중에만 한 손가락으로 상하좌우 밀기. 10px 넘게 움직여야 시작되므로 짧게 누르기(날짜 팝업)는 칸에 그대로 간다.
+  const pan = usePanGesture({
+    runOnJS: true,
+    enabled: zoomed,
+    maxPointers: 1,
+    activeOffsetX: [-10, 10],
+    activeOffsetY: [-10, 10],
+    onActivate: () => { panStart.current = { ...zoomRef.current }; },
+    onUpdate: (e) => {
+      const { w, h } = sizeRef.current;
+      applyZoom(panZoom(panStart.current, e.translationX, e.translationY, w, h));
+    },
+    onDeactivate: endGesture,
+  });
+  const zoomGesture = useSimultaneousGestures(pinch, pan);
+  // 요일 줄 두 번 탭: 2배 ↔ 원래(날짜 칸은 한 번 탭이 그날 팝업이라 두 번 탭을 쓰지 않는다 — 반응이 늦어진다)
+  const lastTapRef = useRef(0);
+  const onHeaderTap = () => {
+    const now = Date.now();
+    if (now - lastTapRef.current >= 320) { lastTapRef.current = now; return; }
+    lastTapRef.current = 0;
+    if (zoomRef.current.s > 1.01) { resetZoom(); return; }
+    const { w, h } = sizeRef.current;
+    applyZoom(doubleTapZoom({ x: w / 2, y: 0 }, w, h));
+    setZoomed(true);
+  };
+  // 요일 글자가 확대된 칸 위에 오도록 위치만 옮긴다(글자 크기는 그대로). 요일 줄과 그리드는 같은 좌우 여백(14)·같은 칸 폭.
+  const headCellW = (winWidth - 28) / 7;
+  const headX = Array.from({ length: 7 }, (_, i) => {
+    const c = 14 + (i + 0.5) * headCellW; // 원래 화면에서 이 요일 칸 가운데
+    return zoomState.tx + zoomState.s * c - c;
+  });
+  // 칸 크기가 바뀌면(글자 크기·화면 회전) 확대를 푼다 — 예전 좌표로 엉뚱한 곳이 확대된다
+  useEffect(() => { resetZoom(); }, [zoomW, zoomH]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const goToIndex = (idx: number, animated = true) => {
+    resetZoom(); // 확대한 채 달을 넘기면 새 달이 엉뚱한 곳을 확대한 채로 나온다
     const clamped = Math.max(0, Math.min(RANGE * 2, idx));
     setPageIndex(clamped);
     listRef.current?.scrollToIndex({ index: clamped, animated });
@@ -494,6 +601,11 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
               <Text style={[cv.lunarToggleText, showLunar && cv.lunarToggleTextActive]}>{t('음력')}</Text>
             </TouchableOpacity>
             )}
+            {zoomed && (
+              <TouchableOpacity style={cv.lunarToggle} onPress={() => resetZoom()} accessibilityRole="button">
+                <Text style={cv.lunarToggleText}>{t('원래 크기')}</Text>
+              </TouchableOpacity>
+            )}
           </View>
           <TouchableOpacity onPress={nextMonth} style={cv.navBtn}>
             <Text style={cv.navArrow}>›</Text>
@@ -501,21 +613,39 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
         </View>
 
         {/* 요일 헤더 — 달이 바뀌어도 고정 */}
-        <View style={cv.grid}>
+        {/* 두 번 누르면 달력 확대 ↔ 원래 크기. 확대 중엔 요일 글자를 확대된 칸 위로 옮긴다 */}
+        <TouchableOpacity activeOpacity={1} onPress={onHeaderTap} style={[cv.grid, { overflow: 'hidden' }]}
+          accessibilityHint={t('두 번 누르면 달력을 확대·원래 크기')}>
           {DAYS_DISPLAY.map((_, i) => {
             const wd = (i + weekStart) % 7; // 이 칸의 실제 요일(0=일)
             return (
-              <View key={i} style={cv.headCell}>
+              <View key={i} style={[cv.headCell, zoomState.s > 1 && { transform: [{ translateX: headX[i] }] }]}>
                 <Text style={[cv.headText, (wd === 0 || wd === 6) && { color: C.weekendFg }]}>{t(DAYS_DISPLAY[wd])}</Text>
               </View>
             );
           })}
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* 날짜 그리드 — 좌우로 계속 스와이프해서 달 이동 (무한) */}
       {/* flex:1로 남는 공간을 다 차지하게 하고 그 실측 높이로 칸 크기를 역산 (폰/태블릿 화면비 대응) */}
-      <View style={{ flex: 1, position: 'relative' }} onLayout={onGridAreaLayout}>
+      {/* 확대 제스처(두 손가락 벌리기·확대 중 한 손가락 밀기)를 받는 상자 */}
+      <GestureDetector gesture={zoomGesture}>
+      <View collapsable={false} style={{ flex: 1, position: 'relative', overflow: 'hidden' }} onLayout={onGridAreaLayout}>
+        <View style={{ flex: 1, transformOrigin: 'left top', transform: [{ translateX: zoomState.tx }, { translateY: zoomState.ty }, { scale: zoomState.s }] }}>
+        {/* 확대 중에는 가로 넘기기 목록(네이티브 스크롤뷰) 대신 지금 달 한 장만 그린다 — Android에서 스크롤뷰가
+            scrollEnabled=false여도 한 손가락 밀기를 첫 움직임에서 가로채(32 실측) 확대 화면을 옮길 수 없었다.
+            확대 중엔 목록을 아예 빼고, 원래 크기로 돌아오면 보던 달(pageIndex)에서 다시 만든다. */}
+        {zoomed && (() => {
+          const { year: y, month: m } = indexToYearMonth(pageIndex);
+          return (
+            <View style={{ position: 'absolute', top: 0, left: 0, zIndex: 1 }}>
+              <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} itemHeight={itemHeight} overrides={overrides} weekStart={weekStart} holidayVersion={holidayVersion} sibling={siblingEvents} onSelectDate={setSelDate} />
+            </View>
+          );
+        })()}
+        {!zoomed && (
+        <View style={{ flex: 1 }}>
         <FlatList
           ref={listRef}
           data={pages}
@@ -523,10 +653,10 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
           keyExtractor={(i) => String(i)}
           renderItem={({ item }) => {
             const { year: y, month: m } = indexToYearMonth(item);
-            return <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} itemHeight={itemHeight} overrides={overrides} weekStart={weekStart} holidayVersion={holidayVersion} onSelectDate={setSelDate} />;
+            return <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} itemHeight={itemHeight} overrides={overrides} weekStart={weekStart} holidayVersion={holidayVersion} sibling={siblingEvents} onSelectDate={setSelDate} />;
           }}
           getItemLayout={(_, index) => ({ length: winWidth, offset: winWidth * index, index })}
-          initialScrollIndex={RANGE}
+          initialScrollIndex={pageIndex} // 확대했다 돌아오면 다시 만들어지므로 보던 달에서 시작
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           onMomentumScrollEnd={onMomentumScrollEnd}
@@ -536,8 +666,13 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
           initialNumToRender={1}
           updateCellsBatchingPeriod={30}
           removeClippedSubviews
+          scrollEnabled={!pinching}
         />
+        </View>
+        )}
+        </View>
       </View>
+      </GestureDetector>
 
       {/* 하루 근무 변경 집계 — 이번 달/올해 종류별 개수. 이 줄이 생긴 만큼 위 그리드가
           flex:1로 자동으로 줄어들어(onGridAreaLayout이 그 남은 공간을 다시 측정) 칸 높이가
@@ -616,6 +751,17 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
             {selDate && getSolarTerm(selDate) && (
               <View style={cv.modalHolidayRow}>
                 <Text style={cv.modalHolidayText}>{getSolarTerm(selDate)}</Text>
+              </View>
+            )}
+            {selDate && !!siblingEvents?.[selDate]?.length && (
+              <View style={cv.siblingRow}>
+                <Text style={cv.siblingHead}>{t('세이람 일정')}</Text>
+                {siblingEvents[selDate].slice(0, 6).map((ev, i) => (
+                  <Text key={i} style={cv.siblingText} numberOfLines={1}>{ev.time ? `${ev.time}  ${ev.name}` : ev.name}</Text>
+                ))}
+                {siblingEvents[selDate].length > 6 && (
+                  <Text style={cv.siblingHead}>+{siblingEvents[selDate].length - 6}</Text>
+                )}
               </View>
             )}
             {selOv ? (
@@ -896,7 +1042,8 @@ function makeStyles(C: Palette) {
     navBtn:      { padding:10 },
     navArrow:    { fontSize:28, color:C.txt, fontWeight:'900' },
     navTitle:    { fontSize:20, fontWeight:'900', color:C.txt },
-    navTitleRow: { flexDirection:'row', alignItems:'center', gap:8 },
+    // flexShrink: "원래 크기" 버튼이 더해져도(긴 달 이름·큰 글씨·독일어) 양옆 ‹ › 버튼을 밀어내지 않게
+    navTitleRow: { flexDirection:'row', alignItems:'center', gap:8, flexShrink:1 },
     lunarToggle:      { paddingHorizontal:9, paddingVertical:4, borderRadius:9, borderWidth:1, borderColor:C.border2 },
     lunarToggleActive:{ backgroundColor:'rgba(162,155,254,0.16)', borderColor:C.accent },
     lunarToggleText:      { fontSize:11, fontWeight:'700', color:C.txt3 },
@@ -958,6 +1105,12 @@ function makeStyles(C: Palette) {
                    borderRadius:99, paddingHorizontal:5, marginBottom:1,
                    overflow:'hidden', textAlign:'center', alignSelf:'center' },
     moreChip:    { fontSize:9.5, color:C.txt3, fontWeight:'700', textAlign:'center' },
+    // 세이람 일정 칩 — 채운 알람 칩과 달리 테두리만(테마 accent). Text의 점선 테두리는 Android에서 안 그려져 실선으로 둔다.
+    siblingChip: { color:C.txt2, backgroundColor:'transparent', borderWidth:1, borderColor:C.accent },
+    // 상세 팝업의 세이람 일정 목록
+    siblingRow:  { borderRadius:12, paddingVertical:7, paddingHorizontal:12, marginBottom:8, borderWidth:1, borderColor:C.accent, gap:3 },
+    siblingHead: { fontSize:11.5, fontWeight:'700', color:C.accent },
+    siblingText: { fontSize:13, fontWeight:'600', color:C.txt },
     modalBack:   { flex:1, backgroundColor:'rgba(0,0,0,0.55)', justifyContent:'center', padding:28 },
     modalCard:   { backgroundColor:C.bg2, borderRadius:20, padding:20, borderWidth:1, borderColor:C.border },
     modalTitle:  { fontSize:19, fontWeight:'800', color:C.txt, textAlign:'center' },

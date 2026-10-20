@@ -366,4 +366,19 @@ export const DE: Record<string, string> = {
   "비번 없음": "Kein Frei",
   "알람 울림": "Wecker klingelt",
   "오늘 비번! 🎉": "Heute frei! 🎉",
+  // 세이람과 일정 공유(2026-10-18)
+  "근무": "Dienst",
+  "다른 앱": "Andere Apps",
+  "세이람과 일정 공유": "Mit SayRam teilen",
+  "같은 폰의 세이람 일정이 달력에, 근무가 세이람 달력에 보여요. 한쪽 앱에서만 켜도 돼요.": "Termine aus SayRam erscheinen in diesem Kalender und deine Schichten im Kalender von SayRam (gleiches Handy). Es reicht, es in einer der beiden Apps einzuschalten.",
+  "세이람에서 켜 둬서 지금 공유 중이에요": "Wird geteilt – in SayRam eingeschaltet",
+  "세이람 일정": "SayRam-Termine",
+  // 홍보 배너 세이람 소개(2026-10-18)
+  "말로 하는 일정·알람, 세이람": "SayRam: Termine & Wecker per Sprache",
+  "말하면 일정이 되는 앱 보러 가기": "App ansehen, die Sprache zu Terminen macht",
+  // 달력 확대(2026-10-20)
+  "원래 크기": "Originalgröße",
+  "두 번 누르면 달력을 확대·원래 크기": "Zweimal tippen, um den Kalender zu vergrößern oder zurückzusetzen",
+  "달력 크게 보기": "Kalender vergrößern",
+  "글씨가 작으면 달력 위에서 두 손가락으로 벌려 화면을 확대하세요(최대 3배). 확대한 채로 한 손가락으로 밀어 여기저기 볼 수 있고, 위의 \"원래 크기\"를 누르면 돌아와요.\n요일 줄(일·월·화…)을 두 번 눌러도 커져요. 확대한 동안에는 옆으로 밀어도 달이 넘어가지 않으니, 달을 넘길 땐 ‹ › 버튼을 누르세요.": "Ist die Schrift klein, zieh zwei Finger auf dem Kalender auseinander (bis 3×). Vergrößert kannst du mit einem Finger herumschieben; „Originalgröße“ oben stellt zurück.\nZweimal auf die Wochentagszeile (So, Mo, Di…) tippen vergrößert ebenfalls. Im Zoom wechselt seitliches Wischen nicht den Monat – nutze dafür die Tasten ‹ ›.",
 };

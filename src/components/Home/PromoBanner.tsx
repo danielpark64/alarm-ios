@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, TouchableOpacity, Linking, StyleSheet, Modal, ScrollView, NativeSyntheticEvent, NativeScrollEvent, LayoutChangeEvent } from 'react-native';
+import { View, TouchableOpacity, Linking, StyleSheet, Modal, ScrollView, NativeSyntheticEvent, NativeScrollEvent, LayoutChangeEvent, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../common/AppText';
 import { Palette } from '../../constants/colors';
@@ -8,12 +8,15 @@ import { useScale, rf } from '../../utils/responsive';
 import { CoffeeTipScreen } from '../Support/CoffeeTipScreen';
 import { useT } from '../../i18n';
 import { N } from '../../i18n/lang';
+import { promoSlideKeys, SAYRAM_PLAY_URL } from '../../utils/promoSlides';
+import { sayramInstalled } from '../../utils/sayramShareNative';
 
 const ROTATE_MS = 5000;
 
 // onPress에 openTip이 넘어오는 슬라이드는 계좌 후원 화면을 연다(아래 makeSlides 참고).
-const makeSlides = (openTip: () => void) => [
-  {
+// 어떤 슬라이드를 보일지는 promoSlideKeys가 정한다 — 세이람 소개는 Android에서, 세이람이 아직 안 깔려 있을 때만.
+const ALL_SLIDES = (openTip: () => void) => ({
+  susu: {
     key: 'susu',
     icon: '🎵',
     title: N('수수뮤직과 기분좋은 하루'),
@@ -23,7 +26,17 @@ const makeSlides = (openTip: () => void) => [
     boxBorder: 'rgba(162,155,254,0.25)',
     onPress: () => Linking.openURL('https://www.youtube.com/@music_susu'),
   },
-  {
+  sayram: {
+    key: 'sayram',
+    icon: '🎙️',
+    title: N('말로 하는 일정·알람, 세이람'),
+    sub: N('말하면 일정이 되는 앱 보러 가기'),
+    iconBg: 'rgba(229,83,83,0.16)',
+    boxBg: 'rgba(229,83,83,0.07)',
+    boxBorder: 'rgba(229,83,83,0.28)',
+    onPress: () => Linking.openURL(SAYRAM_PLAY_URL),
+  },
+  coffee: {
     key: 'coffee',
     icon: '☕',
     title: N('개발자 응원하기'),
@@ -33,7 +46,11 @@ const makeSlides = (openTip: () => void) => [
     boxBorder: 'rgba(250,199,117,0.3)',
     onPress: openTip,
   },
-] as const;
+});
+const makeSlides = (openTip: () => void, hasSayram: boolean) => {
+  const all = ALL_SLIDES(openTip);
+  return promoSlideKeys({ platform: Platform.OS, hasSayram }).map(k => all[k]);
+};
 
 // 알람 탭 하단 배너 — 수수뮤직/커피후원 슬라이드를 자동 롤링 + 사용자가 직접 밀어서도 전환 가능 (모든 플랫폼)
 // 양쪽 끝에 첫/마지막 슬라이드의 복제본을 추가해 두고, 경계에 닿으면 애니메이션 없이
@@ -47,7 +64,9 @@ export function PromoBanner() {
   const { t } = useT();
   // 후원 화면은 이 배너에서만 열리므로 상태를 여기서 들고 있는다 — 상위로 prop을 끌어올릴 이유가 없다.
   const [showTip, setShowTip] = useState(false);
-  const slides = useMemo(() => makeSlides(() => setShowTip(true)), []);
+  // 세이람 설치 여부는 실행 때 한 번만 확인한다(sayramInstalled가 결과를 기억) — 배너가 돌 때·앞으로 올 때마다 확인하지 않는다.
+  // 새로 깔거나 지운 건 다음 실행 때 반영된다.
+  const slides = useMemo(() => makeSlides(() => setShowTip(true), sayramInstalled()), []);
   const count = slides.length;
   const extended = count > 1 ? [slides[count - 1], ...slides, slides[0]] : slides;
   const [width, setWidth] = useState(0);
@@ -57,8 +76,11 @@ export function PromoBanner() {
 
   const handleLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
 
-  // 레이아웃 측정 직후, 실제 첫 슬라이드(복제본 다음 위치)로 애니메이션 없이 이동
+  // 레이아웃 측정 직후, 그리고 슬라이드 수가 바뀌면(세이람 소개가 생기거나 빠짐) 실제 첫 슬라이드(복제본 다음 위치)로
+  // 애니메이션 없이 이동 — 2장↔3장이 바뀌면 예전 위치가 복제본이나 범위 밖을 가리킬 수 있다.
   useEffect(() => {
+    posRef.current = 1;
+    setDotIdx(0);
     if (width > 0 && count > 1) {
       scrollRef.current?.scrollTo({ x: width * posRef.current, animated: false });
     }

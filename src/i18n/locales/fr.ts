@@ -366,4 +366,19 @@ export const FR: Record<string, string> = {
   "비번 없음": "Aucun repos",
   "알람 울림": "Alarme en cours",
   "오늘 비번! 🎉": "Repos aujourd'hui ! 🎉",
+  // 세이람과 일정 공유(2026-10-18)
+  "근무": "Poste",
+  "다른 앱": "Autres applis",
+  "세이람과 일정 공유": "Partager avec SayRam",
+  "같은 폰의 세이람 일정이 달력에, 근무가 세이람 달력에 보여요. 한쪽 앱에서만 켜도 돼요.": "Les événements de SayRam s'affichent dans ce calendrier et vos postes dans celui de SayRam (même téléphone). Il suffit de l'activer dans l'une des deux applis.",
+  "세이람에서 켜 둬서 지금 공유 중이에요": "Partage actif : activé dans SayRam",
+  "세이람 일정": "Événements SayRam",
+  // 홍보 배너 세이람 소개(2026-10-18)
+  "말로 하는 일정·알람, 세이람": "SayRam : agenda et alarmes à la voix",
+  "말하면 일정이 되는 앱 보러 가기": "Voir l'appli qui transforme la voix en rendez-vous",
+  // 달력 확대(2026-10-20)
+  "원래 크기": "Taille réelle",
+  "두 번 누르면 달력을 확대·원래 크기": "Touchez deux fois pour agrandir ou rétablir le calendrier",
+  "달력 크게 보기": "Agrandir le calendrier",
+  "글씨가 작으면 달력 위에서 두 손가락으로 벌려 화면을 확대하세요(최대 3배). 확대한 채로 한 손가락으로 밀어 여기저기 볼 수 있고, 위의 \"원래 크기\"를 누르면 돌아와요.\n요일 줄(일·월·화…)을 두 번 눌러도 커져요. 확대한 동안에는 옆으로 밀어도 달이 넘어가지 않으니, 달을 넘길 땐 ‹ › 버튼을 누르세요.": "Si le texte est petit, écartez deux doigts sur le calendrier pour l'agrandir (jusqu'à 3×). Une fois agrandi, faites glisser un doigt pour vous déplacer et touchez « Taille réelle » en haut pour revenir.\nToucher deux fois la ligne des jours (dim, lun, mar…) agrandit aussi. Pendant le zoom, glisser sur le côté ne change pas de mois : utilisez les boutons ‹ ›.",
 };

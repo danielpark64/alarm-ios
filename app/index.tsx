@@ -17,6 +17,8 @@ import { useDayOverrides } from '../src/hooks/useDayOverrides';
 import { useAlarmNotifications } from '../src/hooks/useAlarmNotifications';
 import { useSelectMode } from '../src/hooks/useSelectMode';
 import { useHolidaySync, refreshHolidays } from '../src/hooks/useHolidaySync';
+import { useSayramShare } from '../src/hooks/useSayramShare';
+import { publishOwnShare } from '../src/utils/sayramShareNative';
 import { ClockHeader } from '../src/components/Home/ClockHeader';
 import { TodayShiftRow } from '../src/components/Home/TodayShiftRow';
 import { NextAlarmLine } from '../src/components/Home/NextAlarmLine';
@@ -30,7 +32,7 @@ import { AlarmRinging } from '../src/components/AlarmRinging';
 import { CycleAlarmTutorial, SpotlightRect } from '../src/components/Tutorial/CycleAlarmTutorial';
 import { RotationTutorialEvent } from '../src/components/AlarmForm/RotationWizard';
 import { cycleTutorialStepsKo, rotationTutorialStepsKo } from '../src/content/tutorialSteps.ko';
-import { nextAlarmParts, getRepLimitedIds, getNextFireDate } from '../src/utils';
+import { nextAlarmParts, getRepLimitedIds, getNextFireDate, todayStr } from '../src/utils';
 import { Alarm, ShiftPeriod, DEV_LINK_KEY } from '../src/constants';
 import { Palette } from '../src/constants/colors';
 import { useColors, useThemeSetting } from '../src/hooks/useTheme';
@@ -41,7 +43,7 @@ export default function App() {
   const { theme } = useThemeSetting();
   const s = makeStyles(C);
   const { alarms, loaded, addAlarm, updateAlarm, deleteAlarms, toggleAlarm, submitWorkPattern } = useAlarms();
-  const { overrides, setOverride } = useDayOverrides(alarms);
+  const { overrides, overridesLoaded, setOverride } = useDayOverrides(alarms);
   useHolidaySync();
   const { notifGranted, requestPermission, overlayGranted, requestOverlayPermission, tick, ringing, stopRinging, snoozeRinging } = useAlarmNotifications(alarms, updateAlarm, loaded);
   const { selectMode, selectedIds, enterSelectMode, toggleSelect, selectAll, exitSelectMode } = useSelectMode();
@@ -233,6 +235,16 @@ export default function App() {
     syncWidget(alarms, overrides);
     rescheduleAll(alarms, overrides);
   }, [lang, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 세이람 자동 공유 — 근무표와 내 공유 스위치를 창구에 둔다(같은 폰의 세이람만 읽는다).
+  // 알람·하루 근무 변경·언어·스위치·날짜가 바뀔 때와 앱 시작 때 —
+  // 내용이 같으면 publishOwnShare가 다시 쓰지 않는다. 저장된 스위치·override를 읽기 전에는 쓰지 않는다.
+  const { mine: shareMine, mineLoaded: shareMineLoaded } = useSayramShare();
+  const shareDay = todayStr(); // 날짜가 바뀔 때만 다시 계산(tick은 1분마다라 215일치를 매번 다시 만들게 된다)
+  useEffect(() => {
+    if (!loaded || !overridesLoaded || !shareMineLoaded) return;
+    publishOwnShare(alarms, overrides, shareMine);
+  }, [alarms, overrides, lang, shareMine, loaded, overridesLoaded, shareMineLoaded, shareDay]);
 
   // 알람이 하나도 없는 신규 사용자는 빈 달력 대신 알람 탭(빈 상태 안내)에서 시작
   useEffect(() => {

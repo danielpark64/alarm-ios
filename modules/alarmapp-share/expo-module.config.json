@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["AlarmappShareModule"]
+  },
+  "android": {
+    "modules": ["com.danielpark.alarmapp.share.AlarmappShareModule"]
+  }
+}
