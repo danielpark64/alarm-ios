@@ -11,7 +11,7 @@ import { shareEnabled, type SiblingEvents } from '../utils/sayramShare';
 const KEY = 'sayram_share_v1';
 
 interface Ctx {
-  available: boolean;              // 이 기기에서 자동 공유가 되는가(Android만)
+  available: boolean;              // 이 기기에서 자동 공유가 되는가(Android·iOS)
   mine: boolean;                   // 교대알람 쪽 스위치
   mineLoaded: boolean;             // 저장된 스위치를 읽었는가 — 읽기 전에 "꺼짐"을 써 버리지 않게
   siblingOn: boolean;              // 세이람 쪽 스위치

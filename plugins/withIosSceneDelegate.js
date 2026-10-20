@@ -12,6 +12,10 @@ function withIosSceneDelegate(config) {
   return withAppDelegate(config, (config) => {
     let contents = config.modResults.contents;
 
+    // 이미 적용된 AppDelegate(ios/ 폴더를 지우지 않고 prebuild를 다시 돌린 경우)면 그대로 둔다 —
+    // 두 번째 적용 때 window 생성 블록이 없어서 오류가 나던 것을 막는다(2026-10-20, App Group 추가 때 발견).
+    if (contents.includes('class SceneDelegate')) return config;
+
     const launchOptionsPropertyAnchor = 'var window: UIWindow?';
     if (!contents.includes(launchOptionsPropertyAnchor)) {
       throw new Error(

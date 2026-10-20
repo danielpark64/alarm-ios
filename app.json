@@ -59,7 +59,15 @@
             ]
           }
         },
-        "CFBundleDisplayName": "RotaWake"
+        "CFBundleDisplayName": "RotaWake",
+        "LSApplicationQueriesSchemes": [
+          "mallo"
+        ]
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.danielpark.shared"
+        ]
       }
     },
     "plugins": [

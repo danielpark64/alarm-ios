@@ -1,5 +1,6 @@
-// 세이람 자동 공유의 네이티브 연결 — Android만(modules/alarmapp-share). iOS는 App Group이 생기면(유료 개발자
-// 계정) 같은 함수 이름으로 붙인다. 계산은 sayramShare.ts(순수, 로직 테스트 대상)에 있고 여기는 쓰기·읽기만 한다.
+// 세이람 자동 공유의 네이티브 연결(modules/alarmapp-share). Android는 ContentProvider, iOS는 App Group
+// "group.com.danielpark.shared" 공유 폴더 — 두 플랫폼 모두 같은 함수 이름이다(iOS는 파일만 읽어 상대를 깨우지 않으므로
+// pushToSibling은 늘 "same", pullToInbox는 공유 폴더 읽기). 계산은 sayramShare.ts(순수, 로직 테스트 대상)에 있고 여기는 쓰기·읽기만 한다.
 //
 // v3(2026-10-18, "시스템에 부하는 절대로 주면 안 돼"): 상대 앱을 깨우지 않는다.
 //  - 열 때(시작·active)는 세이람이 넣어 준 파일(inbox)만 읽는다 — 세이람 프로세스를 부르지 않는다.
@@ -20,11 +21,11 @@ type Native = {
 const native = requireOptionalNativeModule<Native>('AlarmappShare');
 const SAYRAM = 'com.danielpark.sayram.share';
 
-/** 이 기기에서 자동 공유가 되는가(지금은 Android만) */
+/** 이 기기에서 자동 공유가 되는가(Android·iOS) */
 export const siblingShareAvailable = !!native;
 
 /** 세이람이 이 폰에 깔려 있는가 — 실행 때 한 번만 확인하고 기억한다(배너가 돌 때·앞으로 올 때마다 확인하지 않는다).
- *  새로 깔거나 지운 건 다음 실행 때 반영된다. 기기 안에서만 확인하고 어디로도 보내지 않는다. iOS·모듈 없음·예외는 false. */
+ *  새로 깔거나 지운 건 다음 실행 때 반영된다. 기기 안에서만 확인하고 어디로도 보내지 않는다. 모듈 없음·예외는 false(iOS는 mallo:// 열 수 있는지로 본다). */
 let installedCache: boolean | null = null;
 export function sayramInstalled(): boolean {
   if (installedCache !== null) return installedCache;

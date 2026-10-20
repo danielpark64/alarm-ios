@@ -106,7 +106,7 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp }: Props) {
       </View>
 
       {/* 세이람과 일정 공유 — 같은 폰의 세이람만 읽을 수 있는 창구로 근무표를 내보내고 세이람 일정을 읽는다(인터넷 없음).
-          한쪽 앱에서만 켜도 공유된다. 지금은 Android만 — iOS는 App Group(유료 개발자 계정)이 생기면 붙인다. */}
+          한쪽 앱에서만 켜도 공유된다. Android는 ContentProvider, iOS는 App Group 공유 폴더(2026-10-20~). */}
       {share.available && (
         <>
           <Text style={s.sectionLabel}>{t('다른 앱')}</Text>
@@ -122,7 +122,9 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp }: Props) {
               <Switch
                 value={share.mine}
                 onValueChange={share.setMine}
-                trackColor={{ false: C.bg3, true: C.accent2 }}
+                // 꺼진 상태가 카드 바탕(bg2)에 묻히지 않게 테두리 색으로(세이람도 같은 문제를 고침, 2026-10-21)
+                trackColor={{ false: C.border2, true: C.accent2 }}
+                ios_backgroundColor={C.border2}
                 thumbColor="#fff"
                 accessibilityLabel={t('세이람과 일정 공유')}
               />
