@@ -47,6 +47,7 @@ Play 자료(`store-assets/listings/`)를 바탕으로, iPhone에서 다르게 �
 | 이번 버전의 새로운 기능 | 첫 출시라 칸이 없다 |
 | 저작권 | `2026 Susu Development` (Play 개발자 이름과 맞춤) |
 | 스크린샷 | `store-assets/appstore/screenshots/<언어>/` 6.9인치(1320×2868) 6장, 01→06 순서 |
+| 아이패드 스크린샷 | `store-assets/appstore/screenshots-ipad13/<언어>/` 13인치(2064×2752) 6장 — 아이패드 지원(supportsTablet)이라 필수. 06은 아이패드에선 추가 화면이 한 화면에 다 들어가서 "N일 주기" 팝업으로 찍었다 |
 
 로캘 추가: 버전 화면 오른쪽 위 언어 선택 → 각 파일 맨 위 "App Store 로캘"에 적힌 언어를 추가한다(영어는 미국·영국·호주·캐나다, 스페인어는 스페인·멕시코 등).
 
