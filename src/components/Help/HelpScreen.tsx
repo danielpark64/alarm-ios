@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView, TouchableOpacity, Switch, StyleSheet } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Switch, StyleSheet, Platform } from 'react-native';
 import { Text } from '../common/AppText';
 import { Palette } from '../../constants/colors';
 import { useColors } from '../../hooks/useTheme';
@@ -15,8 +15,8 @@ export function HelpScreen({ onClose, onStartRotationTutorial }: Props) {
   const C = useColors();
   const s = makeStyles(C);
   const { t, lang } = useT();
-  // 한국 전용 기능(음력·한국 공휴일) 설명은 한국어일 때만 보인다
-  const entries = lang === 'ko' ? ENTRIES : ENTRIES.filter(e => e.kind !== 'item' || !e.krOnly);
+  // 한국 전용 기능(음력·한국 공휴일) 설명은 한국어일 때만, os가 정해진 항목은 그 플랫폼에서만 보인다
+  const entries = ENTRIES.filter(e => e.kind !== 'item' || ((lang === 'ko' || !e.krOnly) && (!e.os || e.os === Platform.OS)));
 
   return (
     <View style={s.root}>

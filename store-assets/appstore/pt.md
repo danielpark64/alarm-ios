@@ -16,9 +16,9 @@ turnos,escala,plantão,noturno,enfermagem,alarme,despertador,calendário,12x36,r
 ## 설명 Description (최대 4000자)
 ⏰ Um despertador feito para quem trabalha em turnos
 
-Com turnos rotativos, os apps de alarme comuns não ajudam. Um alarme de "segunda a sexta às 7" não acompanha uma escala que muda a cada poucos dias. O RotaWake acompanha: configure o seu rodízio uma única vez e o alarme certo toca no dia certo, sempre.
+Com turnos rotativos, os apps de alarme comuns não ajudam. Um alarme de "segunda a sexta às 7" não acompanha uma escala que muda a cada poucos dias. O RotaWake acompanha: configure o seu rodízio uma única vez e o alarme certo toca no dia certo.
 
-No iPhone, ele toca como notificação na hora exata e avisa mais algumas vezes se você não desligar. E, quando você desliga um alarme, tudo o que estava agendado é cancelado. Chega de "desliguei e tocou" ou "estava ligado e não tocou". (No modo silencioso ele vibra; ative a chave de toque para ouvir o som.)
+No iPhone, ele avisa com uma notificação na hora marcada e avisa mais algumas vezes se você não desligar. E, quando você desliga um alarme, tudo o que estava agendado é cancelado. Evitar o "desliguei e tocou" e o "estava ligado e não tocou" é o que o app mais se esforça para fazer. (No modo silencioso não há som; ative a chave de toque para ouvir. Um alarme pode não tocar se o celular estiver desligado, se você não abrir o app por mais de 2 semanas ou se um modo Foco bloquear as notificações; o guia do app explica melhor.)
 
 📌 Feito para
 ・Enfermagem, fábricas e plantas industriais, motoristas, segurança, bombeiros, hotelaria e aeroportos

@@ -508,8 +508,8 @@ export default function App() {
     <SafeAreaView style={s.root} edges={['top']}>
       <StatusBar barStyle={theme === 'light' ? 'dark-content' : 'light-content'} backgroundColor={C.bg}/>
 
-      {/* 헤더 */}
-      <View style={s.header}>
+      {/* 헤더 — iPadOS 26은 창 왼쪽 위에 창 버튼(빨강·노랑·초록)을 겹쳐 그려서, 아이패드에선 위 여백을 늘려 날짜가 가려지지 않게 한다 */}
+      <View style={[s.header, Platform.OS === 'ios' && Platform.isPad && s.headerPad]}>
         <View style={s.headerTop}>
           <View style={{flex:1}}>
             <ClockHeader />
@@ -700,6 +700,7 @@ function makeStyles(C: Palette) {
     loading:   { flex:1, alignItems:'center', justifyContent:'center', backgroundColor:C.bg },
     loadingT:  { fontSize:60 },
     header:    { paddingHorizontal:18, paddingTop:12, paddingBottom:14, backgroundColor:C.bg, borderBottomWidth:1, borderBottomColor:C.border },
+    headerPad: { paddingTop:40 },
     headerTop: { flexDirection:'row', alignItems:'center', gap:14 },
     nextT:     { fontSize:15, fontWeight:'800', color:C.txt2, textAlign:'left' },
     addBtn:    { width:64, height:64, borderRadius:20, backgroundColor:C.accent2, alignItems:'center', justifyContent:'center', shadowColor:C.accent, shadowOffset:{width:0,height:4}, shadowOpacity:0.4, shadowRadius:10, elevation:6 },

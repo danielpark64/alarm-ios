@@ -284,8 +284,10 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
   // 칸은 1px도 안 커져서 내용이 칸 밖으로 넘쳐 잘렸다(Android는 removeClippedSubviews 때문에
   // 아예 안 그려짐). 상한만 배율만큼 풀어 "화면에 남는 여백을 먼저 쓰게" 한다 — 세로 스크롤은
   // 넣지 않으므로 gridAreaH를 넘지는 않는다.
+  // 상한 90은 폰 기준이다 — 아이패드·태블릿처럼 칸이 넓으면 칸 폭에 맞춰 상한도 키워 화면 아래가 비지 않게 한다
+  const cellCap = Math.max(90, Math.round(winWidth / 7 * 1.5));
   const cellH = gridAreaH > 0
-    ? Math.max(40, Math.min(Math.round(90 * cellScale), Math.floor(gridAreaH / ROWS) - CELL_MB))
+    ? Math.max(40, Math.min(Math.round(cellCap * cellScale), Math.floor(gridAreaH / ROWS) - CELL_MB))
     : FALLBACK_CELL_H;
   // 칸에 실제로 들어가야 하는 높이를 추정해 넘치면 그 비율만큼 글자를 줄인다.
   // 음력을 켜면 줄이 하나 더 늘어 바로 넘치는데, 스크롤도 정보 삭제도 못 하므로
@@ -647,6 +649,9 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
         {!zoomed && (
         <View style={{ flex: 1 }}>
         <FlatList
+          // 화면을 돌리면(아이패드·태블릿 가로/세로) 한 장 폭이 바뀌어 예전 스크롤 위치로는 엉뚱한 달이 보인다 —
+          // 폭이 바뀔 때 새로 만들어 보던 달(initialScrollIndex)에서 다시 시작한다
+          key={winWidth}
           ref={listRef}
           data={pages}
           horizontal

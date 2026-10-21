@@ -28,7 +28,7 @@
       ]
     },
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "com.danielpark.alarmapp",
       "infoPlist": {
         "UIBackgroundModes": [

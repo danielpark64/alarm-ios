@@ -1,7 +1,8 @@
 # 교대알람(RotaWake) App Store 제출 자료
 
 App Store Connect(appstoreconnect.apple.com)에 그대로 옮겨 넣는 값. 로그인·제출 버튼은 사용자가 직접 누른다.
-Play 자료(`store-assets/listings/`)를 바탕으로, iPhone에서 다르게 동작하는 부분(알림으로 울림·무음이면 진동·Apple Watch)을 고쳤다.
+Play 자료(`store-assets/listings/`)를 바탕으로, iPhone에서 다르게 동작하는 부분(알림으로 알림·무음이면 소리 없음·Apple Watch)을 고쳤다.
+2026-10-21: 알람이 절대적이지 않으므로 "확실하게 울려요·every time" 같은 단정 표현은 "알려 드려요"로 바꾸고, 안 울릴 수 있는 경우(전원 꺼짐·2주 넘게 안 엶·집중 모드)를 설명에 함께 적는다.
 
 ## 1. 앱 만들기 (나의 앱 → ＋ → 신규 앱)
 

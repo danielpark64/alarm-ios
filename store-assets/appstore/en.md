@@ -16,9 +16,9 @@ shift,rota,roster,nurse,night shift,schedule,work alarm,calendar,rotation,2-2-3,
 ## 설명 Description (최대 4000자)
 ⏰ An alarm clock built for shift workers
 
-Rotating shifts make ordinary alarm apps useless. A "weekdays at 7" alarm cannot follow a rota that changes every few days. RotaWake can. Set your shift pattern once, and the right alarm rings on the right day, every time.
+Rotating shifts make ordinary alarm apps useless. A "weekdays at 7" alarm cannot follow a rota that changes every few days. RotaWake can. Set your shift pattern once, and the right alarm rings on the right day.
 
-On iPhone it rings as a notification at the exact time and reminds you a few more times if you don't dismiss it. When you turn an alarm off, every scheduled reminder is cancelled. No more "I turned it off but it rang" or "it was on but stayed silent". (In silent mode it vibrates — turn the ring switch on to hear the sound.)
+On iPhone it alerts you with a notification at the time you set and reminds you a few more times if you don't dismiss it. When you turn an alarm off, every scheduled reminder is cancelled. "I turned it off but it rang" and "it was on but stayed silent" are exactly what this app works hardest to prevent. (In silent mode there is no sound — turn the ring switch on to hear it. An alarm may not ring if the phone is off, if you haven't opened the app for over 2 weeks, or if a Focus blocks notifications; the in-app guide explains more.)
 
 📌 Made for
 ・Nurses, factory and plant workers, drivers, security staff, firefighters, hospitality and airport crews

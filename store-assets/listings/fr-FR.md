@@ -9,9 +9,9 @@ Des alarmes qui suivent votre planning. Réglez votre roulement une seule fois.
 ## Full description (max 4000)
 ⏰ Un réveil conçu pour le travail posté
 
-Avec des horaires en roulement, les applis de réveil classiques ne servent à rien. Une alarme « du lundi au vendredi à 7 h » ne peut pas suivre un planning qui change tous les quelques jours. RotaWake, si : réglez votre roulement une seule fois et la bonne alarme sonne le bon jour, à chaque fois.
+Avec des horaires en roulement, les applis de réveil classiques ne servent à rien. Une alarme « du lundi au vendredi à 7 h » ne peut pas suivre un planning qui change tous les quelques jours. RotaWake, si : réglez votre roulement une seule fois et la bonne alarme sonne le bon jour.
 
-Elle sonne même écran éteint ou en mode économie d'énergie. L'appli utilise toutes les méthodes de programmation autorisées par votre téléphone pour sonner à l'heure. Et quand vous désactivez une alarme, tout ce qui était programmé est annulé. Fini les « je l'avais coupée mais elle a sonné » ou « elle était activée mais n'a pas sonné ».
+Elle vous prévient même écran éteint ou en mode économie d'énergie : l'appli utilise toutes les méthodes de programmation autorisées par votre téléphone. Et quand vous désactivez une alarme, tout ce qui était programmé est annulé. Éviter les « je l'avais coupée mais elle a sonné » et « elle était activée mais n'a pas sonné », c'est ce à quoi l'appli s'applique le plus. (Une alarme peut quand même ne pas sonner si le téléphone est éteint, si l'appli a été arrêtée de force ou si l'économie d'énergie la met en veille ; le guide de l'appli en dit plus.)
 
 📌 Pour qui ?
 ・Infirmiers et aides-soignants, ouvriers d'usine, conducteurs, agents de sécurité, pompiers, personnels de l'hôtellerie et des aéroports

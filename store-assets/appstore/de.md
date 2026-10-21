@@ -18,7 +18,7 @@ Schicht,Schichtplan,Nachtschicht,Pflege,Wecker,Kalender,Dienstplan,Wechselschich
 
 Bei Wechselschicht helfen normale Wecker-Apps nicht weiter. Ein Wecker „werktags um 7“ kann keinem Dienstplan folgen, der sich alle paar Tage ändert. RotaWake schon: Stell deinen Schichtrhythmus einmal ein, und an jedem Tag klingelt der richtige Wecker.
 
-Auf dem iPhone klingelt er als Mitteilung pünktlich und erinnert dich noch ein paar Mal, wenn du ihn nicht ausschaltest. Schaltest du einen Wecker aus, wird alles Geplante gelöscht. Schluss mit „ausgeschaltet und trotzdem geklingelt“ oder „eingeschaltet und stumm geblieben“. (Im Lautlos-Modus vibriert er – schalte den Klingelschalter ein, um den Ton zu hören.)
+Auf dem iPhone erinnert er dich mit einer Mitteilung zur eingestellten Zeit und meldet sich noch ein paar Mal, wenn du ihn nicht ausschaltest. Schaltest du einen Wecker aus, wird alles Geplante gelöscht. „Ausgeschaltet und trotzdem geklingelt“ oder „eingeschaltet und stumm geblieben“ zu verhindern, darauf legt die App am meisten Wert. (Im Stummmodus gibt es keinen Ton – schalte den Klingelschalter ein, um ihn zu hören. Ein Wecker kann ausbleiben, wenn das iPhone aus ist, du die App über 2 Wochen nicht geöffnet hast oder ein Fokus Mitteilungen blockiert; mehr dazu in der Anleitung in der App.)
 
 📌 Gemacht für
 ・Pflegekräfte, Beschäftigte in Produktion und Werk, Fahrerinnen und Fahrer, Sicherheitsdienst, Feuerwehr, Hotel- und Flughafenpersonal

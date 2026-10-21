@@ -18,7 +18,7 @@ turnos,cuadrante,noche,enfermería,alarma,despertador,calendario,rotación,traba
 
 Con turnos rotativos, las apps de alarma normales no sirven. Una alarma de «lunes a viernes a las 7» no puede seguir un cuadrante que cambia cada pocos días. RotaWake sí: configura tu rotación una sola vez y cada día sonará la alarma que toca.
 
-En el iPhone suena como notificación a la hora exacta y te avisa unas veces más si no la apagas. Cuando apagas una alarma, se cancela todo lo programado. Se acabó el «la apagué y sonó» o el «estaba activada y no sonó». (En modo silencio vibra; activa el interruptor de timbre para oír el sonido.)
+En el iPhone te avisa con una notificación a la hora que fijaste y te avisa unas veces más si no la apagas. Cuando apagas una alarma, se cancela todo lo programado. Evitar el «la apagué y sonó» y el «estaba activada y no sonó» es en lo que más nos hemos esforzado. (En modo silencio no hay sonido; activa el interruptor de timbre para oírlo. Una alarma puede no sonar si el teléfono está apagado, si no abres la app en más de 2 semanas o si un modo de Concentración bloquea las notificaciones; la guía de la app lo explica.)
 
 📌 Pensada para
 ・Personal de enfermería, fábricas y plantas, conductores, seguridad, bomberos, hostelería y aeropuertos

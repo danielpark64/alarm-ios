@@ -4,14 +4,14 @@
 RotaWake: alarme de turnos
 
 ## Short description (max 80)
-Alarmes que seguem a sua escala. Configure o rodízio uma vez e não perca a hora.
+Alarmes que seguem a sua escala. Configure o rodízio uma vez e seja avisado.
 
 ## Full description (max 4000)
 ⏰ Um despertador feito para quem trabalha em turnos
 
-Com turnos rotativos, os apps de alarme comuns não ajudam. Um alarme de "segunda a sexta às 7" não acompanha uma escala que muda a cada poucos dias. O RotaWake acompanha: configure o seu rodízio uma única vez e o alarme certo toca no dia certo, sempre.
+Com turnos rotativos, os apps de alarme comuns não ajudam. Um alarme de "segunda a sexta às 7" não acompanha uma escala que muda a cada poucos dias. O RotaWake acompanha: configure o seu rodízio uma única vez e o alarme certo toca no dia certo.
 
-Ele toca mesmo com a tela apagada ou com a economia de bateria ligada. O app usa todos os métodos de agendamento que o seu celular permite para tocar na hora. E, quando você desliga um alarme, tudo o que estava agendado é cancelado. Chega de "desliguei e tocou" ou "estava ligado e não tocou".
+Ele avisa mesmo com a tela apagada ou com a economia de bateria ligada: o app usa todos os métodos de agendamento que o seu celular permite. E, quando você desliga um alarme, tudo o que estava agendado é cancelado. Evitar o "desliguei e tocou" e o "estava ligado e não tocou" é o que o app mais se esforça para fazer. (Um alarme ainda pode não tocar se o celular estiver desligado, se o app tiver sido forçado a parar ou se a economia de bateria o colocar para dormir; o guia do app explica melhor.)
 
 📌 Feito para
 ・Enfermagem, fábricas e plantas industriais, motoristas, segurança, bombeiros, hotelaria e aeroportos

@@ -16,9 +16,9 @@ travail posté,planning,nuit,infirmier,réveil,alarme,calendrier,roulement,3x8,2
 ## 설명 Description (최대 4000자)
 ⏰ Un réveil conçu pour le travail posté
 
-Avec des horaires en roulement, les applis de réveil classiques ne servent à rien. Une alarme « du lundi au vendredi à 7 h » ne peut pas suivre un planning qui change tous les quelques jours. RotaWake, si : réglez votre roulement une seule fois et la bonne alarme sonne le bon jour, à chaque fois.
+Avec des horaires en roulement, les applis de réveil classiques ne servent à rien. Une alarme « du lundi au vendredi à 7 h » ne peut pas suivre un planning qui change tous les quelques jours. RotaWake, si : réglez votre roulement une seule fois et la bonne alarme sonne le bon jour.
 
-Sur iPhone, elle sonne sous forme de notification à l'heure exacte et vous rappelle encore quelques fois si vous ne l'arrêtez pas. Quand vous désactivez une alarme, tout ce qui était programmé est annulé. Fini les « je l'avais coupée mais elle a sonné » ou « elle était activée mais n'a pas sonné ». (En mode silencieux, elle vibre ; activez le bouton de sonnerie pour entendre le son.)
+Sur iPhone, elle vous prévient par une notification à l'heure choisie et vous rappelle encore quelques fois si vous ne l'arrêtez pas. Quand vous désactivez une alarme, tout ce qui était programmé est annulé. Éviter les « je l'avais coupée mais elle a sonné » et « elle était activée mais n'a pas sonné », c'est ce à quoi l'appli s'applique le plus. (En mode silencieux, il n'y a pas de son ; activez le bouton de sonnerie pour l'entendre. Une alarme peut ne pas sonner si le téléphone est éteint, si vous n'avez pas ouvert l'appli depuis plus de 2 semaines ou si un mode Concentration bloque les notifications ; le guide de l'appli en dit plus.)
 
 📌 Pour qui ?
 ・Infirmiers et aides-soignants, ouvriers d'usine, conducteurs, agents de sécurité, pompiers, personnels de l'hôtellerie et des aéroports
