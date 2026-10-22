@@ -54,6 +54,8 @@ Play 자료(`store-assets/listings/`)를 바탕으로, iPhone에서 다르게 �
 ## 6. 빌드
 - 버전 1.5.0, 빌드 1. Xcode에서 Archive → Distribute App → App Store Connect 업로드(또는 Claude가 Archive까지 만들고, 업로드는 사용자 확인 후).
 - 수출 규정: Info.plist `ITSAppUsesNonExemptEncryption = false`(HTTPS만 사용) → 업로드 때 암호화 질문을 따로 묻지 않는다.
+- `NSPhotoLibraryUsageDescription` 필수(2026-10-22): 사진을 안 써도 expo-file-system이 PHPhotoLibrary를 참조해 없으면 ITMS-90683으로 반려된다(세이람 빌드 2가 이걸로 반려됨). app.json과 `ios/app/Info.plist`(gitignore — prebuild 없이 빌드하므로) 둘 다에 넣어 두었다.
+- CLI 업로드(`xcodebuild -exportArchive`)는 "App Store Connect access required"로 막힐 수 있다 → 아카이브를 `~/Library/Developer/Xcode/Archives/<날짜>/`에 두고 사용자가 Xcode Organizer → Distribute App으로 올린다.
 
 ## 7. 앱 심사 정보
 - 로그인 필요 없음(데모 계정 칸 비움).

@@ -63,7 +63,8 @@
         "LSApplicationQueriesSchemes": [
           "mallo"
         ],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "교대알람은 사진 보관함을 사용하지 않습니다. 파일 저장에 쓰는 시스템 구성 요소 때문에 필요한 항목입니다."
       },
       "entitlements": {
         "com.apple.security.application-groups": [
