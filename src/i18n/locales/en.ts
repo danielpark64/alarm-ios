@@ -194,6 +194,7 @@ export const EN: Record<string, string> = {
   "소리만": "Sound only",
   "수": "Wed",
   "수수뮤직과 기분좋은 하루": "A happy day with Susu Music",
+  "수수여행, 그냥 떠나면 돼요": "A trip with SusuTravel",
   "시각 변경": "Change time",
   "시간": "Time",
   "시간을 맞춰보세요.": "Set the time.",

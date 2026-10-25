@@ -1298,6 +1298,12 @@
   ]
  },
  {
+  "key": "수수여행, 그냥 떠나면 돼요",
+  "files": [
+   "src/components/Home/PromoBanner.tsx"
+  ]
+ },
+ {
   "key": "시각 변경",
   "files": [
    "src/components/AlarmForm/WorkPatternBuilder.tsx"

@@ -71,7 +71,7 @@
           "group.com.danielpark.shared"
         ]
       },
-      "buildNumber": "1"
+      "buildNumber": "2"
     },
     "plugins": [
       "expo-router",

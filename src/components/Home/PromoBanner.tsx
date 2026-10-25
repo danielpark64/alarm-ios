@@ -8,7 +8,7 @@ import { useScale, rf } from '../../utils/responsive';
 import { CoffeeTipScreen } from '../Support/CoffeeTipScreen';
 import { useT } from '../../i18n';
 import { N } from '../../i18n/lang';
-import { promoSlideKeys, SAYRAM_PLAY_URL } from '../../utils/promoSlides';
+import { promoSlideKeys, SAYRAM_PLAY_URL, SUSU_TRAVEL_URL } from '../../utils/promoSlides';
 import { sayramInstalled } from '../../utils/sayramShareNative';
 
 const ROTATE_MS = 5000;
@@ -35,6 +35,16 @@ const ALL_SLIDES = (openTip: () => void) => ({
     boxBg: 'rgba(229,83,83,0.07)',
     boxBorder: 'rgba(229,83,83,0.28)',
     onPress: () => Linking.openURL(SAYRAM_PLAY_URL),
+  },
+  travel: {
+    key: 'travel',
+    icon: '✈️',
+    title: N('수수여행, 그냥 떠나면 돼요'),
+    sub: N('채널 바로가기'),
+    iconBg: 'rgba(116,185,255,0.18)',
+    boxBg: 'rgba(116,185,255,0.08)',
+    boxBorder: 'rgba(116,185,255,0.28)',
+    onPress: () => Linking.openURL(SUSU_TRAVEL_URL),
   },
   coffee: {
     key: 'coffee',

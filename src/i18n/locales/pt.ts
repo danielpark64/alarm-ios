@@ -193,6 +193,7 @@ export const PT: Record<string, string> = {
   "소리만": "Só som",
   "수": "qua",
   "수수뮤직과 기분좋은 하루": "Um dia gostoso com a Susu Music",
+  "수수여행, 그냥 떠나면 돼요": "Uma viagem simples com a SusuTravel",
   "시각 변경": "Alterar horário",
   "시간": "Hora",
   "시간을 맞춰보세요.": "Ajuste a hora.",
