@@ -2,6 +2,7 @@
 
 App Store Connect(appstoreconnect.apple.com)에 그대로 옮겨 넣는 값. 로그인·제출 버튼은 사용자가 직접 누른다.
 Play 자료(`store-assets/listings/`)를 바탕으로, iPhone에서 다르게 동작하는 부분(알림으로 알림·무음이면 소리 없음·Apple Watch)을 고쳤다.
+2026-10-22: App Store Connect는 설명에 이모지가 있으면 저장을 거부한다 → 9개 언어 문구에서 이모지를 모두 뺐다(한국어 줄머리 "・"는 "-"로).
 2026-10-21: 알람이 절대적이지 않으므로 "확실하게 울려요·every time" 같은 단정 표현은 "알려 드려요"로 바꾸고, 안 울릴 수 있는 경우(전원 꺼짐·2주 넘게 안 엶·집중 모드)를 설명에 함께 적는다.
 
 ## 1. 앱 만들기 (나의 앱 → ＋ → 신규 앱)
@@ -46,7 +47,7 @@ Play 자료(`store-assets/listings/`)를 바탕으로, iPhone에서 다르게 �
 | 마케팅 URL | 비워 둔다 |
 | 이번 버전의 새로운 기능 | 첫 출시라 칸이 없다 |
 | 저작권 | `2026 Susu Development` (Play 개발자 이름과 맞춤) |
-| 스크린샷 | `store-assets/appstore/screenshots/<언어>/` 6.9인치(1320×2868) 6장, 01→06 순서 |
+| 스크린샷 | **`store-assets/appstore/screenshots-iphone63/<언어>/`** 1206×2622 6장, 01→06 순서. 2026-10 App Store Connect는 "Dynamic Island 지원 iPhone(중형 디스플레이)" 칸만 받아서 6.9인치 원본(`screenshots/`, 1320×2868)은 "파일 크기가 유효하지 않음"으로 거부된다 — 원본을 비율 그대로 줄인 사본 |
 | 아이패드 스크린샷 | `store-assets/appstore/screenshots-ipad13/<언어>/` 13인치(2064×2752) 6장 — 아이패드 지원(supportsTablet)이라 필수. 06은 아이패드에선 추가 화면이 한 화면에 다 들어가서 "N일 주기" 팝업으로 찍었다 |
 
 로캘 추가: 버전 화면 오른쪽 위 언어 선택 → 각 파일 맨 위 "App Store 로캘"에 적힌 언어를 추가한다(영어는 미국·영국·호주·캐나다, 스페인어는 스페인·멕시코 등).

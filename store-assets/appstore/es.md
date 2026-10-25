@@ -14,42 +14,42 @@ Configura tu rotación una vez: cada día suena la alarma que toca y el calendar
 turnos,cuadrante,noche,enfermería,alarma,despertador,calendario,rotación,trabajo,guardia
 
 ## 설명 Description (최대 4000자)
-⏰ Un despertador pensado para quienes trabajan a turnos
+Un despertador pensado para quienes trabajan a turnos
 
 Con turnos rotativos, las apps de alarma normales no sirven. Una alarma de «lunes a viernes a las 7» no puede seguir un cuadrante que cambia cada pocos días. RotaWake sí: configura tu rotación una sola vez y cada día sonará la alarma que toca.
 
 En el iPhone te avisa con una notificación a la hora que fijaste y te avisa unas veces más si no la apagas. Cuando apagas una alarma, se cancela todo lo programado. Evitar el «la apagué y sonó» y el «estaba activada y no sonó» es en lo que más nos hemos esforzado. (En modo silencio no hay sonido; activa el interruptor de timbre para oírlo. Una alarma puede no sonar si el teléfono está apagado, si no abres la app en más de 2 semanas o si un modo de Concentración bloquea las notificaciones; la guía de la app lo explica.)
 
-📌 Pensada para
-・Personal de enfermería, fábricas y plantas, conductores, seguridad, bomberos, hostelería y aeropuertos
-・Quien trabaja a dos o tres turnos, 4x4, 6x2, 12 horas o con un cuadrante propio
-・Turnos de noche que terminan a la mañana siguiente
-・Cualquiera que quiera tener sus alarmas repetidas bien ordenadas
+Pensada para
+- Personal de enfermería, fábricas y plantas, conductores, seguridad, bomberos, hostelería y aeropuertos
+- Quien trabaja a dos o tres turnos, 4x4, 6x2, 12 horas o con un cuadrante propio
+- Turnos de noche que terminan a la mañana siguiente
+- Cualquiera que quiera tener sus alarmas repetidas bien ordenadas
 
-📅 Tus alarmas crean tu calendario de turnos
+Tus alarmas crean tu calendario de turnos
 Crea las alarmas de entrada y salida y el calendario se rellena solo. Los días de trabajo se colorean según el turno y los días libres destacan en un recuadro azul. No hay que escribir el cuadrante aparte.
 
-🔁 Cualquier rotación, tal cual es
+Cualquier rotación, tal cual es
 Coloca los bloques de turno en el orden que quieras (Mañana, Medio, Tarde, Día, Noche, Libre) y el ciclo se repite sin fin. Elige entre turnos habituales para empezar en segundos o crea el tuyo. También admite ciclos sencillos como «cada N días» o «N días de trabajo y N de descanso».
 
-🌙 Turnos de noche que cruzan la medianoche
+Turnos de noche que cruzan la medianoche
 Un turno de 22:00 a 06:00 pertenece al día en que empieza. La alarma de salida suena a la mañana siguiente, y el calendario, las omisiones y los cambios de un día se mantienen en el día de trabajo correcto.
 
-🔄 Cambia un solo día
+Cambia un solo día
 ¿Has cambiado un turno o te has cogido el día? Toca esa fecha. Vacaciones, medio día y baja apagan las alarmas o ajustan la hora. Cobertura, turno extra, horas extra y guardia las activan incluso en un día libre. Los días compensatorios se cuentan solos, por mes y por año.
 
-🏠 Hoy y mañana de un vistazo
+Hoy y mañana de un vistazo
 Abre la app y verás el turno de hoy y el de mañana, además de tu próxima alarma.
 
-🌍 9 idiomas
+9 idiomas
 Español, English, 한국어, 日本語, 简体中文, 繁體中文, Français, Deutsch, Português. Elige si tu semana empieza en domingo o en lunes.
 
-🚫 Sin anuncios · Sin cuenta · Nada sale de tu teléfono
+Sin anuncios · Sin cuenta · Nada sale de tu teléfono
 Sin registro y sin inicio de sesión. Tus turnos y alarmas se guardan solo en tu dispositivo.
 
-🌗 Tema oscuro y claro, tamaño de texto ajustable
+Tema oscuro y claro, tamaño de texto ajustable
 
-⌚ Compatible con tu reloj inteligente
+Compatible con tu reloj inteligente
 Cuando la alarma suena en el teléfono, tu reloj también te avisa.
 
 Si los horarios irregulares hacen que poner alarmas sea un fastidio, deja que RotaWake lleve juntas tus alarmas y tu calendario de turnos.
