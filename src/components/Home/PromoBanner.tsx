@@ -8,13 +8,13 @@ import { useScale, rf } from '../../utils/responsive';
 import { CoffeeTipScreen } from '../Support/CoffeeTipScreen';
 import { useT } from '../../i18n';
 import { N } from '../../i18n/lang';
-import { promoSlideKeys, SAYRAM_PLAY_URL, SUSU_TRAVEL_URL } from '../../utils/promoSlides';
+import { promoSlideKeys, sayramStoreUrl, SUSU_TRAVEL_URL } from '../../utils/promoSlides';
 import { sayramInstalled } from '../../utils/sayramShareNative';
 
 const ROTATE_MS = 5000;
 
 // onPress에 openTip이 넘어오는 슬라이드는 계좌 후원 화면을 연다(아래 makeSlides 참고).
-// 어떤 슬라이드를 보일지는 promoSlideKeys가 정한다 — 세이람 소개는 Android에서, 세이람이 아직 안 깔려 있을 때만.
+// 어떤 슬라이드를 보일지는 promoSlideKeys가 정한다 — 세이람 소개는 세이람이 아직 안 깔려 있을 때만(링크는 플랫폼별 스토어).
 const ALL_SLIDES = (openTip: () => void) => ({
   susu: {
     key: 'susu',
@@ -34,7 +34,7 @@ const ALL_SLIDES = (openTip: () => void) => ({
     iconBg: 'rgba(229,83,83,0.16)',
     boxBg: 'rgba(229,83,83,0.07)',
     boxBorder: 'rgba(229,83,83,0.28)',
-    onPress: () => Linking.openURL(SAYRAM_PLAY_URL),
+    onPress: () => Linking.openURL(sayramStoreUrl(Platform.OS)),
   },
   travel: {
     key: 'travel',
