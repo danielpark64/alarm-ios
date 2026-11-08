@@ -1,6 +1,6 @@
 # 교대알람(RotaWake) App Store 제출 자료
 
-App Store Connect(appstoreconnect.apple.com)에 그대로 옮겨 넣는 값. 로그인·제출 버튼은 사용자가 직접 누른다.
+App Store Connect(appstoreconnect.apple.com)에 그대로 옮겨 넣는 값. 업로드·버전·문구는 관리자 API 키로 넣고, 심사 제출은 사용자가 "제출해"라고 하면 `~/.appstoreconnect/asc-submit.mjs`로 한다(2026-11-08~).
 Play 자료(`store-assets/listings/`)를 바탕으로, iPhone에서 다르게 동작하는 부분(알림으로 알림·무음이면 소리 없음·Apple Watch)을 고쳤다.
 2026-10-22: App Store Connect는 설명에 이모지가 있으면 저장을 거부한다 → 9개 언어 문구에서 이모지를 모두 뺐다(한국어 줄머리 "・"는 "-"로).
 2026-10-21: 알람이 절대적이지 않으므로 "확실하게 울려요·every time" 같은 단정 표현은 "알려 드려요"로 바꾸고, 안 울릴 수 있는 경우(전원 꺼짐·2주 넘게 안 엶·집중 모드)를 설명에 함께 적는다.
