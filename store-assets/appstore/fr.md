@@ -49,6 +49,9 @@ Ni inscription ni connexion. Vos postes et vos alarmes sont enregistrés uniquem
 
 Thèmes sombre et clair, taille du texte réglable
 
+Widgets pour l'écran d'accueil et l'écran verrouillé
+Voyez vos postes sans ouvrir l'app. Le petit widget affiche le poste du jour, le moyen la semaine et le grand le mois entier, avec aujourd'hui bien mis en évidence et la prochaine alarme en petit. Sous iOS 17 ou version ultérieure, le grand widget passe au mois précédent ou suivant.
+
 Compatible avec votre montre connectée
 Quand l'alarme sonne sur le téléphone, votre montre vous prévient aussi.
 

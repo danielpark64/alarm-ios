@@ -49,6 +49,9 @@ No sign-up and no login. Your shifts and alarms are stored only on your device.
 
 Dark and light themes, adjustable text size
 
+Home Screen and Lock Screen widgets
+See your shifts without opening the app. The small widget shows today's shift, the medium widget this week, and the large widget the whole month, with today clearly highlighted and your next alarm shown in small type. On iOS 17 and later you can flip the large widget to the previous or next month.
+
 Works with Apple Watch
 When the alarm rings on your iPhone, your Apple Watch is notified too.
 

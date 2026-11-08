@@ -219,8 +219,9 @@ export function effectiveTime(a: Alarm, dateStr: string): { hour: number; min: n
   return { hour: a.hour, min: a.min };
 }
 
-export function getNextFireDate(alarm: Alarm, overrides: DayOverrides = {}): Date | null {
-  const now  = new Date();
+// now: 이 시각 "다음" 알람을 찾는다. 기본은 지금이고, iOS 위젯(iosWidget.ts)만 그다음 알람들을 이어서 구하려고 넘긴다.
+// today는 기준 시각과 무관하게 진짜 오늘이다 — 시작일 없는 '한 번' 알람이 기준 시각을 따라 반복되면 안 된다.
+export function getNextFireDate(alarm: Alarm, overrides: DayOverrides = {}, now: Date = new Date()): Date | null {
   const today = todayStr();
   const startDate = alarm.sd || today;
   // 매년(음력 포함) 알람은 1년 가까이 뒤일 수 있어 "다음 알람" 미리보기가 놓치지 않도록 넉넉히 훑는다.

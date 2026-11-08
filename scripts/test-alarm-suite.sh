@@ -98,6 +98,14 @@ printf "  widgetSync → saveActiveAlarmIds 호출 ... "
 grep -q "saveActiveAlarmIds" "$ROOT/src/utils/widgetSync.ts" 2>/dev/null \
   && ok "" || { fail "saveActiveAlarmIds 호출 없음 — 차단 목록이 업데이트 안 됨"; }
 
+# iOS 위젯 — 앱과 위젯이 같은 공유 폴더 파일을 봐야 하고, 앱 복귀 때 데이터 기간을 밀어야 한다
+printf "  iOS 위젯 데이터 연결(widget.json·앱 복귀 갱신) ... "
+grep -q "syncIosWidget" "$ROOT/src/utils/widgetSync.ts" 2>/dev/null \
+  && grep -q "syncIosWidget" "$ROOT/src/hooks/useAlarmNotifications.ts" 2>/dev/null \
+  && grep -q 'widget.json' "$ROOT/modules/alarmapp-widget/ios/AlarmappWidgetModule.swift" 2>/dev/null \
+  && grep -q 'alarmapp/widget.json' "$ROOT/targets/widget/WidgetData.swift" 2>/dev/null \
+  && ok "" || { fail "iOS 위젯 데이터 경로가 어긋남 — 위젯이 비거나 옛 근무를 보여 준다"; }
+
 # 이중 시스템 (Expo + 네이티브)
 printf "  이중 알람 시스템 (Expo + AlarmManager) ... "
 HAS_E=$(grep -c "scheduleAlarmTriggers\|scheduleNotificationAsync" "$ROOT/src/utils/notifications/index.ts" 2>/dev/null || echo 0)

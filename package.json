@@ -29,6 +29,7 @@
     "reactotron-react-native": "^5.2.0"
   },
   "devDependencies": {
+    "@bacons/apple-targets": "5.0.0",
     "@types/react": "~19.2.2",
     "typescript": "~6.0.3"
   },

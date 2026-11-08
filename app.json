@@ -2,7 +2,7 @@
   "expo": {
     "name": "교대알람",
     "slug": "alarm-app",
-    "version": "1.5.1",
+    "version": "1.5.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "alarmapp",
@@ -30,6 +30,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.danielpark.alarmapp",
+      "appleTeamId": "T5Z6ACK2PU",
       "infoPlist": {
         "UIBackgroundModes": [
           "fetch",
@@ -71,7 +72,7 @@
           "group.com.danielpark.shared"
         ]
       },
-      "buildNumber": "3"
+      "buildNumber": "4"
     },
     "plugins": [
       "expo-router",
@@ -95,7 +96,8 @@
         }
       ],
       "./plugins/withIosMinDeploymentTarget.js",
-      "./plugins/withIosSceneDelegate.js"
+      "./plugins/withIosSceneDelegate.js",
+      "@bacons/apple-targets"
     ],
     "experiments": {
       "typedRoutes": true

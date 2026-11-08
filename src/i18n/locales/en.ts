@@ -364,6 +364,7 @@ export const EN: Record<string, string> = {
   "⏰ 다음 알람": "⏰ Next alarm",
   "비번 {n}일 후": "Off in {n}d",
   "비번 없음": "No days off",
+  "앱을 열어 주세요": "Open the app",
   "알람 울림": "Alarm ringing",
   "오늘 비번! 🎉": "Off today! 🎉",
   // 세이람과 일정 공유(2026-10-18)

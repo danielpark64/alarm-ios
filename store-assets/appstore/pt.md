@@ -49,6 +49,9 @@ Sem cadastro e sem login. Seus turnos e alarmes ficam guardados apenas no seu ap
 
 Tema escuro e claro, tamanho de texto ajustável
 
+Widgets na tela de início e na tela bloqueada
+Veja seus turnos sem abrir o app. O widget pequeno mostra o turno de hoje, o médio a semana e o grande o mês inteiro, com o dia de hoje bem destacado e o próximo alarme em letra pequena. No iOS 17 ou posterior, o widget grande pode passar para o mês anterior ou seguinte.
+
 Funciona com o seu smartwatch
 Quando o alarme toca no celular, o relógio também avisa.
 

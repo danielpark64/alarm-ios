@@ -362,6 +362,7 @@ export const DE: Record<string, string> = {
   "⏰ 다음 알람": "⏰ Nächster Wecker",
   "비번 {n}일 후": "Frei in {n} Tg.",
   "비번 없음": "Kein Frei",
+  "앱을 열어 주세요": "App öffnen",
   "알람 울림": "Wecker klingelt",
   "오늘 비번! 🎉": "Heute frei! 🎉",
   // 세이람과 일정 공유(2026-10-18)

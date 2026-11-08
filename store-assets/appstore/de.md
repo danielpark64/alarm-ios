@@ -49,6 +49,9 @@ Keine Registrierung, kein Login. Schichten und Wecker liegen nur auf deinem Ger�
 
 Dunkles und helles Design, einstellbare Schriftgröße
 
+Widgets für Home- und Sperrbildschirm
+Sieh deinen Dienstplan, ohne die App zu öffnen. Das kleine Widget zeigt die heutige Schicht, das mittlere die Woche und das große den ganzen Monat – der heutige Tag ist deutlich markiert, der nächste Wecker steht klein daneben. Ab iOS 17 kannst du im großen Widget zum vorigen oder nächsten Monat blättern.
+
 Funktioniert mit deiner Smartwatch
 Klingelt der Wecker auf dem Handy, meldet sich auch die Uhr.
 

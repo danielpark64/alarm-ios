@@ -440,6 +440,7 @@
  {
   "key": "⏰ 다음 알람",
   "files": [
+   "src/utils/iosWidget.ts",
    "src/utils/widgetSync.ts"
   ]
  },
@@ -1140,12 +1141,14 @@
  {
   "key": "비번 {n}일 후",
   "files": [
+   "src/utils/iosWidget.ts",
    "src/utils/widgetSync.ts"
   ]
  },
  {
   "key": "비번 없음",
   "files": [
+   "src/utils/iosWidget.ts",
    "src/utils/widgetSync.ts"
   ]
  },
@@ -1523,6 +1526,12 @@
   ]
  },
  {
+  "key": "앱을 열어 주세요",
+  "files": [
+   "src/utils/iosWidget.ts"
+  ]
+ },
+ {
   "key": "야간",
   "files": [
    "src/constants/index.ts"
@@ -1641,6 +1650,7 @@
  {
   "key": "오늘 비번! 🎉",
   "files": [
+   "src/utils/iosWidget.ts",
    "src/utils/widgetSync.ts"
   ]
  },

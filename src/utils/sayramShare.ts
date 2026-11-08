@@ -22,17 +22,20 @@ function shiftNameFor(a: Alarm, ds: string): string {
   return t('근무'); // 근무조를 안 정한 교대 알람(N일 주기 등) — 알람 이름 대신 "근무"
 }
 
+/** 근무표: f부터 하루 한 글자(d), 글자는 근무 종류 표(이름 l·색 c·쉬는 날 o)의 위치. '-'는 표시할 근무 없음 */
+export type ShiftTable = { f: string; l: string[]; c: string[]; o: number[]; d: string };
+
 /**
- * 세이람에 보낼 근무표. 판정 순서는 위젯(widgetSync weekSchedule)·달력과 같다 — 하루 근무 변경이 먼저,
- * 없으면 shiftForDate/isOffDay. 평소 쉬는 날도 "비번"으로 보낸다(위젯은 쉬는 날 라벨이 ''라 그대로 쓰면 비번이 빠진다).
+ * 판정 순서는 위젯(widgetSync weekSchedule)·달력과 같다 — 하루 근무 변경이 먼저,
+ * 없으면 shiftForDate/isOffDay. 평소 쉬는 날도 "비번"으로 넣는다(위젯은 쉬는 날 라벨이 ''라 그대로 쓰면 비번이 빠진다).
+ * 세이람 공유와 iOS 위젯(iosWidget.ts)이 함께 쓴다.
  */
-export function buildShiftShare(alarms: Alarm[], overrides: DayOverrides, today: Date): string {
-  const from = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 31);
+export function buildShiftTable(alarms: Alarm[], overrides: DayOverrides, from: Date, days: number): ShiftTable {
   const colorOf = shiftColorMap(alarms);
   const keyOf = new Map<string, number>();
   const l: string[] = []; const c: string[] = []; const o: number[] = [];
   let d = '';
-  for (let i = 0; i < DAYS; i++) {
+  for (let i = 0; i < days; i++) {
     const ds = ymd(new Date(from.getFullYear(), from.getMonth(), from.getDate() + i));
     const ov = dayOverrideDisplay(overrides[ds]);
     const shift = ov ? null : shiftForDate(alarms, ds);
@@ -53,7 +56,13 @@ export function buildShiftShare(alarms: Alarm[], overrides: DayOverrides, today:
     }
     d += B36[keyOf.get(key)!];
   }
-  return JSON.stringify({ f: ymd(from), l, c, o, d, t: Date.now() });
+  return { f: ymd(from), l, c, o, d };
+}
+
+/** 세이람에 보낼 근무표 — 앞 31일부터 DAYS일 */
+export function buildShiftShare(alarms: Alarm[], overrides: DayOverrides, today: Date): string {
+  const from = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 31);
+  return JSON.stringify({ ...buildShiftTable(alarms, overrides, from, DAYS), t: Date.now() });
 }
 
 // push: 1 = 바뀔 때 넣어 주는 v3 앱 — 이 표시가 있으면 상대에게서 직접 가져오지 않는다(상대 앱을 깨우지 않게)

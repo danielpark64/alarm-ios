@@ -257,6 +257,14 @@ export default function App() {
   //   xcrun devicectl device process launch --device <id> --payload-url "alarmapp://?k=<키>&testAlarm=3" com.danielpark.alarmapp
   // 같은 URL은 한 번만 처리하고, 로드 전엔 기다린다(알람 목록이 비어 있을 때 저장하면 덮어쓴다).
   const url = Linking.useURL();
+  // iOS 위젯을 누르면 달력으로(targets/widget의 widgetURL). 개발용 링크와 달리 잠금 키가 없고 탭만 바꾼다.
+  // 같은 주소를 다시 눌러도 동작해야 해서 useURL이 아니라 이벤트로 받는다.
+  useEffect(() => {
+    const open = (u: string | null) => { if (u && Linking.parse(u).queryParams?.widget != null) setTab('calendar'); };
+    Linking.getInitialURL().then(open).catch(() => {});
+    const sub = Linking.addEventListener('url', e => open(e.url));
+    return () => sub.remove();
+  }, []);
   const handledUrlRef = useRef<string | null>(null);
   useEffect(() => {
     if (!loaded || !url || handledUrlRef.current === url) return;

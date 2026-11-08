@@ -11,6 +11,7 @@ import { loadLanguageSetting } from '../i18n';
 import { getHolidayVersion } from '../constants/holidays';
 // 문구가 리스너 콜백 안에 있어 훅(useT)이 아니라 순수 번역 함수를 쓴다. 지역 변수 t와 겹치지 않게 tr로 가져온다
 import { t as tr } from '../i18n/translate';
+import { syncIosWidget } from '../utils/iosWidgetNative';
 
 const { AlarmModule } = NativeModules;
 
@@ -93,6 +94,8 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (next) => {
       if (appStateRef.current.match(/inactive|background/) && next === 'active' && loadedRef.current) {
+        // iOS 위젯은 넘겨 준 기간까지만 그린다 — 앱에 들어올 때마다 기간을 민다(내용이 같으면 네이티브가 아무것도 안 한다).
+        if (Platform.OS === 'ios') syncIosWidget(alarmsRef.current, getDayOverridesCache());
         // 공휴일 버전도 키에 넣는다 — API로 임시공휴일이 새로 들어온 날 그 공휴일 스킵이 다음 복귀 때 예약에 반영되게.
         const key = `${todayStr()}|${getHolidayVersion()}|${JSON.stringify(alarmsRef.current)}|${JSON.stringify(getDayOverridesCache())}`;
         if (key !== lastRescheduleKeyRef.current) {

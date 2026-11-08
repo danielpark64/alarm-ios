@@ -3,6 +3,7 @@ import { Alarm, DayOverrides, SHIFTS, DAYS_DISPLAY } from '../constants';
 import { pad, todayStr, getType, getNextFireDate, shiftForDate, isOffDay, shiftColorMap, alarmsForDate, isWorkAlarm, isHolidayOffWithOverride, effectiveShift, dayOverrideDisplay, alarmLabel } from './index';
 import { roleLabel } from './workPattern';
 import { t } from '../i18n/translate';
+import { syncIosWidget } from './iosWidgetNative';
 
 const { WidgetModule } = NativeModules;
 
@@ -13,6 +14,7 @@ const SHIFT_COLORS = ['#6c5ce7','#00b894','#e17055','#0984e3','#fd79a8','#fdcb6e
 export const ACTIVE_IDS_NONE = 'none';
 
 export async function syncWidget(alarms: Alarm[], overrides: DayOverrides = {}) {
+  if (Platform.OS === 'ios') { syncIosWidget(alarms, overrides); return; }
   if (Platform.OS !== 'android' || !WidgetModule?.updateWidgetData) return;
 
   const today = todayStr();

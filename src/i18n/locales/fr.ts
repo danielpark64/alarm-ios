@@ -362,6 +362,7 @@ export const FR: Record<string, string> = {
   "⏰ 다음 알람": "⏰ Prochaine alarme",
   "비번 {n}일 후": "Repos dans {n} j",
   "비번 없음": "Aucun repos",
+  "앱을 열어 주세요": "Ouvrez l'app",
   "알람 울림": "Alarme en cours",
   "오늘 비번! 🎉": "Repos aujourd'hui ! 🎉",
   // 세이람과 일정 공유(2026-10-18)
