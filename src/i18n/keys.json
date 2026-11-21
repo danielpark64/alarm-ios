@@ -773,6 +773,12 @@
   ]
  },
  {
+  "key": "다시 울림",
+  "files": [
+   "src/utils/notifications/alarmkit.ts"
+  ]
+ },
+ {
   "key": "다시 켜기",
   "files": [
    "src/components/Home/CalendarView.tsx"
@@ -1395,6 +1401,7 @@
  {
   "key": "알람 끄기",
   "files": [
+   "src/utils/notifications/alarmkit.ts",
    "src/utils/notifications/index.ts"
   ]
  },

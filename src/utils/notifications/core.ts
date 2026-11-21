@@ -7,6 +7,8 @@ import { roleLabel } from '../workPattern';
 import { scheduleNative } from './android';
 import { weekdaySlotId, mainNativeId } from './alarmIds';
 import { isStaleGen } from './rescheduleGen';
+import { usesAlarmKit } from '../alarmkitRoute';
+import { isAlarmKitMode, scheduleAlarmKitDate, scheduleAlarmKitWeekly } from './alarmkit';
 import { getAlarmDefaults } from '../../hooks/useAlarmDefaults';
 // ⚠️ 이 파일엔 지역 변수 t(시각 객체)가 있어 번역 함수는 tr로 가져온다
 import { t as tr } from '../../i18n/translate';
@@ -53,6 +55,8 @@ async function schedulePatternAlarmTriggers(alarm: Alarm, overrides: DayOverride
   const vibOn   = alarm.vib === 'pulse';
   const volume  = getAlarmDefaults().volume;
   const role    = alarm.groupRole ?? 'commute';
+  // iOS 26+ AlarmKit 경로 — 발화일 계산(override·skips·dayOffset)은 아래 루프 그대로 쓰고, 마지막 예약만 AlarmKit으로 건다.
+  const viaAK   = usesAlarmKit(alarm, isAlarmKitMode());
 
   const p2 = (n: number) => String(n).padStart(2, '0');
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -104,11 +108,15 @@ async function schedulePatternAlarmTriggers(alarm: Alarm, overrides: DayOverride
       ...(threadIdentifier ? { threadIdentifier } : {}),
     } as Notifications.NotificationContentInput;
 
-    await Notifications.scheduleNotificationAsync({
-      identifier: makeId(alarm.id, `date_${ds}`),
-      content,
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: ft },
-    });
+    if (viaAK) {
+      await scheduleAlarmKitDate(alarm.id, ds, ft, title); // Expo 알림은 걸지 않는다(두 번 울림 방지)
+    } else {
+      await Notifications.scheduleNotificationAsync({
+        identifier: makeId(alarm.id, `date_${ds}`),
+        content,
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: ft },
+      });
+    }
     if (isStaleGen(gen)) return; // 더 새로운 rescheduleAll이 시작됨 — 이 호출은 여기서 멈춘다
     scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', t.hour, t.min, -1, soundOn, vibOn, volume, alarm.id);
     nativeIdx++;
@@ -131,6 +139,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
   const soundOn  = alarm.snd === 'default';
   const vibOn    = alarm.vib === 'pulse';
   const volume   = getAlarmDefaults().volume;
+  const viaAK    = usesAlarmKit(alarm, isAlarmKitMode()); // iOS 26+ AlarmKit 경로(로테이션 루프와 같은 판정)
 
   const baseContent = {
     title, body: bodyText,
@@ -179,6 +188,11 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
 
   // ── wdcustom (요일 선택) ──────────────────────────────────────────
   if (alarm.rm === 'wdcustom' && alarm.days.length > 0 && !hasUpcomingSkips && !hasUpcomingOverride && !hasUpcomingHoliday) {
+    // AlarmKit은 요일 반복을 한 건(.relative weekly)으로 건다 — Expo WEEKLY처럼 앱을 안 열어도 끝없이 반복된다.
+    if (viaAK) {
+      await scheduleAlarmKitWeekly(alarm.id, alarm.days, alarm.hour, alarm.min, title);
+      return;
+    }
     const iw = (d: number) => (d + 2) % 7 || 7;
     for (const d of alarm.days) {
       await Notifications.scheduleNotificationAsync({
@@ -257,13 +271,17 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
     if (dw?.dayOffset) ft.setDate(ft.getDate() + dw.dayOffset); // 자정 넘는 override 퇴근 — 근무일 다음 날
     if (ft <= new Date()) continue;
 
-    await Notifications.scheduleNotificationAsync({
-      identifier: makeId(alarm.id, `date_${ds}`),
-      // override로 시각이 바뀐 날만 알림 배너 문구도 그 시각으로 — 아니면 알림엔 원래 시각이
-      // 뜨는데 실제로는 다른 시각에 울리는 불일치가 생긴다.
-      content: dw?.time ? { ...baseContent, body: tr('{time} 알람', { time: `${pad(hh)}:${pad(mm)}` }) } : baseContent,
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: ft },
-    });
+    if (viaAK) {
+      await scheduleAlarmKitDate(alarm.id, ds, ft, title); // Expo 알림은 걸지 않는다(두 번 울림 방지)
+    } else {
+      await Notifications.scheduleNotificationAsync({
+        identifier: makeId(alarm.id, `date_${ds}`),
+        // override로 시각이 바뀐 날만 알림 배너 문구도 그 시각으로 — 아니면 알림엔 원래 시각이
+        // 뜨는데 실제로는 다른 시각에 울리는 불일치가 생긴다.
+        content: dw?.time ? { ...baseContent, body: tr('{time} 알람', { time: `${pad(hh)}:${pad(mm)}` }) } : baseContent,
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: ft },
+      });
+    }
     if (isStaleGen(gen)) return;
     // ⚠️ 네이티브는 override여도 bodyText를 원래 시각 그대로 넘긴다(고쳤다가 되돌림) —
     // 이 문자열이 실제 발화 시 cancelExpoGroupReps(ringing.body)의 정규식 파싱으로 rep
@@ -304,7 +322,8 @@ async function scheduleRepSeries(
 // ── 같은 시간대 알람 묶음 보조 알림 ───────────────────────────────────
 // count: 이 묶음에 줄 보조 알림 수(rescheduleAll이 가장 가까운 묶음엔 많이, 나머지엔 적게 준다)
 export async function scheduleGroupReps(group: Alarm[], overrides: DayOverrides = {}, gen?: number, count = ANDROID_REP_COUNT) {
-  const active = group.filter(a => a.active);
+  // AlarmKit 알람은 끌 때까지 시스템이 울리므로 보조 알림(반복 울림)을 걸지 않는다 — 걸면 끈 뒤에 Expo가 또 울린다.
+  const active = group.filter(a => a.active && !usesAlarmKit(a, isAlarmKitMode()));
   if (!active.length || count <= 0) return;
 
   const [first] = active;
@@ -348,6 +367,7 @@ export async function scheduleGroupReps(group: Alarm[], overrides: DayOverrides 
 // grp_* 식별자만 알기 때문에 여기 alarm_{id}_rep*는 Android에선 걸지 않는다.
 export async function schedulePatternAlarmReps(alarm: Alarm, overrides: DayOverrides = {}, gen?: number, count = 0) {
   if (Platform.OS !== 'ios' || !alarm.active || count <= 0) return;
+  if (usesAlarmKit(alarm, isAlarmKitMode())) return; // AlarmKit 알람엔 보조 알림 없음(scheduleGroupReps 주석)
   const next = getNextFireDate(alarm, overrides);
   if (!next) return;
   // 제목은 본 알림과 같은 규칙 — "근무일"의 근무조로 만든다(자정 넘는 퇴근은 발화일이 근무일 다음 날).

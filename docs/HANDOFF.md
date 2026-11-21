@@ -6,6 +6,15 @@
 ## 지금 상태 한 줄
 **두 스토어 모두 심사·검토 중(2026-11-21 제출).** 결과가 나오기 전에는 어느 쪽도 다시 제출하지 않는다. 코드는 main에 커밋·푸시됨.
 
+## 진행 중 — 1.5.4 iOS 26 AlarmKit 알람 (2026-11-21 구현·커밋)
+- 목표: iOS 26 이상은 AlarmKit으로 기본 시계 알람처럼 울림(무음·집중 모드 통과, 시스템 울림 화면). **자동 전환**(권한 허용 → AlarmKit, 거부·iOS 26 미만 → 기존 Expo 방식), 설정 항목 없음. Android 무변경.
+- 분기 한 곳: `src/utils/alarmkitRoute.ts` `usesAlarmKit(alarm, 모드)` = iOS 26+ & 권한 허용 & **소리 알람(snd='default')**. 진동만 알람은 Expo(무음 파일 방식) 유지 — AlarmKit엔 "진동만" API가 없음.
+- 구조: 네이티브 `modules/alarmapp-alarmkit`(UserDefaults 원장 UUID→알람 id, AlarmKit 약한 링크), JS `src/utils/notifications/alarmkit.ts`(직렬 큐). core.ts 세 예약 지점이 `viaAK`로 갈라지고 보조(rep) 알림은 AlarmKit 알람에 안 건다. 요일 반복은 AlarmKit weekly 한 건, 나머지는 기존 14일 루프 그대로 날짜별 예약(UUID = 알람 id+근무일 해시라 겹쳐도 덮어씀). rescheduleAll은 매번 모드 재판정 → AlarmKit 전체 정리(울리는 중인 켜진 알람만 보존) → 재예약.
+- 위젯 확장에 `AlarmLiveActivity.swift`(카운트다운용, 울림 화면은 시스템이 그림). `[다시 울림]`은 `SNOOZE_ENABLED`(지금 false)를 따른다 — 켜면 5분 카운트다운 버튼이 생김.
+- 개발 딥링크: `akTest=<분>`(무음 AlarmKit 테스트 알람, 앱을 앞으로 가져오면 재예약이 지움), `report=1`에 `alarmkit` 항목(권한·모드·예약 목록).
+- **남은 일:** 폰(iOS 26+) 수동 확인 — 잠금/백그라운드/앱 화면 3환경, 무음 모드, 끈 알람이 안 울리는지, 잠금 화면 울림 화면에 끄기 버튼이 보이는지(시뮬은 Dynamic Island 형태만 확인). 8(iOS 16) 기존 방식 확인. 그 뒤 1.5.3 심사 결과 → 1.5.4로 번호 올려 제출.
+- 버전 번호는 아직 1.5.3 그대로.
+
 ## 스토어 상태 (2026-11-21)
 - **iOS 1.5.3(빌드 7)**: App Store 심사 대기(WAITING_FOR_REVIEW), 통과하면 자동 출시. 내용 = 새 스크린샷 8장(15개 로캘, 아이폰 6.3·아이패드 13) + 위젯 날짜 두 줄 꺾임 수정. 확인: `node ~/.appstoreconnect/asc-submit.mjs com.danielpark.alarmapp 1.5.3`(확인만, `--go` 금지).
   - 판매 중인 판은 1.5.2(위젯 추가).

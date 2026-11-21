@@ -11,6 +11,7 @@ import * as Linking from 'expo-linking';
 import { useT, LANGS, type LanguageSetting } from '../src/i18n';
 import { syncWidget } from '../src/utils/widgetSync';
 import { rescheduleAll, registerNotificationCategories } from '../src/utils/notifications';
+import { alarmKitEnv, isAlarmKitMode, listAlarmKit, scheduleAlarmKitTest } from '../src/utils/notifications/alarmkit';
 import * as Notifications from 'expo-notifications';
 import { useAlarms } from '../src/hooks/useAlarms';
 import { useDayOverrides } from '../src/hooks/useDayOverrides';
@@ -293,10 +294,16 @@ export default function App() {
           alarms: alarms.map(a => ({ id: a.id, typeId: a.typeId, rm: a.rm, label: a.label, active: a.active, snd: a.snd, vib: a.vib, role: a.groupRole })),
           pending: pending.map(n => ({ id: n.identifier, when: fmtT(n.trigger), title: n.content.title, body: n.content.body, sound: (n.content as any).sound ?? null }))
             .sort((a, b) => String(a.when).localeCompare(String(b.when))),
+          alarmkit: { ...alarmKitEnv(), mode: isAlarmKitMode(), scheduled: await listAlarmKit() },
           presented: presented.map(n => ({ id: n.request.identifier, title: n.request.content.title, body: n.request.content.body, date: new Date(n.date).toISOString() })),
         };
         await AsyncStorage.setItem('dev_report', JSON.stringify(report));
       })();
+      return;
+    }
+    // alarmapp://?k=…&akTest=<분> — iOS 26+ AlarmKit 무음 테스트 알람(앱 알람 목록과 무관, 울림 화면 확인용).
+    if (q.akTest != null) {
+      scheduleAlarmKitTest(Math.max(1, parseInt(String(q.akTest), 10) || 1));
       return;
     }
     // alarmapp://?k=…&lang=en|ja|…|system — 언어 설정을 바꾼다(기기 테스트에서 언어별 화면을 찍는 용도).

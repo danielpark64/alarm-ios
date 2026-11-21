@@ -7,7 +7,7 @@ module.exports = (config) => ({
   displayName: 'RotaWake',
   bundleIdentifier: '.widget',
   deploymentTarget: '16.4',
-  frameworks: ['SwiftUI', 'WidgetKit', 'AppIntents'],
+  frameworks: ['SwiftUI', 'WidgetKit', 'AppIntents', 'ActivityKit'],
   entitlements: {
     'com.apple.security.application-groups':
       config.ios.entitlements['com.apple.security.application-groups'],

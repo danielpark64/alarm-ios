@@ -1,3 +1,4 @@
 {
-  "CFBundleDisplayName": "교대알람"
+  "CFBundleDisplayName": "교대알람",
+  "NSAlarmKitUsageDescription": "무음·집중 모드에서도 시계 앱 알람처럼 전체 화면으로 울리게 하려면 알람 권한이 필요합니다."
 }

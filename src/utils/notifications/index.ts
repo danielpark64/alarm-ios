@@ -5,6 +5,8 @@ import { getNextFireDate } from '../index';
 import { cancelNativeAlarms, syncActiveNativeAlarms } from './android';
 import { scheduleAlarmTriggers, scheduleGroupReps, schedulePatternAlarmReps } from './core';
 import { nextGen, isStaleGen } from './rescheduleGen';
+import { usesAlarmKit } from '../alarmkitRoute';
+import { isAlarmKitMode, refreshAlarmKitMode, cancelAlarmKitFor, cancelAllAlarmKit } from './alarmkit';
 import { t } from '../../i18n/translate';
 
 Notifications.setNotificationHandler({
@@ -35,6 +37,7 @@ export async function cancelAlarmNotifications(alarmId: number) {
     }).map(n => Notifications.cancelScheduledNotificationAsync(n.identifier))
   );
   cancelNativeAlarms(alarmId);
+  await cancelAlarmKitFor(alarmId); // iOS 26+ AlarmKit 원장 — 방식과 무관하게 항상(예전 방식으로 걸린 것도 지운다)
 }
 
 export async function cancelAllNotifications() {
@@ -63,8 +66,12 @@ export async function cancelExpoGroupReps(body: string) {
 // 가장 가까운 묶음(또는 iOS 로테이션 알람)에는 긴 묶음(IOS_REP_COUNT_NEAREST), 나머지는 짧게.
 // Android는 네이티브가 끌 때까지 울리므로 예전과 같은 +1/+2분 2개만(ANDROID_REP_COUNT).
 // 반환: 끝까지 수행했으면 true, 세대가 바뀌어 중단됐으면 false.
-async function scheduleAllReps(groups: Map<string, Alarm[]>, patternAlarms: Alarm[], overrides: DayOverrides, gen?: number): Promise<boolean> {
+async function scheduleAllReps(allGroups: Map<string, Alarm[]>, allPattern: Alarm[], overrides: DayOverrides, gen?: number): Promise<boolean> {
   const ios = Platform.OS === 'ios';
+  // AlarmKit 알람은 보조 알림 대상이 아니다 — "가장 가까운 묶음" 계산에서도 빼야 긴 묶음이 Expo 알람에 간다.
+  const expo = (a: Alarm) => !usesAlarmKit(a, isAlarmKitMode());
+  const groups = new Map(Array.from(allGroups.entries()).map(([k, g]) => [k, g.filter(expo)] as [string, Alarm[]]).filter(([, g]) => g.length));
+  const patternAlarms = allPattern.filter(expo);
   const nextOf = (as: Alarm[]) => Math.min(...as.map(a => getNextFireDate(a, overrides)?.getTime() ?? Infinity));
   const candidates: { key: string; next: number }[] = [
     ...Array.from(groups.entries()).map(([key, g]) => ({ key: `grp_${key}`, next: nextOf(g) })),
@@ -120,6 +127,13 @@ export async function rescheduleAll(alarms: Alarm[], overrides: DayOverrides = {
   await cancelAllNotifications();
   if (isStaleGen(gen)) return;
   for (const alarm of alarms) cancelNativeAlarms(alarm.id);
+  // 방식(AlarmKit/Expo)을 매번 다시 판정한다 — 설정 앱에서 권한을 바꾸거나 iOS를 올린 뒤 첫 재예약부터 따라간다.
+  await refreshAlarmKitMode();
+  if (isStaleGen(gen)) return;
+  // AlarmKit 원장 전체 정리 — 방식과 무관하게 항상. 방식이 Expo로 바뀌었으면 AlarmKit 쪽 잔여가, 삭제된 알람이면
+  // 그 id의 예약이 여기서 지워진다(Expo 쪽은 바로 위 전체 취소가 같은 역할). 켜져 있는 알람의 울림·다시 울림만 남긴다.
+  await cancelAllAlarmKit(alarms.filter(a => a.active).map(a => a.id));
+  if (isStaleGen(gen)) return;
   const active = alarms.filter(a => a.active);
 
   // 근무 시간대 로테이션 알람(rm==='pattern')은 날짜마다 시각이 달라 최상위 hour/min이

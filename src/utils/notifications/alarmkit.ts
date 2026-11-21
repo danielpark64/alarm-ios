@@ -1,0 +1,106 @@
+// iOS 26+ AlarmKit 연결(modules/alarmapp-alarmkit) — 경로 결정은 ../alarmkitRoute.ts(순수), 여기는 네이티브 호출만.
+//
+// 원장: 네이티브가 "AlarmKit 예약 UUID → 알람 id"를 UserDefaults에 적어 둔다(Android AlarmStore와 같은 역할).
+// 개별 취소(cancelAlarmKitFor)는 원장에서 그 알람 id의 UUID를 전부 찾아 지우고, 전체 정리(cancelAllAlarmKit)는
+// 원장 + AlarmKit이 알고 있는 이 앱의 예약 전부를 지운다 — 목록에서 사라진(삭제된) 알람 id도 함께 지워진다.
+//
+// ⚠️ 모든 예약·취소는 serial() 직렬 큐로만 보낸다. rescheduleAll이 겹쳐 돌면 앞 호출의 늦게 끝난 schedule이
+// 뒤 호출의 cancelAll보다 나중에 처리돼 꺼진 알람이 AlarmKit에 남을 수 있다 — JS 호출 순서대로 처리하면 막힌다.
+import { Platform } from 'react-native';
+import { requireOptionalNativeModule } from 'expo-modules-core';
+import { alarmKitEnabled, shouldAskAlarmKit, alarmKitUuid, alarmKitWeekdays, type AlarmKitAuth, type AlarmKitEnv } from '../alarmkitRoute';
+import { SNOOZE_ENABLED } from '../../constants';
+import { t } from '../../i18n/translate';
+
+type ScheduleOptions = {
+  id: string; alarmId: number;
+  fireMs: number;          // 날짜 예약(.fixed) — weekdays가 비어 있을 때
+  hour: number; minute: number; weekdays: string[]; // 요일 반복(.relative weekly)
+  title: string; stopText: string; snoozeText: string; snoozeMin: number;
+  silent: boolean;         // 개발 테스트 전용(무음 파일) — 사용자 알람은 항상 false(alarm_long.wav)
+};
+type Native = {
+  isAvailable(): boolean;
+  authorizationState(): AlarmKitAuth;
+  requestAuthorization(): Promise<AlarmKitAuth>;
+  schedule(o: ScheduleOptions): Promise<boolean>;
+  cancelForAlarm(alarmId: number): Promise<number>;
+  cancelAll(keepActiveIds: number[]): Promise<number>;
+  listScheduled(): Promise<{ id: string; alarmId: number; state: string }[]>;
+};
+
+const native = Platform.OS === 'ios' ? requireOptionalNativeModule<Native>('AlarmappAlarmKit') : null;
+
+let queue: Promise<unknown> = Promise.resolve();
+function serial<T>(fn: () => Promise<T>): Promise<T> {
+  const p = queue.then(fn, fn);
+  queue = p.catch(() => {});
+  return p;
+}
+
+export function alarmKitEnv(): AlarmKitEnv {
+  const available = !!native && native.isAvailable();
+  let auth: AlarmKitAuth = 'unavailable';
+  if (available) { try { auth = native!.authorizationState(); } catch {} }
+  return { os: Platform.OS, available, auth };
+}
+
+// 현재 방식 — rescheduleAll이 시작할 때마다 refreshAlarmKitMode로 갱신한다(설정 앱에서 권한을 바꾸거나 iOS를 올려도
+// 다음 재예약부터 따라간다). core.ts의 예약 분기가 이 값을 읽는다.
+let enabled = false;
+export function isAlarmKitMode(): boolean { return enabled; }
+export async function refreshAlarmKitMode(): Promise<boolean> {
+  enabled = alarmKitEnabled(alarmKitEnv());
+  return enabled;
+}
+
+// iOS 26+에서 아직 안 물었으면 한 번 묻는다. 반환: 이번에 방식이 바뀌었는지(→ 호출한 쪽이 재예약).
+export async function requestAlarmKitIfNeeded(): Promise<boolean> {
+  if (!native || !shouldAskAlarmKit(alarmKitEnv())) return false;
+  try { await native.requestAuthorization(); } catch {}
+  return alarmKitEnabled(alarmKitEnv()) !== enabled;
+}
+
+function buttons() {
+  const snoozeMin = SNOOZE_ENABLED ? 5 : 0; // 앱에서 스누즈를 없앴으면(SNOOZE_ENABLED=false) [다시 울림] 버튼도 없다
+  return { stopText: t('알람 끄기'), snoozeText: t('다시 울림'), snoozeMin };
+}
+
+// 날짜 하나에 한 번 — key는 근무일(YYYY-MM-DD). 반환 false면 예약 실패(한도 초과 등).
+export function scheduleAlarmKitDate(alarmId: number, key: string, fire: Date, title: string): Promise<boolean> {
+  if (!native) return Promise.resolve(false);
+  const o: ScheduleOptions = { id: alarmKitUuid(alarmId, key), alarmId, fireMs: fire.getTime(), hour: 0, minute: 0, weekdays: [], title, ...buttons(), silent: false };
+  return serial(() => native.schedule(o)).catch(() => false);
+}
+
+// 요일 반복 — 끝없이 반복되므로 14일 창이 필요 없다(Expo WEEKLY 경로와 같은 조건일 때만 쓴다).
+export function scheduleAlarmKitWeekly(alarmId: number, days: number[], hour: number, minute: number, title: string): Promise<boolean> {
+  if (!native) return Promise.resolve(false);
+  const o: ScheduleOptions = { id: alarmKitUuid(alarmId, 'weekly'), alarmId, fireMs: 0, hour, minute, weekdays: alarmKitWeekdays(days), title, ...buttons(), silent: false };
+  return serial(() => native.schedule(o)).catch(() => false);
+}
+
+export function cancelAlarmKitFor(alarmId: number): Promise<number> {
+  if (!native || !native.isAvailable()) return Promise.resolve(0);
+  return serial(() => native.cancelForAlarm(alarmId)).catch(() => 0);
+}
+
+// keepActiveIds: 지금 울리는 중·다시 울림 대기 중인 예약 가운데 이 알람 id들(여전히 켜져 있는 알람)의 것은 남긴다 —
+// 울리는 도중 앱을 열어 재예약이 돌아도 울림·다시 울림이 끊기지 않게. 꺼졌거나 삭제된 알람의 것은 상태와 무관하게 지운다.
+export function cancelAllAlarmKit(keepActiveIds: number[] = []): Promise<number> {
+  if (!native || !native.isAvailable()) return Promise.resolve(0);
+  return serial(() => native.cancelAll(keepActiveIds)).catch(() => 0);
+}
+
+export function listAlarmKit(): Promise<{ id: string; alarmId: number; state: string }[]> {
+  if (!native || !native.isAvailable()) return Promise.resolve([]);
+  return serial(() => native.listScheduled()).catch(() => []);
+}
+
+// 개발 딥링크(akTest) 전용 — 앱 알람 목록과 무관한 무음 테스트 알람(alarmId -1). 울림 화면 확인용.
+export function scheduleAlarmKitTest(minutes: number): Promise<boolean> {
+  if (!native) return Promise.resolve(false);
+  const fire = new Date(Date.now() + minutes * 60_000);
+  const o: ScheduleOptions = { id: alarmKitUuid(-1, String(fire.getTime())), alarmId: -1, fireMs: fire.getTime(), hour: 0, minute: 0, weekdays: [], title: '⏰ AlarmKit 테스트', ...buttons(), silent: true };
+  return serial(() => native.schedule(o)).catch(() => false);
+}

@@ -12,6 +12,7 @@ import { getHolidayVersion } from '../constants/holidays';
 // 문구가 리스너 콜백 안에 있어 훅(useT)이 아니라 순수 번역 함수를 쓴다. 지역 변수 t와 겹치지 않게 tr로 가져온다
 import { t as tr } from '../i18n/translate';
 import { syncIosWidget } from '../utils/iosWidgetNative';
+import { requestAlarmKitIfNeeded, alarmKitEnv } from '../utils/notifications/alarmkit';
 
 const { AlarmModule } = NativeModules;
 
@@ -38,6 +39,8 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
   // 식별자가 날짜와 무관해 날짜 키만으로는 다음 날 rep 재생성이 보장되지 않기 때문이다
   // (Android는 AlarmReceiver가 네이티브 rep를 따로 걸지만 iOS는 Expo rep만 있다).
   const lastRescheduleKeyRef = useRef<string | null>(null);
+  // iOS 26+ AlarmKit 권한 결과로 방식이 바뀐 횟수 — 바뀌면 (로드가 끝난 뒤) 한 번 전체 재예약한다.
+  const [alarmKitChanged, setAlarmKitChanged] = useState(0);
 
   // 네이티브 경로로 끈 알람의 후속 처리 — Expo +1/+2분 재알림 취소 + '한 번' 알람 자동 비활성화.
   // 인앱 팝업(stopRinging)과 네이티브 알림 버튼/커버 화면(alarmStopped 이벤트·consumeLastStopped)
@@ -56,6 +59,9 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       setNotifGranted(ok);
       await loadLanguageSetting(); // 알림 버튼('알람 끄기')은 등록 시점 언어로 굳는다 — 저장된 언어 설정을 먼저 읽는다
       await registerNotificationCategories();
+      // iOS 26+: AlarmKit 권한을 한 번 묻는다(알림 권한 창이 닫힌 뒤 — 두 시스템 창이 겹치지 않게).
+      // 허용하면 소리 알람이 AlarmKit으로 옮겨 가도록 재예약, 거부하면 지금 방식 그대로.
+      if (await requestAlarmKitIfNeeded()) setAlarmKitChanged(n => n + 1);
 
       // 알림 권한 다이얼로그가 완전히 닫힌 뒤에 오버레이 권한 체크를 시작 —
       // 두 팝업(OS 다이얼로그 + 커스텀 Alert)이 동시에 뜨면 일부 기기(One UI 등)에서
@@ -65,6 +71,14 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       }
     })();
   }, []);
+
+  // AlarmKit 방식이 바뀌었으면 재예약 — 로드 전이면 loaded가 true가 될 때 돈다(useAlarms의 첫 재예약이
+  // 권한 응답보다 먼저 끝나 예전 방식으로 걸렸을 수 있으므로).
+  useEffect(() => {
+    if (!alarmKitChanged || !loaded) return;
+    lastRescheduleKeyRef.current = null;
+    rescheduleAll(alarmsRef.current, getDayOverridesCache());
+  }, [alarmKitChanged, loaded]);
 
   // "다른 앱 위에 표시" 권한 — 꺼져 있으면 OneUI 등에서 알람 끄기 팝업이 몇 초 후 강제로 닫힘
   useEffect(() => {
@@ -97,7 +111,8 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
         // iOS 위젯은 넘겨 준 기간까지만 그린다 — 앱에 들어올 때마다 기간을 민다(내용이 같으면 네이티브가 아무것도 안 한다).
         if (Platform.OS === 'ios') syncIosWidget(alarmsRef.current, getDayOverridesCache());
         // 공휴일 버전도 키에 넣는다 — API로 임시공휴일이 새로 들어온 날 그 공휴일 스킵이 다음 복귀 때 예약에 반영되게.
-        const key = `${todayStr()}|${getHolidayVersion()}|${JSON.stringify(alarmsRef.current)}|${JSON.stringify(getDayOverridesCache())}`;
+        // AlarmKit 권한 상태도 키에 넣는다 — 설정 앱에서 켜고/끄고 돌아오면 방식이 바뀌어야 한다.
+        const key = `${todayStr()}|${getHolidayVersion()}|${alarmKitEnv().auth}|${JSON.stringify(alarmsRef.current)}|${JSON.stringify(getDayOverridesCache())}`;
         if (key !== lastRescheduleKeyRef.current) {
           lastRescheduleKeyRef.current = key;
           await rescheduleAll(alarmsRef.current, getDayOverridesCache());

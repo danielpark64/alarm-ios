@@ -647,6 +647,47 @@ grep -q 'installedCache' "$N" 2>/dev/null \
   && ! grep -q 'AppState' "$ROOT/src/components/Home/PromoBanner.tsx" 2>/dev/null \
   && ok "" || { fail "sayramInstalled 결과를 기억하지 않거나 PromoBanner가 AppState마다 다시 확인함"; }
 
+# ── iOS 26+ AlarmKit(2026-11-21) — 허용되면 소리 알람은 AlarmKit만, 진동만·거부·iOS 26 미만은 기존 Expo 그대로 ──
+# ① AlarmKit 경로에선 Expo 메인 알림·보조(rep) 알림을 걸지 않는다 — 둘 다 걸면 같은 알람이 두 번 울린다.
+#    core.ts의 세 예약 지점(로테이션 루프·요일 WEEKLY·날짜 루프)이 모두 viaAK로 갈라지고, 보조 알림 두 함수가 AlarmKit 알람을 뺀다.
+_C="$ROOT/src/utils/notifications/core.ts"
+printf "  AlarmKit 경로에서 Expo 메인·보조 알림을 걸지 않는지 ... "
+_VA=$(grep -c "if (viaAK)" "$_C" 2>/dev/null)
+if [ "${_VA:-0}" -lt 3 ]; then fail "core.ts 예약 지점 3곳 중 viaAK 분기가 ${_VA:-0}곳뿐 — AlarmKit과 Expo가 둘 다 걸릴 수 있음"
+elif ! awk '/export async function scheduleGroupReps/,/^}/' "$_C" | grep -q "usesAlarmKit("; then fail "scheduleGroupReps가 AlarmKit 알람을 묶음에서 빼지 않음"
+elif ! awk '/export async function schedulePatternAlarmReps/,/^}/' "$_C" | grep -q "usesAlarmKit("; then fail "schedulePatternAlarmReps가 AlarmKit 알람에도 보조 알림을 검"
+elif ! grep -q "usesAlarmKit(" "$ROOT/src/utils/notifications/index.ts"; then fail "scheduleAllReps(가장 가까운 묶음 계산)가 AlarmKit 알람을 빼지 않음"
+else ok ""; fi
+
+# ② 개별 취소(cancelAlarmNotifications)는 Expo·네이티브에 더해 AlarmKit 원장 취소도 부른다.
+printf "  알람 취소가 AlarmKit 원장 취소도 부르는지 ... "
+awk '/export async function cancelAlarmNotifications/,/^}/' "$ROOT/src/utils/notifications/index.ts" | grep -q "cancelAlarmKitFor(alarmId)" \
+  && ok "" || { fail "cancelAlarmNotifications에 cancelAlarmKitFor 없음 — 끈 알람이 AlarmKit으로 계속 울림"; }
+
+# ③ rescheduleAll은 매번 모드를 다시 판정하고(권한 변경·iOS 업데이트) AlarmKit 원장 전체를 정리한 뒤 다시 건다 —
+#    삭제된 알람 id·반대쪽 방식에 남은 예약까지 지워진다. 정리 뒤엔 세대 확인.
+printf "  rescheduleAll이 AlarmKit 모드 재판정 + 원장 전체 정리 ... "
+_RA=$(awk '/export async function rescheduleAll/,/^}/' "$ROOT/src/utils/notifications/index.ts")
+if echo "$_RA" | grep -q "await refreshAlarmKitMode()" && echo "$_RA" | grep -q "await cancelAllAlarmKit(" \
+   && echo "$_RA" | grep -A1 "await cancelAllAlarmKit(" | grep -q "isStaleGen(gen)"; then ok ""
+else fail "rescheduleAll에 refreshAlarmKitMode/cancelAllAlarmKit(+isStaleGen) 없음 — 방식이 바뀌면 반대쪽 예약이 남음"; fi
+
+# ④ 권한 문구 — NSAlarmKitUsageDescription이 없거나 비면 AlarmKit 예약 자체가 안 된다(Apple 문서). 9개 언어 InfoPlist.
+printf "  NSAlarmKitUsageDescription(app.json + 9개 언어) ... "
+_MISS=""
+grep -q '"NSAlarmKitUsageDescription"' "$ROOT/app.json" 2>/dev/null || _MISS="app.json"
+for _l in ko en ja zh-Hans zh-Hant es fr de pt; do
+  grep -q '"NSAlarmKitUsageDescription": *"[^"]' "$ROOT/locales/$_l.json" 2>/dev/null || _MISS="$_MISS $_l"
+  grep -q "\"$_l\": *\"./locales/$_l.json\"" "$ROOT/app.json" 2>/dev/null || _MISS="$_MISS app.json:locales.$_l"
+done
+[ -z "$_MISS" ] && ok "" || fail "누락:$_MISS"
+
+# ⑤ AlarmKit 네이티브 호출은 직렬 큐로만 — 겹쳐 돈 rescheduleAll의 늦게 끝난 예약이 다음 호출의 전체 정리 뒤에 남지 않게.
+printf "  AlarmKit 네이티브 호출이 직렬 큐를 거치는지 ... "
+_AK="$ROOT/src/utils/notifications/alarmkit.ts"
+if [ -f "$_AK" ] && ! grep -vE '^\s*//' "$_AK" | grep -E "native[!?]?\.(schedule|cancelForAlarm|cancelAll)\(" | grep -vq "serial("; then ok ""
+else fail "alarmkit.ts가 없거나 schedule/cancel 네이티브 호출이 serial()을 거치지 않음"; fi
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
