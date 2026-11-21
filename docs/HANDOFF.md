@@ -1,38 +1,39 @@
-# 교대알람(AlarmApp) 인수인계 — 2026-10-14
+# 교대알람(AlarmApp) 인수인계 — 2026-11-21
 
-새 대화에서 이 파일을 먼저 읽고 이어서 작업한다. 프로젝트 규칙은 `CLAUDE.md`, 버그 이력은 `.claude/bugs.md`.
-**사용자에게 보이는 모든 글은 한국어로 쓴다**(전역 규칙, 사용자가 강하게 요청).
+새 대화에서 이 파일을 먼저 읽고 이어서 작업한다. 프로젝트 규칙은 `CLAUDE.md`, 버그 이력은 `.claude/bugs.md`, 여러 앱 현황은 `~/Desktop/daniel-project/본부/현황판.md`.
+**사용자에게 보이는 모든 글은 한국어로 쓴다**(전역 규칙).
 
 ## 지금 상태 한 줄
-v1.5.0(versionCode 10) 출시 준비가 끝났고 main에 병합·푸시됨(`b842d42`). **Play Console 업로드는 사용자가 직접 할 차례.**
+**두 스토어 모두 심사·검토 중(2026-11-21 제출).** 결과가 나오기 전에는 어느 쪽도 다시 제출하지 않는다. 코드는 main에 커밋·푸시됨.
 
-## 이번에 끝낸 것 (main에 있음)
-- 다국어 9개(ko en ja zh-Hans zh-Hant es fr de pt), 한국 전용 기능(공휴일·음력·절기·반반차)은 한국어에서만.
-- 해외 교대제도: 자정 넘는 야간 근무(퇴근은 근무일 다음 날), 주간·야간 근무조, 근무표 프리셋, 대체휴무·대기근무, 주 시작 요일.
-- **앱 이름**: 한국어 기기 "교대알람", 그 외 전부 **"RotaWake"**. 한국 스토어 제목은 "교대알람(RotaWake)".
-  - 처음 정한 "ShiftWake"는 같은 이름의 교대근무 알람 앱이 App Store 2개·Play 1개 있어서 바꿈.
-  - RotaWake는 App Store 12개국·Play·웹·상표 검색에서 없음, rotawake.com 비어 있음(공식 상표 DB 직접 조회는 안 함).
-- 버그 수정: 주 시작/언어를 바꾸면 달력 칸이 통째로 비던 문제(날짜 칸 key), iOS 로테이션 보조 알림 제목에 근무조 누락.
-- 위젯 선택 화면의 위젯 이름 현지화, 독일어 수정 화면 제목 단축.
+## 스토어 상태 (2026-11-21)
+- **iOS 1.5.3(빌드 7)**: App Store 심사 대기(WAITING_FOR_REVIEW), 통과하면 자동 출시. 내용 = 새 스크린샷 8장(15개 로캘, 아이폰 6.3·아이패드 13) + 위젯 날짜 두 줄 꺾임 수정. 확인: `node ~/.appstoreconnect/asc-submit.mjs com.danielpark.alarmapp 1.5.3`(확인만, `--go` 금지).
+  - 판매 중인 판은 1.5.2(위젯 추가).
+- **Play 스토어 등록정보**: 9개 언어(ko-KR en-US ja-JP zh-CN zh-TW es-ES fr-FR de-DE pt-BR) 휴대전화 스크린샷을 새 8장으로 바꿔 **검토로 전송함**. 통과하면 자동 반영(관리형 게시 꺼짐). 확인: Play Console → 교대알람 → 게시 개요.
+  - **AI 애셋 선언은 "애셋 라벨 지정 안함"** — 사용자가 직접 고른 값("AI 라벨은 항상 사용하지 않은 것으로"). 다음에도 사용자에게 확인하고 같은 값으로.
+  - 그래픽 이미지(1024×500)·짧은 설명("확실하게 울리는 알람")은 안 바꿈.
+- **Android 1.5.2(vc11)**: AAB `~/Desktop/교대알람-1.5.2-vc11.aab` 준비됨, **아직 안 올림**. 세이람이 Play에 공개된 뒤 사용자가 올린다. 위젯 수정은 iOS만이라 Android는 그대로.
 
-## Play 업로드 자료 (사용자가 직접 올림)
-- AAB: `~/Desktop/교대알람-1.5.0-vc10.aab` (서명은 기존 출시본과 동일 확인)
-- 순서 안내: `docs/release-1.5.0-guide.md`
-- 등록 문구: `store-assets/listings/<언어>.md` (제목·짧은 설명·전체 설명·새 기능, 글자 수 검증 완료)
-- 출시 노트(전 언어 한 번에): `store-assets/release-notes-1.5.0.md`
-- 스크린샷 54장(1350×2400): `store-assets/screenshots/i18n-2026-10-14/<언어>/`, 같은 것이 `~/Desktop/스크린샷/스토어-다국어-2026-10-14/`
-- 대표 이미지: `store-assets/feature-graphics/<언어>.png` (`python3 scripts/make-feature-graphic.py "RotaWake"`로 재생성)
-- 개인정보처리방침: `docs/privacy.html`에 영어판 추가(같은 주소 `#en`)
-- 해외 노출하려면 Play Console에서 **배포 국가 추가** 필요(안내서 6번).
-- versionCode 10은 업로드하는 순간 소모 — 이후 코드를 고치면 11로 빌드. 심사 중 재제출 금지.
+## 스토어 스크린샷 (새 방식, 모든 앱 공통)
+- 방법: `~/.claude/store-screenshots.md`(본부 `규칙/스토어-이미지.md`). 종이 콜라주 + 큰 문구, 1·2번 장은 폰이 이음매에 걸쳐 이어짐.
+- 8장 순서: 01-hero, 02-calendar, 03-reliable, 04-widget, 05-rotation, 06-override, 07-cycle, 08-everyday.
+- 다시 뽑기: `tools/store-pano-all.sh` → `tools/store-final8.sh`. 문구는 `tools/store-pano-copy.json`·`store-shot-copy.json`(9개 언어).
+- 결과물: `store-assets/store-shots/final8/{play,iphone63,ipad13}/<언어>/`(Play 업로드용 JPEG는 `final8/play-jpg/`). 위젯 원본 캡처는 `store-assets/screenshots/widget-2026-11-21/`. **둘 다 용량 때문에 git에 없음(.gitignore), 맥에만 있다.**
+- 시안 페이지: https://claude.ai/artifact/7ucdhp5bhr6QYsKriA1AhQ
+- Play Console 올리는 법: 크롬 u/2 → 스토어 등록정보 → 기본 등록정보 수정 → 언어별로 예전 장 삭제 → 애셋 추가에 8장 업로드(순서가 섞이니 삭제 후 애셋 목록에서 1→8 순서로 다시 추가) → 다음 → AI 선언 → 저장 → 게시 개요에서 검토 전송.
 
 ## 남은 일 / 사용자 결정 대기
-1. 사용자가 Play에 1.5.0 업로드 → 막히면 스크린샷 보고 안내.
-2. iOS App Store 출시는 아직 계획 없음. 하려면 유료 개발자 계정, iOS 버전 번호(현재 Info.plist 1.1.0) 정리 필요.
-3. **8+(iPhone 8 Plus, iOS 16.7)**: Xcode 27이 iOS 16 미지원 → 사용자가 Xcode 16.4를 받아 "받았어"라고 하면 설치 진행(보류 중).
-4. 번역은 원어민 검수 전. 리뷰에서 어색한 표현이 나오면 `src/i18n/locales/<언어>.ts`와 `store-assets/listings/` 함께 수정.
-5. 2027-10-01까지 공휴일 표에 2029년분 추가(예약 작업 `alarmapp-holiday-2029-reminder` 있음).
-6. 개발 빌드 만료: 폰·미니 **2026-10-20 21:37** → 10/19 09:00 리마인더("교대알람 iOS 재설치") 있음. 맥에 연결해 재설치.
+1. **심사 결과 확인**(애플·구글 메일). 거절이면 사유를 보고 고친다.
+2. 사용자가 TestFlight 빌드 7로 **실제 폰에서 위젯 확인**(수정은 시뮬레이터 캡처로만 확인함).
+3. 다른 언어 아이폰 스크린샷 4번 장에 작은 한국어("교대알람" 위젯 이름표, 아이패드는 상태바 날짜)가 남아 있음 — 지적되면 시뮬레이터 시스템 언어를 바꿔 다시 찍는다.
+4. Android 중간 위젯: 프랑스어·일본어에서 글이 두 줄로 접힘(미수정).
+5. Play 짧은 설명의 단정 문구("확실하게 울리는") 손볼지, 그래픽 이미지를 새 가로 그림(`tools/store-banner.py`)으로 바꿀지.
+6. 다음 판 **1.6.0 "근무표 공유"**: 기획 단계, 준비 문서 `본부/가족공유-준비.md`. 지금 심사가 끝난 뒤 시작.
+7. 나중 후보: AlarmKit(iOS 26+) 알람, 위젯에 세이람 일정.
+8. 2027-10-01까지 공휴일 표에 2029년분 추가(예약 작업 있음). 8+(iOS 16.7)는 Xcode 16.4가 있어야 설치 가능(보류).
+
+## 시뮬레이터에 남겨 둔 것
+- iPhone 17 Pro(90DC76C2…)·iPad Pro 13(M5)(3FABDE8C…): 교대알람 설치, 데모 근무표, 3페이지에 위젯, 상태바 9:41 고정. 스크린샷 다시 찍을 때 재사용. 세이람 위젯 페이지는 건드리지 말 것.
 
 ## 기기
 | 이름 | 식별자 | 비고 |
@@ -48,7 +49,7 @@ v1.5.0(versionCode 10) 출시 준비가 끝났고 main에 병합·푸시됨(`b84
 
 ## 자주 쓰는 명령
 ```bash
-# 정적 검사(62개) — 알람 파일 수정 시 필수
+# 정적 검사(71개) — 알람 파일 수정 시 필수
 ./scripts/test-alarm-suite.sh --static
 # Android 빌드(lintVital은 환경 문제로 제외)
 cd android && ./gradlew bundleRelease assembleRelease -x lintVitalAnalyzeRelease -x lintVitalReportRelease -x lintVitalRelease
@@ -64,6 +65,7 @@ adb -s RF9R3049REV shell am start -a android.intent.action.VIEW -d "alarmapp://?
 - TDD: 정적 체크·로직 테스트 먼저 → FAIL 확인 → 수정 → PASS.
 - 변경마다 에이전트로 검증: verify-fix(커밋 전), alarm-logic(알람 로직), bug-tracker(이력), android-build / ios-build.
 - Android 알람은 Expo 알림 + 네이티브 AlarmManager **둘 다** 예약·취소.
-- 작업이 끝나면 **커밋·푸시 여부를 사용자에게 묻는다.** 기능은 브랜치에서, 사용자가 말하면 main에 병합·푸시.
+- 작업이 끝나면 **커밋·푸시 여부를 사용자에게 묻는다.** "마무리"라고 하면 커밋 → 현황판·이 파일 갱신 → 짧은 보고 → 대화 비우기까지 한 번에(`~/.claude/CLAUDE.md` 본부 절).
 - 배터리를 더 쓰는 방식(iOS 백그라운드 오디오 등)은 하지 않는다.
-- Apple ID 등 자격증명 입력, Play Console 업로드·결제는 사용자가 직접.
+- 자격증명 입력·결제·법적 선언은 사용자가 직접. Play Console 스토어 등록정보(스크린샷)는 사용자가 시키면 크롬(u/2 프로필, Susu Development)으로 Claude가 올린다. AAB 업로드는 사용자가 직접.
+- 계획은 Fable, 실행은 Opus 에이전트(`model: "opus"`), 결과 점검은 Fable이 직접.
