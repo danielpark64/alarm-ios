@@ -106,6 +106,12 @@ grep -q "syncIosWidget" "$ROOT/src/utils/widgetSync.ts" 2>/dev/null \
   && grep -q 'alarmapp/widget.json' "$ROOT/targets/widget/WidgetData.swift" 2>/dev/null \
   && ok "" || { fail "iOS 위젯 데이터 경로가 어긋남 — 위젯이 비거나 옛 근무를 보여 준다"; }
 
+# iOS 위젯 날짜 숫자 — 좁은 칸(주간 띠·월 달력)에서 "21"이 "2"/"1" 두 줄로 꺾이지 않게 한 줄 고정 (2026-11-21)
+printf "  iOS 위젯 DayNumber 날짜 숫자 한 줄 고정(lineLimit(1)+fixedSize) ... "
+_DN=$(awk '/struct DayNumber: View/,/^}/' "$ROOT/targets/widget/AlarmWidget.swift" 2>/dev/null)
+echo "$_DN" | grep -q 'lineLimit(1)' && echo "$_DN" | grep -q 'fixedSize' \
+  && ok "" || { fail "AlarmWidget.swift DayNumber에 lineLimit(1)·fixedSize 없음 — 두 자리 날짜가 두 줄로 꺾인다"; }
+
 # 이중 시스템 (Expo + 네이티브)
 printf "  이중 알람 시스템 (Expo + AlarmManager) ... "
 HAS_E=$(grep -c "scheduleAlarmTriggers\|scheduleNotificationAsync" "$ROOT/src/utils/notifications/index.ts" 2>/dev/null || echo 0)

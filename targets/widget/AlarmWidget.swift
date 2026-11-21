@@ -90,7 +90,10 @@ private struct DayNumber: View {
     Text("\(widgetCalendar.component(.day, from: day))")
       .font(.system(size: size, weight: isToday ? .heavy : .medium))
       .foregroundColor(isToday ? .white : (red ? sundayColor : .secondary))
-      .padding(.horizontal, isToday ? 5 : 0)
+      // 좁은 칸(주간 띠·월 달력)에서 "21"이 "2"/"1" 두 줄로 꺾이지 않게 — 숫자는 줄이지 않고 한 줄 고정
+      .lineLimit(1)
+      .fixedSize()
+      .padding(.horizontal, isToday ? 3 : 0)
       .background(Capsule().fill(isToday ? todayColor : Color.clear))
   }
 }
@@ -183,9 +186,10 @@ private struct WeekStrip: View {
         let today = widgetCalendar.isDate(d, inSameDayAs: date)
         let red = i == 0 || data.isHoliday(d)
         VStack(spacing: 3) {
-          HStack(spacing: 2) {
-            Text(i < data.s.days.count ? data.s.days[i] : "").font(.system(size: 11, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.6)
-              .foregroundColor(red && !today ? sundayColor : .secondary)
+          // 요일은 숫자 위 줄 — 옆에 두면 좁은 칸(특히 오늘 숫자 알약)에서 "Sat"이 "S…"로 잘린다
+          VStack(spacing: 1) {
+            Text(i < data.s.days.count ? data.s.days[i] : "").font(.system(size: 10, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.6)
+              .foregroundColor(red ? sundayColor : .secondary)
             DayNumber(day: d, isToday: today, red: red, size: 12)
           }
           // 근무 이름이 주인공 — 남는 높이를 전부 쓴다
@@ -193,7 +197,8 @@ private struct WeekStrip: View {
             Text(info.name)
               .font(.system(size: 26, weight: .heavy, design: .rounded))
               .lineLimit(1)
-              .minimumScaleFactor(0.4)
+              // 0.4면 Mañana·Repos 같은 긴 이름이 "Ma…"로 잘린다 — 잘리기보다 작게
+              .minimumScaleFactor(0.25)
               .foregroundColor(dayColor(info))
               .padding(.horizontal, 1)
               .frame(maxWidth: .infinity, maxHeight: .infinity)

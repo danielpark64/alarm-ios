@@ -1,0 +1,1190 @@
+{
+ "ko": {
+  "order": [
+   "01_calendar.png",
+   "02_alarmlist.png",
+   "03_workblocks.png",
+   "05_dayoverride.png",
+   "06_repeatmodes.png",
+   "04_normalalarm.png"
+  ],
+  "shots": {
+   "01_calendar.png": {
+    "slug": "calendar",
+    "tag": "근무표 달력",
+    "title": "알람만 넣으면\n[근무표]가 저절로",
+    "sub": "근무일과 비번이 달력에 바로 칠해져요",
+    "props": [
+     {
+      "kind": "calendar",
+      "text": "근무표"
+     },
+     {
+      "kind": "note",
+      "text": "초번 06:00"
+     },
+     {
+      "kind": "note",
+      "text": "비번"
+     }
+    ]
+   },
+   "02_alarmlist.png": {
+    "slug": "reliable",
+    "tag": "출퇴근 알람",
+    "title": "출근·퇴근 태그\n이제 [깜빡] 안 해요",
+    "sub": "화면이 꺼져 있어도 정해 둔 시각에 알려 드려요",
+    "props": [
+     {
+      "kind": "note",
+      "text": "출근 05:40"
+     },
+     {
+      "kind": "calendar",
+      "text": "근무"
+     },
+     {
+      "kind": "note",
+      "text": "퇴근 15:00"
+     }
+    ]
+   },
+   "03_workblocks.png": {
+    "slug": "rotation",
+    "tag": "어떤 교대든",
+    "title": "근무 순서를\n[쌓기]만 하면 끝",
+    "sub": "4조3교대·주야비휴·나만의 순서까지",
+    "props": [
+     {
+      "kind": "note",
+      "text": "초번 → 말번"
+     },
+     {
+      "kind": "calendar",
+      "text": "교대"
+     },
+     {
+      "kind": "note",
+      "text": "비번 → 휴무"
+     }
+    ]
+   },
+   "05_dayoverride.png": {
+    "slug": "override",
+    "tag": "하루 근무 변경",
+    "title": "연차·대근은\n[그날만] 바꿔요",
+    "sub": "알람이 알아서 꺼지고 켜져요",
+    "props": [
+     {
+      "kind": "note",
+      "text": "연차"
+     },
+     {
+      "kind": "calendar",
+      "text": "15일"
+     },
+     {
+      "kind": "note",
+      "text": "대근"
+     }
+    ]
+   },
+   "06_repeatmodes.png": {
+    "slug": "cycle",
+    "tag": "주기 알람",
+    "title": "3일마다, 2일 쉬고\n[주기]도 간단히",
+    "sub": "N일 주기·N일 근무 후 휴식",
+    "props": [
+     {
+      "kind": "note",
+      "text": "3일마다"
+     },
+     {
+      "kind": "calendar",
+      "text": "주기"
+     },
+     {
+      "kind": "note",
+      "text": "2일 쉬고"
+     }
+    ]
+   },
+   "04_normalalarm.png": {
+    "slug": "everyday",
+    "tag": "일반 알람",
+    "title": "교대가 아니어도\n[매일 알람] 하나로",
+    "sub": "요일 반복·음력 생일·제사까지",
+    "props": [
+     {
+      "kind": "note",
+      "text": "매일 07:00"
+     },
+     {
+      "kind": "calendar",
+      "text": "음력"
+     },
+     {
+      "kind": "note",
+      "text": "월~금"
+     }
+    ]
+   }
+  }
+ },
+ "en": {
+  "order": [
+   "01_calendar.png",
+   "02_alarmlist.png",
+   "03_workblocks.png",
+   "05_dayoverride.png",
+   "06_repeatmodes.png",
+   "04_normalalarm.png"
+  ],
+  "shots": {
+   "01_calendar.png": {
+    "slug": "calendar",
+    "tag": "Shift calendar",
+    "title": "Add alarms,\nget your [schedule]",
+    "sub": "Work days and days off fill the calendar",
+    "props": [
+     {
+      "kind": "calendar",
+      "text": "Shifts"
+     },
+     {
+      "kind": "note",
+      "text": "Early 06:00"
+     },
+     {
+      "kind": "note",
+      "text": "Off"
+     }
+    ]
+   },
+   "02_alarmlist.png": {
+    "slug": "reliable",
+    "tag": "Clock in & out",
+    "title": "Never miss\nclock-[in] again",
+    "sub": "Rings on time, even with the screen off",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Clock in 05:40"
+     },
+     {
+      "kind": "calendar",
+      "text": "Work"
+     },
+     {
+      "kind": "note",
+      "text": "Clock out 15:00"
+     }
+    ]
+   },
+   "03_workblocks.png": {
+    "slug": "rotation",
+    "tag": "Any rotation",
+    "title": "Just [stack]\nyour shifts",
+    "sub": "Any pattern, in your own order",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Early → Late"
+     },
+     {
+      "kind": "calendar",
+      "text": "Rotation"
+     },
+     {
+      "kind": "note",
+      "text": "Off → Off"
+     }
+    ]
+   },
+   "05_dayoverride.png": {
+    "slug": "override",
+    "tag": "One-day change",
+    "title": "Leave or cover?\nChange [that day]",
+    "sub": "Alarms switch off and on by themselves",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Leave"
+     },
+     {
+      "kind": "calendar",
+      "text": "Day 15"
+     },
+     {
+      "kind": "note",
+      "text": "Cover"
+     }
+    ]
+   },
+   "06_repeatmodes.png": {
+    "slug": "cycle",
+    "tag": "Cycle alarms",
+    "title": "Every 3 days?\n[Cycles] made easy",
+    "sub": "Every N days · N on, N off",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Every 3 days"
+     },
+     {
+      "kind": "calendar",
+      "text": "Cycle"
+     },
+     {
+      "kind": "note",
+      "text": "2 days off"
+     }
+    ]
+   },
+   "04_normalalarm.png": {
+    "slug": "everyday",
+    "tag": "Everyday alarms",
+    "title": "Not on shifts?\n[Daily alarms] too",
+    "sub": "Weekday repeats, made simple",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Daily 07:00"
+     },
+     {
+      "kind": "calendar",
+      "text": "Daily"
+     },
+     {
+      "kind": "note",
+      "text": "Mon–Fri"
+     }
+    ]
+   }
+  }
+ },
+ "ja": {
+  "order": [
+   "01_calendar.png",
+   "02_alarmlist.png",
+   "03_workblocks.png",
+   "05_dayoverride.png",
+   "06_repeatmodes.png",
+   "04_normalalarm.png"
+  ],
+  "shots": {
+   "01_calendar.png": {
+    "slug": "calendar",
+    "tag": "勤務カレンダー",
+    "title": "アラームを入れるだけで\n[勤務表]が完成",
+    "sub": "勤務日と休みがカレンダーに色分け",
+    "props": [
+     {
+      "kind": "calendar",
+      "text": "勤務表"
+     },
+     {
+      "kind": "note",
+      "text": "早番 06:00"
+     },
+     {
+      "kind": "note",
+      "text": "休み"
+     }
+    ]
+   },
+   "02_alarmlist.png": {
+    "slug": "reliable",
+    "tag": "出退勤アラーム",
+    "title": "出勤・退勤の打刻\nもう[忘れない]",
+    "sub": "画面が消えていても時間どおりに鳴ります",
+    "props": [
+     {
+      "kind": "note",
+      "text": "出勤 05:40"
+     },
+     {
+      "kind": "calendar",
+      "text": "勤務"
+     },
+     {
+      "kind": "note",
+      "text": "退勤 15:00"
+     }
+    ]
+   },
+   "03_workblocks.png": {
+    "slug": "rotation",
+    "tag": "どんな交替も",
+    "title": "勤務の順番を\n[並べる]だけ",
+    "sub": "4組3交替も自分だけの順番も",
+    "props": [
+     {
+      "kind": "note",
+      "text": "早番 → 遅番"
+     },
+     {
+      "kind": "calendar",
+      "text": "交替"
+     },
+     {
+      "kind": "note",
+      "text": "休み → 休み"
+     }
+    ]
+   },
+   "05_dayoverride.png": {
+    "slug": "override",
+    "tag": "1日だけ変更",
+    "title": "有給・代勤は\n[その日だけ]変更",
+    "sub": "アラームが自動でオン・オフ",
+    "props": [
+     {
+      "kind": "note",
+      "text": "有給"
+     },
+     {
+      "kind": "calendar",
+      "text": "15日"
+     },
+     {
+      "kind": "note",
+      "text": "代勤"
+     }
+    ]
+   },
+   "06_repeatmodes.png": {
+    "slug": "cycle",
+    "tag": "周期アラーム",
+    "title": "3日ごと、2日休み\n[周期]もかんたん",
+    "sub": "N日周期・N日勤務後に休み",
+    "props": [
+     {
+      "kind": "note",
+      "text": "3日ごと"
+     },
+     {
+      "kind": "calendar",
+      "text": "周期"
+     },
+     {
+      "kind": "note",
+      "text": "2日休み"
+     }
+    ]
+   },
+   "04_normalalarm.png": {
+    "slug": "everyday",
+    "tag": "通常アラーム",
+    "title": "交替勤務でなくても\n[毎日のアラーム]に",
+    "sub": "曜日の繰り返しもかんたん",
+    "props": [
+     {
+      "kind": "note",
+      "text": "毎日 07:00"
+     },
+     {
+      "kind": "calendar",
+      "text": "毎日"
+     },
+     {
+      "kind": "note",
+      "text": "月〜金"
+     }
+    ]
+   }
+  }
+ },
+ "zh-Hans": {
+  "order": [
+   "01_calendar.png",
+   "02_alarmlist.png",
+   "03_workblocks.png",
+   "05_dayoverride.png",
+   "06_repeatmodes.png",
+   "04_normalalarm.png"
+  ],
+  "shots": {
+   "01_calendar.png": {
+    "slug": "calendar",
+    "tag": "排班日历",
+    "title": "设好闹钟\n[排班表]自动生成",
+    "sub": "上班日和休息日自动标在日历上",
+    "props": [
+     {
+      "kind": "calendar",
+      "text": "排班"
+     },
+     {
+      "kind": "note",
+      "text": "早班 06:00"
+     },
+     {
+      "kind": "note",
+      "text": "休息"
+     }
+    ]
+   },
+   "02_alarmlist.png": {
+    "slug": "reliable",
+    "tag": "上下班闹钟",
+    "title": "上下班打卡\n再也不[忘记]",
+    "sub": "屏幕关闭也会准时响铃",
+    "props": [
+     {
+      "kind": "note",
+      "text": "上班 05:40"
+     },
+     {
+      "kind": "calendar",
+      "text": "上班"
+     },
+     {
+      "kind": "note",
+      "text": "下班 15:00"
+     }
+    ]
+   },
+   "03_workblocks.png": {
+    "slug": "rotation",
+    "tag": "任何轮班",
+    "title": "只要把班次\n[排好顺序]",
+    "sub": "四班三倒或自定义顺序都可以",
+    "props": [
+     {
+      "kind": "note",
+      "text": "早班 → 晚班"
+     },
+     {
+      "kind": "calendar",
+      "text": "轮班"
+     },
+     {
+      "kind": "note",
+      "text": "休息 → 休息"
+     }
+    ]
+   },
+   "05_dayoverride.png": {
+    "slug": "override",
+    "tag": "单日调整",
+    "title": "请假、代班\n[只改当天]",
+    "sub": "闹钟自动关闭或开启",
+    "props": [
+     {
+      "kind": "note",
+      "text": "年假"
+     },
+     {
+      "kind": "calendar",
+      "text": "15日"
+     },
+     {
+      "kind": "note",
+      "text": "代班"
+     }
+    ]
+   },
+   "06_repeatmodes.png": {
+    "slug": "cycle",
+    "tag": "周期闹钟",
+    "title": "每3天、休2天\n[周期]也简单",
+    "sub": "每N天 · 上N天休N天",
+    "props": [
+     {
+      "kind": "note",
+      "text": "每3天"
+     },
+     {
+      "kind": "calendar",
+      "text": "周期"
+     },
+     {
+      "kind": "note",
+      "text": "休2天"
+     }
+    ]
+   },
+   "04_normalalarm.png": {
+    "slug": "everyday",
+    "tag": "普通闹钟",
+    "title": "不倒班也能用\n[每日闹钟]",
+    "sub": "按星期重复，简单设置",
+    "props": [
+     {
+      "kind": "note",
+      "text": "每天 07:00"
+     },
+     {
+      "kind": "calendar",
+      "text": "每天"
+     },
+     {
+      "kind": "note",
+      "text": "周一至周五"
+     }
+    ]
+   }
+  }
+ },
+ "zh-Hant": {
+  "order": [
+   "01_calendar.png",
+   "02_alarmlist.png",
+   "03_workblocks.png",
+   "05_dayoverride.png",
+   "06_repeatmodes.png",
+   "04_normalalarm.png"
+  ],
+  "shots": {
+   "01_calendar.png": {
+    "slug": "calendar",
+    "tag": "班表日曆",
+    "title": "設好鬧鐘\n[班表]自動完成",
+    "sub": "上班日和休假自動標在日曆上",
+    "props": [
+     {
+      "kind": "calendar",
+      "text": "班表"
+     },
+     {
+      "kind": "note",
+      "text": "早班 06:00"
+     },
+     {
+      "kind": "note",
+      "text": "休假"
+     }
+    ]
+   },
+   "02_alarmlist.png": {
+    "slug": "reliable",
+    "tag": "上下班鬧鐘",
+    "title": "上下班打卡\n再也不[忘記]",
+    "sub": "螢幕關閉也會準時響鈴",
+    "props": [
+     {
+      "kind": "note",
+      "text": "上班 05:40"
+     },
+     {
+      "kind": "calendar",
+      "text": "上班"
+     },
+     {
+      "kind": "note",
+      "text": "下班 15:00"
+     }
+    ]
+   },
+   "03_workblocks.png": {
+    "slug": "rotation",
+    "tag": "任何輪班",
+    "title": "只要把班別\n[排好順序]",
+    "sub": "四班三輪或自訂順序都可以",
+    "props": [
+     {
+      "kind": "note",
+      "text": "早班 → 晚班"
+     },
+     {
+      "kind": "calendar",
+      "text": "輪班"
+     },
+     {
+      "kind": "note",
+      "text": "休假 → 休假"
+     }
+    ]
+   },
+   "05_dayoverride.png": {
+    "slug": "override",
+    "tag": "單日調整",
+    "title": "特休、代班\n[只改當天]",
+    "sub": "鬧鐘自動關閉或開啟",
+    "props": [
+     {
+      "kind": "note",
+      "text": "特休"
+     },
+     {
+      "kind": "calendar",
+      "text": "15日"
+     },
+     {
+      "kind": "note",
+      "text": "代班"
+     }
+    ]
+   },
+   "06_repeatmodes.png": {
+    "slug": "cycle",
+    "tag": "週期鬧鐘",
+    "title": "每3天、休2天\n[週期]也簡單",
+    "sub": "每N天 · 上N天休N天",
+    "props": [
+     {
+      "kind": "note",
+      "text": "每3天"
+     },
+     {
+      "kind": "calendar",
+      "text": "週期"
+     },
+     {
+      "kind": "note",
+      "text": "休2天"
+     }
+    ]
+   },
+   "04_normalalarm.png": {
+    "slug": "everyday",
+    "tag": "一般鬧鐘",
+    "title": "不輪班也能用\n[每日鬧鐘]",
+    "sub": "依星期重複，設定簡單",
+    "props": [
+     {
+      "kind": "note",
+      "text": "每天 07:00"
+     },
+     {
+      "kind": "calendar",
+      "text": "每天"
+     },
+     {
+      "kind": "note",
+      "text": "週一至週五"
+     }
+    ]
+   }
+  }
+ },
+ "es": {
+  "order": [
+   "01_calendar.png",
+   "02_alarmlist.png",
+   "03_workblocks.png",
+   "05_dayoverride.png",
+   "06_repeatmodes.png",
+   "04_normalalarm.png"
+  ],
+  "shots": {
+   "01_calendar.png": {
+    "slug": "calendar",
+    "tag": "Calendario de turnos",
+    "title": "Pon alarmas y tu\n[cuadrante] se hace solo",
+    "sub": "Días de trabajo y libres en el calendario",
+    "props": [
+     {
+      "kind": "calendar",
+      "text": "Turnos"
+     },
+     {
+      "kind": "note",
+      "text": "Mañana 06:00"
+     },
+     {
+      "kind": "note",
+      "text": "Libre"
+     }
+    ]
+   },
+   "02_alarmlist.png": {
+    "slug": "reliable",
+    "tag": "Entrada y salida",
+    "title": "No vuelvas a olvidar\nfichar la [entrada]",
+    "sub": "Suena a su hora, aunque la pantalla esté apagada",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Entrada 05:40"
+     },
+     {
+      "kind": "calendar",
+      "text": "Trabajo"
+     },
+     {
+      "kind": "note",
+      "text": "Salida 15:00"
+     }
+    ]
+   },
+   "03_workblocks.png": {
+    "slug": "rotation",
+    "tag": "Cualquier rotación",
+    "title": "Solo [ordena]\ntus turnos",
+    "sub": "Cualquier patrón, en tu propio orden",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Mañana → Tarde"
+     },
+     {
+      "kind": "calendar",
+      "text": "Rotación"
+     },
+     {
+      "kind": "note",
+      "text": "Libre → Libre"
+     }
+    ]
+   },
+   "05_dayoverride.png": {
+    "slug": "override",
+    "tag": "Cambio de un día",
+    "title": "¿Vacaciones o cobertura?\nCambia [ese día]",
+    "sub": "Las alarmas se apagan y encienden solas",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Vacaciones"
+     },
+     {
+      "kind": "calendar",
+      "text": "Día 15"
+     },
+     {
+      "kind": "note",
+      "text": "Cobertura"
+     }
+    ]
+   },
+   "06_repeatmodes.png": {
+    "slug": "cycle",
+    "tag": "Alarmas por ciclo",
+    "title": "Cada 3 días\n[ciclos] fáciles",
+    "sub": "Cada N días · N de trabajo, N libres",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Cada 3 días"
+     },
+     {
+      "kind": "calendar",
+      "text": "Ciclo"
+     },
+     {
+      "kind": "note",
+      "text": "2 días libres"
+     }
+    ]
+   },
+   "04_normalalarm.png": {
+    "slug": "everyday",
+    "tag": "Alarmas diarias",
+    "title": "¿Sin turnos?\n[Alarmas diarias] también",
+    "sub": "Repite por días de la semana",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Diario 07:00"
+     },
+     {
+      "kind": "calendar",
+      "text": "Diario"
+     },
+     {
+      "kind": "note",
+      "text": "Lun–Vie"
+     }
+    ]
+   }
+  }
+ },
+ "fr": {
+  "order": [
+   "01_calendar.png",
+   "02_alarmlist.png",
+   "03_workblocks.png",
+   "05_dayoverride.png",
+   "06_repeatmodes.png",
+   "04_normalalarm.png"
+  ],
+  "shots": {
+   "01_calendar.png": {
+    "slug": "calendar",
+    "tag": "Calendrier des postes",
+    "title": "Ajoutez vos alarmes,\nle [planning] se remplit",
+    "sub": "Jours travaillés et repos s'affichent",
+    "props": [
+     {
+      "kind": "calendar",
+      "text": "Planning"
+     },
+     {
+      "kind": "note",
+      "text": "Matin 06:00"
+     },
+     {
+      "kind": "note",
+      "text": "Repos"
+     }
+    ]
+   },
+   "02_alarmlist.png": {
+    "slug": "reliable",
+    "tag": "Début et fin",
+    "title": "Ne ratez plus\nvotre [pointage]",
+    "sub": "Sonne à l'heure, même écran éteint",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Début 05:40"
+     },
+     {
+      "kind": "calendar",
+      "text": "Travail"
+     },
+     {
+      "kind": "note",
+      "text": "Fin 15:00"
+     }
+    ]
+   },
+   "03_workblocks.png": {
+    "slug": "rotation",
+    "tag": "Toute rotation",
+    "title": "[Empilez] vos postes,\nc'est tout",
+    "sub": "N'importe quel cycle, dans votre ordre",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Matin → Soir"
+     },
+     {
+      "kind": "calendar",
+      "text": "Rotation"
+     },
+     {
+      "kind": "note",
+      "text": "Repos → Repos"
+     }
+    ]
+   },
+   "05_dayoverride.png": {
+    "slug": "override",
+    "tag": "Changer un jour",
+    "title": "Congé ou remplacement ?\n[Ce jour] seulement",
+    "sub": "Les alarmes s'adaptent toutes seules",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Congé"
+     },
+     {
+      "kind": "calendar",
+      "text": "Le 15"
+     },
+     {
+      "kind": "note",
+      "text": "Remplacement"
+     }
+    ]
+   },
+   "06_repeatmodes.png": {
+    "slug": "cycle",
+    "tag": "Alarmes cycliques",
+    "title": "Tous les 3 jours ?\n[Cycles] simplifiés",
+    "sub": "Tous les N jours · N travaillés, N repos",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Tous les 3 jours"
+     },
+     {
+      "kind": "calendar",
+      "text": "Cycle"
+     },
+     {
+      "kind": "note",
+      "text": "2 jours de repos"
+     }
+    ]
+   },
+   "04_normalalarm.png": {
+    "slug": "everyday",
+    "tag": "Alarmes du quotidien",
+    "title": "Pas en horaires décalés ?\n[Alarmes] du quotidien",
+    "sub": "Répétition par jour de la semaine",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Chaque jour 07:00"
+     },
+     {
+      "kind": "calendar",
+      "text": "Quotidien"
+     },
+     {
+      "kind": "note",
+      "text": "Lun–Ven"
+     }
+    ]
+   }
+  }
+ },
+ "de": {
+  "order": [
+   "01_calendar.png",
+   "02_alarmlist.png",
+   "03_workblocks.png",
+   "05_dayoverride.png",
+   "06_repeatmodes.png",
+   "04_normalalarm.png"
+  ],
+  "shots": {
+   "01_calendar.png": {
+    "slug": "calendar",
+    "tag": "Schichtkalender",
+    "title": "Wecker anlegen,\n[Dienstplan] fertig",
+    "sub": "Arbeits- und freie Tage im Kalender",
+    "props": [
+     {
+      "kind": "calendar",
+      "text": "Dienstplan"
+     },
+     {
+      "kind": "note",
+      "text": "Früh 06:00"
+     },
+     {
+      "kind": "note",
+      "text": "Frei"
+     }
+    ]
+   },
+   "02_alarmlist.png": {
+    "slug": "reliable",
+    "tag": "Beginn und Ende",
+    "title": "Nie mehr das\n[Einstempeln] vergessen",
+    "sub": "Klingelt pünktlich, auch bei aus Bildschirm",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Beginn 05:40"
+     },
+     {
+      "kind": "calendar",
+      "text": "Dienst"
+     },
+     {
+      "kind": "note",
+      "text": "Ende 15:00"
+     }
+    ]
+   },
+   "03_workblocks.png": {
+    "slug": "rotation",
+    "tag": "Jede Rotation",
+    "title": "Schichten einfach\n[aneinanderreihen]",
+    "sub": "Jedes Muster, in Ihrer eigenen Reihenfolge",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Früh → Spät"
+     },
+     {
+      "kind": "calendar",
+      "text": "Rotation"
+     },
+     {
+      "kind": "note",
+      "text": "Frei → Frei"
+     }
+    ]
+   },
+   "05_dayoverride.png": {
+    "slug": "override",
+    "tag": "Einzelner Tag",
+    "title": "Urlaub oder Vertretung?\nNur [diesen Tag]",
+    "sub": "Wecker schalten sich selbst an und aus",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Urlaub"
+     },
+     {
+      "kind": "calendar",
+      "text": "Der 15."
+     },
+     {
+      "kind": "note",
+      "text": "Vertretung"
+     }
+    ]
+   },
+   "06_repeatmodes.png": {
+    "slug": "cycle",
+    "tag": "Zyklus-Wecker",
+    "title": "Alle 3 Tage?\n[Zyklen] ganz einfach",
+    "sub": "Alle N Tage · N Dienst, N frei",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Alle 3 Tage"
+     },
+     {
+      "kind": "calendar",
+      "text": "Zyklus"
+     },
+     {
+      "kind": "note",
+      "text": "2 Tage frei"
+     }
+    ]
+   },
+   "04_normalalarm.png": {
+    "slug": "everyday",
+    "tag": "Alltags-Wecker",
+    "title": "Keine Schichten?\nAuch [täglich]",
+    "sub": "Wiederholung nach Wochentagen",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Täglich 07:00"
+     },
+     {
+      "kind": "calendar",
+      "text": "Täglich"
+     },
+     {
+      "kind": "note",
+      "text": "Mo–Fr"
+     }
+    ]
+   }
+  }
+ },
+ "pt": {
+  "order": [
+   "01_calendar.png",
+   "02_alarmlist.png",
+   "03_workblocks.png",
+   "05_dayoverride.png",
+   "06_repeatmodes.png",
+   "04_normalalarm.png"
+  ],
+  "shots": {
+   "01_calendar.png": {
+    "slug": "calendar",
+    "tag": "Calendário de turnos",
+    "title": "Crie alarmes e a\n[escala] se monta",
+    "sub": "Dias de trabalho e folgas no calendário",
+    "props": [
+     {
+      "kind": "calendar",
+      "text": "Escala"
+     },
+     {
+      "kind": "note",
+      "text": "Manhã 06:00"
+     },
+     {
+      "kind": "note",
+      "text": "Folga"
+     }
+    ]
+   },
+   "02_alarmlist.png": {
+    "slug": "reliable",
+    "tag": "Entrada e saída",
+    "title": "Nunca mais esqueça\nde bater o [ponto]",
+    "sub": "Toca na hora, mesmo com a tela apagada",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Entrada 05:40"
+     },
+     {
+      "kind": "calendar",
+      "text": "Trabalho"
+     },
+     {
+      "kind": "note",
+      "text": "Saída 15:00"
+     }
+    ]
+   },
+   "03_workblocks.png": {
+    "slug": "rotation",
+    "tag": "Qualquer rodízio",
+    "title": "É só [empilhar]\nseus turnos",
+    "sub": "Qualquer padrão, na sua ordem",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Manhã → Tarde"
+     },
+     {
+      "kind": "calendar",
+      "text": "Rodízio"
+     },
+     {
+      "kind": "note",
+      "text": "Folga → Folga"
+     }
+    ]
+   },
+   "05_dayoverride.png": {
+    "slug": "override",
+    "tag": "Mudar um dia",
+    "title": "Férias ou cobertura?\nMude [só esse dia]",
+    "sub": "Os alarmes ligam e desligam sozinhos",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Férias"
+     },
+     {
+      "kind": "calendar",
+      "text": "Dia 15"
+     },
+     {
+      "kind": "note",
+      "text": "Cobertura"
+     }
+    ]
+   },
+   "06_repeatmodes.png": {
+    "slug": "cycle",
+    "tag": "Alarmes por ciclo",
+    "title": "A cada 3 dias?\n[Ciclos] fáceis",
+    "sub": "A cada N dias · N de trabalho, N de folga",
+    "props": [
+     {
+      "kind": "note",
+      "text": "A cada 3 dias"
+     },
+     {
+      "kind": "calendar",
+      "text": "Ciclo"
+     },
+     {
+      "kind": "note",
+      "text": "2 dias de folga"
+     }
+    ]
+   },
+   "04_normalalarm.png": {
+    "slug": "everyday",
+    "tag": "Alarmes do dia a dia",
+    "title": "Não trabalha em turnos?\n[Alarmes diários] também",
+    "sub": "Repetição por dia da semana",
+    "props": [
+     {
+      "kind": "note",
+      "text": "Diário 07:00"
+     },
+     {
+      "kind": "calendar",
+      "text": "Diário"
+     },
+     {
+      "kind": "note",
+      "text": "Seg–Sex"
+     }
+    ]
+   }
+  }
+ }
+}

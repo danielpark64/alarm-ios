@@ -2,7 +2,7 @@
   "expo": {
     "name": "교대알람",
     "slug": "alarm-app",
-    "version": "1.5.2",
+    "version": "1.5.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "alarmapp",
@@ -72,7 +72,7 @@
           "group.com.danielpark.shared"
         ]
       },
-      "buildNumber": "4"
+      "buildNumber": "7"
     },
     "plugins": [
       "expo-router",

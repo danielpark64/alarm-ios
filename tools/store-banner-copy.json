@@ -1,0 +1,191 @@
+{
+ "ko": {
+  "tag": "교대근무 알람",
+  "title": "출근·퇴근 태그,\n이제 [깜빡] 안 해요",
+  "sub": "근무표대로 알려 드리는 교대근무 알람",
+  "front": "01_calendar.png",
+  "back": "02_alarmlist.png",
+  "props": [
+   {
+    "kind": "calendar",
+    "text": "근무표"
+   },
+   {
+    "kind": "note",
+    "text": "출근 05:40"
+   },
+   {
+    "kind": "note",
+    "text": "비번"
+   }
+  ]
+ },
+ "en": {
+  "tag": "Shift work alarm",
+  "title": "Never miss\nclock-[in] again",
+  "sub": "Alarms that follow your shift schedule",
+  "front": "01_calendar.png",
+  "back": "02_alarmlist.png",
+  "props": [
+   {
+    "kind": "calendar",
+    "text": "Shifts"
+   },
+   {
+    "kind": "note",
+    "text": "Clock in 05:40"
+   },
+   {
+    "kind": "note",
+    "text": "Off"
+   }
+  ]
+ },
+ "ja": {
+  "tag": "交替勤務アラーム",
+  "title": "出勤・退勤の打刻、\nもう[忘れない]",
+  "sub": "勤務表どおりに知らせるアラーム",
+  "front": "01_calendar.png",
+  "back": "02_alarmlist.png",
+  "props": [
+   {
+    "kind": "calendar",
+    "text": "勤務表"
+   },
+   {
+    "kind": "note",
+    "text": "出勤 05:40"
+   },
+   {
+    "kind": "note",
+    "text": "休み"
+   }
+  ]
+ },
+ "zh-Hans": {
+  "tag": "轮班闹钟",
+  "title": "上下班打卡，\n再也不[忘记]",
+  "sub": "按排班表提醒的闹钟",
+  "front": "01_calendar.png",
+  "back": "02_alarmlist.png",
+  "props": [
+   {
+    "kind": "calendar",
+    "text": "排班"
+   },
+   {
+    "kind": "note",
+    "text": "上班 05:40"
+   },
+   {
+    "kind": "note",
+    "text": "休息"
+   }
+  ]
+ },
+ "zh-Hant": {
+  "tag": "輪班鬧鐘",
+  "title": "上下班打卡，\n再也不[忘記]",
+  "sub": "依班表提醒的鬧鐘",
+  "front": "01_calendar.png",
+  "back": "02_alarmlist.png",
+  "props": [
+   {
+    "kind": "calendar",
+    "text": "班表"
+   },
+   {
+    "kind": "note",
+    "text": "上班 05:40"
+   },
+   {
+    "kind": "note",
+    "text": "休假"
+   }
+  ]
+ },
+ "es": {
+  "tag": "Alarma para turnos",
+  "title": "No vuelvas a olvidar\nfichar la [entrada]",
+  "sub": "Alarmas que siguen tu cuadrante",
+  "front": "01_calendar.png",
+  "back": "02_alarmlist.png",
+  "props": [
+   {
+    "kind": "calendar",
+    "text": "Turnos"
+   },
+   {
+    "kind": "note",
+    "text": "Entrada 05:40"
+   },
+   {
+    "kind": "note",
+    "text": "Libre"
+   }
+  ]
+ },
+ "fr": {
+  "tag": "Alarme pour horaires décalés",
+  "title": "Ne ratez plus\nvotre [pointage]",
+  "sub": "Des alarmes qui suivent votre planning",
+  "front": "01_calendar.png",
+  "back": "02_alarmlist.png",
+  "props": [
+   {
+    "kind": "calendar",
+    "text": "Planning"
+   },
+   {
+    "kind": "note",
+    "text": "Début 05:40"
+   },
+   {
+    "kind": "note",
+    "text": "Repos"
+   }
+  ]
+ },
+ "de": {
+  "tag": "Wecker für Schichtarbeit",
+  "title": "Nie mehr das\n[Einstempeln] vergessen",
+  "sub": "Wecker, die Ihrem Dienstplan folgen",
+  "front": "01_calendar.png",
+  "back": "02_alarmlist.png",
+  "props": [
+   {
+    "kind": "calendar",
+    "text": "Dienstplan"
+   },
+   {
+    "kind": "note",
+    "text": "Beginn 05:40"
+   },
+   {
+    "kind": "note",
+    "text": "Frei"
+   }
+  ]
+ },
+ "pt": {
+  "tag": "Alarme para turnos",
+  "title": "Nunca mais esqueça\nde bater o [ponto]",
+  "sub": "Alarmes que seguem a sua escala",
+  "front": "01_calendar.png",
+  "back": "02_alarmlist.png",
+  "props": [
+   {
+    "kind": "calendar",
+    "text": "Escala"
+   },
+   {
+    "kind": "note",
+    "text": "Entrada 05:40"
+   },
+   {
+    "kind": "note",
+    "text": "Folga"
+   }
+  ]
+ }
+}

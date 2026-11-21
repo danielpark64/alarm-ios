@@ -1,0 +1,749 @@
+{
+  "ko": {
+    "hero": {
+      "tag": "교대근무 알람",
+      "title": "출근·퇴근 태그\n이제 [깜빡]\n안 해요",
+      "sub": "근무표대로 알려 드리는 교대근무 알람",
+      "props": [
+        {
+          "kind": "note",
+          "text": "말번 14:00"
+        },
+        {
+          "kind": "note",
+          "text": "야간 22:00"
+        }
+      ]
+    },
+    "calendar": {
+      "src": "01_calendar.png",
+      "tag": "근무표 달력",
+      "title": "알람만 넣으면\n[근무표]가 저절로",
+      "sub": "근무일과 비번이 달력에 바로 칠해져요",
+      "props": [
+        {
+          "kind": "calendar",
+          "text": "근무표"
+        },
+        {
+          "kind": "note",
+          "text": "초번 06:00"
+        },
+        {
+          "kind": "note",
+          "text": "비번"
+        }
+      ]
+    },
+    "reliable": {
+      "src": "02_alarmlist.png",
+      "slug": "reliable",
+      "tag": "출퇴근 알람",
+      "title": "꺼진 화면에서도\n[제시간]에 알려 드려요",
+      "sub": "출근 05:40 · 퇴근 15:00처럼 근무표대로",
+      "props": [
+        {
+          "kind": "note",
+          "text": "출근 05:40"
+        },
+        {
+          "kind": "calendar",
+          "text": "근무"
+        },
+        {
+          "kind": "note",
+          "text": "퇴근 15:00"
+        }
+      ]
+    },
+    "widget": {
+      "slug": "widget",
+      "src": {
+        "play": "android-home.png",
+        "iphone63": "ios-home.png",
+        "ipad13": "ipad-home.png"
+      },
+      "tag": "홈 화면 위젯",
+      "title": "앱을 안 열어도\n[오늘 근무]가 한눈에",
+      "sub": "홈 화면에서 근무표와 다음 알람을 바로 확인",
+      "props": [
+        {
+          "kind": "note",
+          "text": "오늘 비번"
+        },
+        {
+          "kind": "calendar",
+          "text": "위젯"
+        },
+        {
+          "kind": "note",
+          "text": "다음 05:40"
+        }
+      ]
+    }
+  },
+  "en": {
+    "hero": {
+      "tag": "Shift work alarm",
+      "title": "Never miss\nclock-[in]\nagain",
+      "sub": "Alarms that follow your shift schedule",
+      "props": [
+        {
+          "kind": "note",
+          "text": "Late 14:00"
+        },
+        {
+          "kind": "note",
+          "text": "Night 22:00"
+        }
+      ]
+    },
+    "calendar": {
+      "src": "01_calendar.png",
+      "tag": "Shift calendar",
+      "title": "Add alarms,\nget your [schedule]",
+      "sub": "Work days and days off fill the calendar",
+      "props": [
+        {
+          "kind": "calendar",
+          "text": "Shifts"
+        },
+        {
+          "kind": "note",
+          "text": "Early 06:00"
+        },
+        {
+          "kind": "note",
+          "text": "Off"
+        }
+      ]
+    },
+    "reliable": {
+      "src": "02_alarmlist.png",
+      "slug": "reliable",
+      "tag": "Clock in & out",
+      "title": "Even with the screen off,\nalerts you [on time]",
+      "sub": "Clock in 05:40 · Clock out 15:00, as scheduled",
+      "props": [
+        {
+          "kind": "note",
+          "text": "Clock in 05:40"
+        },
+        {
+          "kind": "calendar",
+          "text": "Work"
+        },
+        {
+          "kind": "note",
+          "text": "Clock out 15:00"
+        }
+      ]
+    },
+    "widget": {
+      "slug": "widget",
+      "src": {
+        "play": "android-home.png",
+        "iphone63": "ios-home.png",
+        "ipad13": "ipad-home.png"
+      },
+      "tag": "Home screen widget",
+      "title": "Without opening the app,\nsee [today's shift]",
+      "sub": "Shifts and next alarm right on your home screen",
+      "props": [
+        {
+          "kind": "note",
+          "text": "Off today"
+        },
+        {
+          "kind": "calendar",
+          "text": "Widget"
+        },
+        {
+          "kind": "note",
+          "text": "Next 05:40"
+        }
+      ]
+    }
+  },
+  "ja": {
+    "hero": {
+      "tag": "交替勤務アラーム",
+      "title": "出勤・退勤の\n打刻、もう\n[忘れない]",
+      "sub": "勤務表どおりに知らせるアラーム",
+      "props": [
+        {
+          "kind": "note",
+          "text": "遅番 14:00"
+        },
+        {
+          "kind": "note",
+          "text": "夜勤 22:00"
+        }
+      ]
+    },
+    "calendar": {
+      "src": "01_calendar.png",
+      "tag": "勤務カレンダー",
+      "title": "アラームを入れるだけで\n[勤務表]が完成",
+      "sub": "勤務日と休みがカレンダーに色分け",
+      "props": [
+        {
+          "kind": "calendar",
+          "text": "勤務表"
+        },
+        {
+          "kind": "note",
+          "text": "早番 06:00"
+        },
+        {
+          "kind": "note",
+          "text": "休み"
+        }
+      ]
+    },
+    "reliable": {
+      "src": "02_alarmlist.png",
+      "slug": "reliable",
+      "tag": "出退勤アラーム",
+      "title": "画面が消えていても\n[時間どおり]にお知らせ",
+      "sub": "出勤 05:40・退勤 15:00のように勤務表どおり",
+      "props": [
+        {
+          "kind": "note",
+          "text": "出勤 05:40"
+        },
+        {
+          "kind": "calendar",
+          "text": "勤務"
+        },
+        {
+          "kind": "note",
+          "text": "退勤 15:00"
+        }
+      ]
+    },
+    "widget": {
+      "slug": "widget",
+      "src": {
+        "play": "android-home.png",
+        "iphone63": "ios-home.png",
+        "ipad13": "ipad-home.png"
+      },
+      "tag": "ホーム画面ウィジェット",
+      "title": "アプリを開かなくても\n[今日の勤務]がひと目で",
+      "sub": "ホーム画面で勤務表と次のアラームをすぐ確認",
+      "props": [
+        {
+          "kind": "note",
+          "text": "今日は休み"
+        },
+        {
+          "kind": "calendar",
+          "text": "ウィジェット"
+        },
+        {
+          "kind": "note",
+          "text": "次 05:40"
+        }
+      ]
+    }
+  },
+  "zh-Hans": {
+    "hero": {
+      "tag": "轮班闹钟",
+      "title": "上下班打卡\n再也不\n[忘记]",
+      "sub": "按排班表提醒的闹钟",
+      "props": [
+        {
+          "kind": "note",
+          "text": "晚班 14:00"
+        },
+        {
+          "kind": "note",
+          "text": "夜班 22:00"
+        }
+      ]
+    },
+    "calendar": {
+      "src": "01_calendar.png",
+      "tag": "排班日历",
+      "title": "设好闹钟\n[排班表]自动生成",
+      "sub": "上班日和休息日自动标在日历上",
+      "props": [
+        {
+          "kind": "calendar",
+          "text": "排班"
+        },
+        {
+          "kind": "note",
+          "text": "早班 06:00"
+        },
+        {
+          "kind": "note",
+          "text": "休息"
+        }
+      ]
+    },
+    "reliable": {
+      "src": "02_alarmlist.png",
+      "slug": "reliable",
+      "tag": "上下班闹钟",
+      "title": "屏幕关闭时\n也会[准时]提醒你",
+      "sub": "如上班 05:40 · 下班 15:00，按排班表提醒",
+      "props": [
+        {
+          "kind": "note",
+          "text": "上班 05:40"
+        },
+        {
+          "kind": "calendar",
+          "text": "上班"
+        },
+        {
+          "kind": "note",
+          "text": "下班 15:00"
+        }
+      ]
+    },
+    "widget": {
+      "slug": "widget",
+      "src": {
+        "play": "android-home.png",
+        "iphone63": "ios-home.png",
+        "ipad13": "ipad-home.png"
+      },
+      "tag": "主屏幕小组件",
+      "title": "不用打开应用\n[今天的班]一目了然",
+      "sub": "在主屏幕直接查看排班表和下一个闹钟",
+      "props": [
+        {
+          "kind": "note",
+          "text": "今天休息"
+        },
+        {
+          "kind": "calendar",
+          "text": "小组件"
+        },
+        {
+          "kind": "note",
+          "text": "下次 05:40"
+        }
+      ]
+    }
+  },
+  "zh-Hant": {
+    "hero": {
+      "tag": "輪班鬧鐘",
+      "title": "上下班打卡\n再也不\n[忘記]",
+      "sub": "依班表提醒的鬧鐘",
+      "props": [
+        {
+          "kind": "note",
+          "text": "晚班 14:00"
+        },
+        {
+          "kind": "note",
+          "text": "夜班 22:00"
+        }
+      ]
+    },
+    "calendar": {
+      "src": "01_calendar.png",
+      "tag": "班表日曆",
+      "title": "設好鬧鐘\n[班表]自動完成",
+      "sub": "上班日和休假自動標在日曆上",
+      "props": [
+        {
+          "kind": "calendar",
+          "text": "班表"
+        },
+        {
+          "kind": "note",
+          "text": "早班 06:00"
+        },
+        {
+          "kind": "note",
+          "text": "休假"
+        }
+      ]
+    },
+    "reliable": {
+      "src": "02_alarmlist.png",
+      "slug": "reliable",
+      "tag": "上下班鬧鐘",
+      "title": "螢幕關閉時\n也會[準時]提醒你",
+      "sub": "如上班 05:40 · 下班 15:00，依班表提醒",
+      "props": [
+        {
+          "kind": "note",
+          "text": "上班 05:40"
+        },
+        {
+          "kind": "calendar",
+          "text": "上班"
+        },
+        {
+          "kind": "note",
+          "text": "下班 15:00"
+        }
+      ]
+    },
+    "widget": {
+      "slug": "widget",
+      "src": {
+        "play": "android-home.png",
+        "iphone63": "ios-home.png",
+        "ipad13": "ipad-home.png"
+      },
+      "tag": "主畫面小工具",
+      "title": "不用打開 App\n[今天的班]一目瞭然",
+      "sub": "在主畫面直接查看班表和下一個鬧鐘",
+      "props": [
+        {
+          "kind": "note",
+          "text": "今天休假"
+        },
+        {
+          "kind": "calendar",
+          "text": "小工具"
+        },
+        {
+          "kind": "note",
+          "text": "下次 05:40"
+        }
+      ]
+    }
+  },
+  "es": {
+    "hero": {
+      "tag": "Alarma para turnos",
+      "title": "No vuelvas a\nolvidar fichar\nla [entrada]",
+      "sub": "Alarmas que siguen tu cuadrante",
+      "props": [
+        {
+          "kind": "note",
+          "text": "Tarde 14:00"
+        },
+        {
+          "kind": "note",
+          "text": "Noche 22:00"
+        }
+      ]
+    },
+    "calendar": {
+      "src": "01_calendar.png",
+      "tag": "Calendario de turnos",
+      "title": "Pon alarmas y tu\n[cuadrante] se hace solo",
+      "sub": "Días de trabajo y libres en el calendario",
+      "props": [
+        {
+          "kind": "calendar",
+          "text": "Turnos"
+        },
+        {
+          "kind": "note",
+          "text": "Mañana 06:00"
+        },
+        {
+          "kind": "note",
+          "text": "Libre"
+        }
+      ]
+    },
+    "reliable": {
+      "src": "02_alarmlist.png",
+      "slug": "reliable",
+      "tag": "Entrada y salida",
+      "title": "Con la pantalla apagada,\nte avisa [a tu hora]",
+      "sub": "Entrada 05:40 · Salida 15:00, según tu cuadrante",
+      "props": [
+        {
+          "kind": "note",
+          "text": "Entrada 05:40"
+        },
+        {
+          "kind": "calendar",
+          "text": "Trabajo"
+        },
+        {
+          "kind": "note",
+          "text": "Salida 15:00"
+        }
+      ]
+    },
+    "widget": {
+      "slug": "widget",
+      "src": {
+        "play": "android-home.png",
+        "iphone63": "ios-home.png",
+        "ipad13": "ipad-home.png"
+      },
+      "tag": "Widget de inicio",
+      "title": "Sin abrir la app,\n[tu turno de hoy] a la vista",
+      "sub": "Turnos y próxima alarma en la pantalla de inicio",
+      "props": [
+        {
+          "kind": "note",
+          "text": "Hoy libre"
+        },
+        {
+          "kind": "calendar",
+          "text": "Widget"
+        },
+        {
+          "kind": "note",
+          "text": "Alarma 05:40"
+        }
+      ]
+    }
+  },
+  "fr": {
+    "hero": {
+      "tag": "Alarme pour horaires décalés",
+      "title": "Ne ratez\nplus votre\n[pointage]",
+      "sub": "Des alarmes qui suivent votre planning",
+      "props": [
+        {
+          "kind": "note",
+          "text": "Soir 14:00"
+        },
+        {
+          "kind": "note",
+          "text": "Nuit 22:00"
+        }
+      ]
+    },
+    "calendar": {
+      "src": "01_calendar.png",
+      "tag": "Calendrier des postes",
+      "title": "Ajoutez vos alarmes,\nle [planning] se remplit",
+      "sub": "Jours travaillés et repos s'affichent",
+      "props": [
+        {
+          "kind": "calendar",
+          "text": "Planning"
+        },
+        {
+          "kind": "note",
+          "text": "Matin 06:00"
+        },
+        {
+          "kind": "note",
+          "text": "Repos"
+        }
+      ]
+    },
+    "reliable": {
+      "src": "02_alarmlist.png",
+      "slug": "reliable",
+      "tag": "Début et fin",
+      "title": "Même écran éteint,\nun rappel [à l'heure]",
+      "sub": "Début 05:40 · Fin 15:00, selon votre planning",
+      "props": [
+        {
+          "kind": "note",
+          "text": "Début 05:40"
+        },
+        {
+          "kind": "calendar",
+          "text": "Travail"
+        },
+        {
+          "kind": "note",
+          "text": "Fin 15:00"
+        }
+      ]
+    },
+    "widget": {
+      "slug": "widget",
+      "src": {
+        "play": "android-home.png",
+        "iphone63": "ios-home.png",
+        "ipad13": "ipad-home.png"
+      },
+      "tag": "Widget d'accueil",
+      "title": "Sans ouvrir l'app,\n[le poste du jour] en vue",
+      "sub": "Planning et prochaine alarme sur l'écran d'accueil",
+      "props": [
+        {
+          "kind": "note",
+          "text": "Jour de repos"
+        },
+        {
+          "kind": "calendar",
+          "text": "Widget"
+        },
+        {
+          "kind": "note",
+          "text": "Alarme 05:40"
+        }
+      ]
+    }
+  },
+  "de": {
+    "hero": {
+      "tag": "Wecker für Schichtarbeit",
+      "title": "Nie mehr das\n[Einstempeln]\nvergessen",
+      "sub": "Wecker, die Ihrem Dienstplan folgen",
+      "props": [
+        {
+          "kind": "note",
+          "text": "Spät 14:00"
+        },
+        {
+          "kind": "note",
+          "text": "Nacht 22:00"
+        }
+      ]
+    },
+    "calendar": {
+      "src": "01_calendar.png",
+      "tag": "Schichtkalender",
+      "title": "Wecker anlegen,\n[Dienstplan] fertig",
+      "sub": "Arbeits- und freie Tage im Kalender",
+      "props": [
+        {
+          "kind": "calendar",
+          "text": "Dienstplan"
+        },
+        {
+          "kind": "note",
+          "text": "Früh 06:00"
+        },
+        {
+          "kind": "note",
+          "text": "Frei"
+        }
+      ]
+    },
+    "reliable": {
+      "src": "02_alarmlist.png",
+      "slug": "reliable",
+      "tag": "Beginn und Ende",
+      "title": "Auch bei dunklem Display\n[pünktlich] erinnert",
+      "sub": "Beginn 05:40 · Ende 15:00, nach Dienstplan",
+      "props": [
+        {
+          "kind": "note",
+          "text": "Beginn 05:40"
+        },
+        {
+          "kind": "calendar",
+          "text": "Dienst"
+        },
+        {
+          "kind": "note",
+          "text": "Ende 15:00"
+        }
+      ]
+    },
+    "widget": {
+      "slug": "widget",
+      "src": {
+        "play": "android-home.png",
+        "iphone63": "ios-home.png",
+        "ipad13": "ipad-home.png"
+      },
+      "tag": "Startbildschirm-Widget",
+      "title": "Ohne die App zu öffnen:\n[Dienst heute] im Blick",
+      "sub": "Dienstplan und nächster Wecker direkt auf dem Startbildschirm",
+      "props": [
+        {
+          "kind": "note",
+          "text": "Heute frei"
+        },
+        {
+          "kind": "calendar",
+          "text": "Widget"
+        },
+        {
+          "kind": "note",
+          "text": "Wecker 05:40"
+        }
+      ]
+    }
+  },
+  "pt": {
+    "hero": {
+      "tag": "Alarme para turnos",
+      "title": "Nunca mais\nesqueça de\nbater o\n[ponto]",
+      "sub": "Alarmes que seguem a sua escala",
+      "props": [
+        {
+          "kind": "note",
+          "text": "Tarde 14:00"
+        },
+        {
+          "kind": "note",
+          "text": "Noite 22:00"
+        }
+      ]
+    },
+    "calendar": {
+      "src": "01_calendar.png",
+      "tag": "Calendário de turnos",
+      "title": "Crie alarmes e a\n[escala] se monta",
+      "sub": "Dias de trabalho e folgas no calendário",
+      "props": [
+        {
+          "kind": "calendar",
+          "text": "Escala"
+        },
+        {
+          "kind": "note",
+          "text": "Manhã 06:00"
+        },
+        {
+          "kind": "note",
+          "text": "Folga"
+        }
+      ]
+    },
+    "reliable": {
+      "src": "02_alarmlist.png",
+      "slug": "reliable",
+      "tag": "Entrada e saída",
+      "title": "Mesmo com a tela apagada,\navisa [na hora certa]",
+      "sub": "Entrada 05:40 · Saída 15:00, conforme a escala",
+      "props": [
+        {
+          "kind": "note",
+          "text": "Entrada 05:40"
+        },
+        {
+          "kind": "calendar",
+          "text": "Trabalho"
+        },
+        {
+          "kind": "note",
+          "text": "Saída 15:00"
+        }
+      ]
+    },
+    "widget": {
+      "slug": "widget",
+      "src": {
+        "play": "android-home.png",
+        "iphone63": "ios-home.png",
+        "ipad13": "ipad-home.png"
+      },
+      "tag": "Widget da tela inicial",
+      "title": "Sem abrir o app,\n[o turno de hoje] à vista",
+      "sub": "Veja a escala e o próximo alarme na tela inicial",
+      "props": [
+        {
+          "kind": "note",
+          "text": "Hoje folga"
+        },
+        {
+          "kind": "calendar",
+          "text": "Widget"
+        },
+        {
+          "kind": "note",
+          "text": "Alarme 05:40"
+        }
+      ]
+    }
+  }
+}
