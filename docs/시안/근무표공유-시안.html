@@ -4,115 +4,108 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
 /* VOICE: 앱 시안 — 실제 출시 화면처럼, 설명은 짧게
-   IDEA: 교대알람 달력 위에 사람별 창(탭)을 얹은 모습
-   PICTURE: 폰 화면 4장(나·가족 창 / 전체 창 / 날짜 눌렀을 때 / 받기 팝업)
-   COLOUR and TYPE: 앱 다크 테마 그대로(#0b0b1c, 보라 #6c5ce7, 비번 파랑 #4593fc), Noto Sans KR
-   LAYOUT: 위 설명 띠 → 폰 4장 가로 줄(좁으면 세로) → 정할 것 목록 */
+   IDEA: 내 달력은 그대로 두고, 아래 탭에 '공유'를 하나 더 만든다
+   PICTURE: 폰 화면 4장(내 달력 탭 / 공유 탭 전체 / 공유 탭 엄마 / 받기 팝업), 각 화면 아래에 탭 줄
+   COLOUR and TYPE: 앱 다크 테마(#0b0b1c, 보라 #6c5ce7, 비번 파랑 #4593fc, 같이 쉼 초록 #2ecc9a), Noto Sans KR
+   LAYOUT: 설명 띠 → 폰 4장 → 돌아가는 방법 → 정한 것 */
 :root{color-scheme:light dark;--page:light-dark(#eeeef6,#06060f);--ink:light-dark(#15152a,#ececfa);--mute:light-dark(#55557a,#a6a6c8);--card:light-dark(#fff,#11112a);--line:light-dark(#d6d6e6,#25254a)}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
 body{margin:0;background:var(--page);color:var(--ink);font:16px/1.55 "Noto Sans KR",system-ui,sans-serif;overflow-x:clip}
 .band{padding:clamp(24px,4vw,56px) max(5vw,16px);max-width:1400px;margin:0 auto}
 h1{font-size:clamp(30px,4vw,46px);line-height:1.1;margin:0 0 10px;text-wrap:balance}
-.lead{color:var(--mute);max-width:62ch;margin:0}
+h2{font-size:24px;margin:0 0 8px}
+.lead{color:var(--mute);max-width:64ch;margin:0}
 .phones{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:28px;align-items:start}
 figure{margin:0}
 figcaption{margin-top:12px;font-size:15px;color:var(--mute)}
 figcaption b{color:var(--ink);display:block;font-size:17px}
-.ph{background:#0b0b1c;color:#f0f0ff;border-radius:34px;padding:16px 12px 14px;border:6px solid #23233f;box-shadow:0 20px 40px -18px #000a;position:relative;overflow:hidden;min-height:560px}
+.ph{background:#0b0b1c;color:#f0f0ff;border-radius:34px;padding:16px 12px 0;border:6px solid #23233f;box-shadow:0 20px 40px -18px #000a;position:relative;overflow:hidden;height:640px;display:flex;flex-direction:column}
+.body{flex:1;overflow:hidden;position:relative}
 .top{display:flex;justify-content:space-between;align-items:center;padding:0 4px 8px}
 .top .t{font-weight:800;font-size:20px}
-.btn{background:#1c1c40;border:1px solid #30306a;color:#e0e0f5;border-radius:12px;padding:6px 10px;font-size:13px;font-weight:600;display:inline-flex;gap:6px;align-items:center}
+.btn{background:#1c1c40;border:1px solid #30306a;color:#e0e0f5;border-radius:12px;padding:6px 10px;font-size:13px;font-weight:600}
 .btn.p{background:#6c5ce7;border-color:#6c5ce7;color:#fff}
-.tabs{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 10px;scrollbar-width:none}
+.hdr{padding:0 4px 10px}.hdr .dt{font-size:13px;color:#c8c8e0}.hdr .clk{font-size:34px;font-weight:800;line-height:1.1}
+.tabs{display:flex;gap:6px;overflow:hidden;padding:2px 2px 10px}
 .tab{flex:none;padding:6px 12px;border-radius:999px;background:#141430;border:1px solid #24244a;font-size:13px;font-weight:600;color:#c8c8e0;display:flex;align-items:center;gap:6px}
 .tab.on{background:#f0f0ff;color:#0b0b1c;border-color:#f0f0ff}
-.dot{width:8px;height:8px;border-radius:50%;flex:none}
-.sub{font-size:12px;color:#a6a6c8;padding:0 4px 8px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;display:inline-block}
+.sub{font-size:12px;color:#a6a6c8;padding:0 4px 8px}
+.mh{font-size:13px;font-weight:700;color:#c8c8e0;padding:4px 4px 6px}
 .wk,.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;text-align:center}
 .wk div{font-size:11px;color:#a6a6c8;padding-bottom:4px}.wk div:first-child,.wk div:last-child{color:#f0a0a0}
-.c{min-height:52px;border-radius:9px;padding:3px 1px;display:flex;flex-direction:column;align-items:center;gap:3px;border:1.5px solid transparent;font-size:13px;font-weight:600}
+.c{min-height:46px;border-radius:9px;padding:3px 1px;display:flex;flex-direction:column;align-items:center;gap:3px;border:1.5px solid transparent;font-size:13px;font-weight:600}
 .c.off{border-color:#4593fc;background:rgba(69,147,252,.16)}
-.c.all{border:3.5px solid #2ecc9a;background:rgba(46,204,154,.22);box-shadow:0 0 0 1px #0b0b1c,0 0 12px rgba(46,204,154,.55)}
+.c.all{border:3.5px solid #2ecc9a;background:rgba(46,204,154,.22);box-shadow:0 0 10px rgba(46,204,154,.5)}
 .c.today .n{background:#6c5ce7;color:#fff;border-radius:7px;padding:0 5px}
-.c.sel{outline:2px solid #f0f0ff}
 .c.sun .n{color:#f0a0a0}
 .chip{font-size:10.5px;padding:1px 4px;border-radius:6px;white-space:nowrap}
 .dots{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;max-width:34px}
 .dots i{width:7px;height:7px;border-radius:50%;display:block}
-.more{font-size:9px;color:#a6a6c8}
-.toggle{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#e0e0f5;background:#141430;border:1px solid #24244a;border-radius:12px;padding:7px 10px;margin:0 2px 10px}
+.toggle{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#2ecc9a;font-weight:700;background:#10261f;border:2px solid #2ecc9a;border-radius:12px;padding:7px 10px;margin:0 2px 10px}
 .sw{width:30px;height:18px;border-radius:9px;background:#2ecc9a;position:relative;flex:none}.sw::after{content:"";position:absolute;right:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff}
-.sheet{position:absolute;left:0;right:0;bottom:0;background:#1c1c40;border-radius:22px 22px 0 0;padding:14px 16px 18px;border-top:1px solid #30306a}
-.sheet h4{margin:0 0 10px;font-size:16px}
-.row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #2a2a50;font-size:14px}.row:last-child{border:0}
-.row .nm{flex:1}
-.dim{position:absolute;inset:0;background:#0009}
-.modal{position:absolute;left:16px;right:16px;top:120px;background:#1c1c40;border:1px solid #30306a;border-radius:20px;padding:18px}
-.modal h4{margin:0 0 6px;font-size:17px}
-.modal p{margin:0 0 12px;font-size:13px;color:#c8c8e0}
+.bar{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid #24244a;background:#0f0f24;margin:0 -12px;padding:8px 0 12px}
+.bar span{text-align:center;font-size:11.5px;color:#a6a6c8;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bar svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+.bar .on{color:#a29bfe;font-weight:700}
+.bar .new{position:relative}.bar .new::after{content:"새로";position:absolute;top:-10px;right:6px;font-size:9px;background:#2ecc9a;color:#0b0b1c;border-radius:6px;padding:0 4px;font-weight:800}
+.dim{position:absolute;inset:0;background:#000a}
+.modal{position:absolute;left:4px;right:4px;top:70px;background:#1c1c40;border:1px solid #30306a;border-radius:20px;padding:18px}
+.modal h4{margin:0 0 6px;font-size:17px}.modal p{margin:0 0 12px;font-size:13px;color:#c8c8e0}
 .fld{background:#0b0b1c;border:1px solid #30306a;border-radius:10px;padding:9px 12px;font-size:15px;margin-bottom:12px}
 .lbl{font-size:12px;color:#a6a6c8;margin-bottom:5px}
 .cols{display:flex;gap:10px;margin-bottom:16px}.cols i{width:26px;height:26px;border-radius:50%;display:block}.cols i.on{outline:2px solid #fff;outline-offset:2px}
 .acts{display:flex;gap:8px}.acts span{flex:1;text-align:center;padding:10px;border-radius:12px;font-weight:700;font-size:14px;background:#2a2a50}.acts span.p{background:#6c5ce7}
-.dec{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:8px}
+.ret{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
 .d{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
 .d h3{margin:0 0 6px;font-size:17px}.d p{margin:0;color:var(--mute);font-size:15px}
-.d .pick{margin-top:10px;font-size:14px}.d .pick b{color:#6c5ce7}
-h2{font-size:24px;margin:0 0 6px}
 .note{font-size:13px;color:var(--mute);margin-top:14px}
 </style></head><body>
 <div class="band">
-<h1>근무표 공유 시안 — 교대알람 1.6.0</h1>
-<p class="lead">달력 위에 사람마다 창(탭)이 생깁니다. 받은 근무표는 보기만 하고 알람은 울리지 않습니다. 보내기는 카톡 링크 한 줄로 하고, 서버나 가입은 없습니다.</p>
+<h1>근무표 공유 시안 — 내 달력과 따로</h1>
+<p class="lead">내 달력 탭은 지금과 똑같이 내 근무만 보입니다. 받은 근무표는 아래에 새로 생기는 <b>[공유]</b> 탭에서만 봅니다. 두 화면은 절대 섞이지 않습니다.</p>
 </div>
 <div class="band" style="padding-top:0">
 <div class="phones">
- <figure><div class="ph" id="p1"></div><figcaption><b>① 가족 창</b>지금 내 달력 화면을 그대로 다시 씁니다. 위에 누구 것인지와 받은 날짜가 보입니다. 오른쪽 위 [보내기]로 내 근무표를 카톡에 보냅니다.</figcaption></figure>
- <figure><div class="ph" id="p2"></div><figcaption><b>② 전체 창</b>칸마다 사람별 색 점만 찍습니다(쉬는 사람은 점 없음). 점은 4개까지, 넘으면 +2처럼. [다 같이 쉬는 날]을 켜면 모두 쉬는 날이 두꺼운 초록 상자로 크게 보입니다.</figcaption></figure>
- <figure><div class="ph" id="p3"></div><figcaption><b>③ 전체 창에서 날짜를 누르면</b>그날 각자 근무가 아래에서 올라옵니다. 사람 옆 [보기]를 끄면 전체 창에서 그 사람이 빠집니다(겹침 볼 사람 고르기).</figcaption></figure>
- <figure><div class="ph" id="p4"></div><figcaption><b>④ 카톡 링크를 눌러 받을 때</b>색은 겹치지 않게 자동으로 골라 두고, 원하면 바꿉니다(나중에 창을 길게 눌러도 바꿈). 이름을 비워 두면 공유1·공유2 순서로 붙습니다. 같은 사람이 다시 보내면 “엄마의 근무표를 새것으로 바꿀까요?”로 묻습니다.</figcaption></figure>
+ <figure><div class="ph" id="p1"></div><figcaption><b>① 내 달력 탭 — 지금 그대로</b>내 근무만 보입니다. 받은 사람 칩·점·초록 상자는 여기 없습니다. 아래 탭 줄에 [공유]만 하나 늘어납니다.</figcaption></figure>
+ <figure><div class="ph" id="p2"></div><figcaption><b>② 공유 탭 — 전체</b>나와 받은 사람들을 함께 봅니다. 칸마다 근무하는 사람 색 점. [다 같이 쉬는 날 보기]를 켜면 나까지 모두 쉬는 날이 두꺼운 초록 상자로.</figcaption></figure>
+ <figure><div class="ph" id="p3"></div><figcaption><b>③ 공유 탭 — 엄마</b>위 칩을 누르면 그 사람 근무표만. 보기만 하고 알람은 울리지 않습니다. [보내기]도 이 탭에 있습니다.</figcaption></figure>
+ <figure><div class="ph" id="p4"></div><figcaption><b>④ 카톡 링크로 받을 때</b>앱이 열리며 공유 탭으로 바로 가고 이 팝업이 뜹니다. 색은 자동으로 골라 두고 바꿀 수 있습니다. 이름을 비우면 공유1·공유2.</figcaption></figure>
 </div>
 </div>
 <div class="band" style="padding-top:0">
-<h2>정해 주실 것</h2>
-<p class="lead">2026-11-22 사용자 승낙. 색 자동 지정·두꺼운 상자를 반영했고, 달력은 세이람처럼 위아래로 이어서 스크롤합니다(이 시안은 한 달만 그림).</p>
-<div class="dec">
- <div class="d"><h3>1. 창 줄의 모양</h3><p>둥근 칩을 가로로 늘어놓고 많으면 옆으로 밀어 봅니다. 순서는 전체 · 나 · 받은 순서, 맨 끝에 [+ 받는 법] 안내.</p><div class="pick">권장: <b>시안 그대로</b></div></div>
- <div class="d"><h3>2. 전체 창 표시</h3><p>근무 글자 대신 색 점(4개까지 + 나머지 숫자). 글자까지 넣으면 칸이 좁아 읽기 어렵습니다.</p><div class="pick">권장: <b>점</b> · 다른 안: 2명까지만 글자</div></div>
- <div class="d"><h3>3. [보내기] 버튼 위치</h3><p>달력 위 오른쪽(①). 설정 화면에도 같은 항목을 하나 둡니다.</p><div class="pick">권장: <b>달력 위 + 설정</b></div></div>
- <div class="d"><h3>4. 자동 이름·색</h3><p>이름을 안 지으면 공유1, 공유2… 색은 겹치지 않게 자동. 창을 길게 눌러 이름·색 바꾸기, 지우기.</p><div class="pick">확정: <b>자동 + 바꾸기</b></div></div>
- <div class="d"><h3>5. “다 같이 쉬는 날” 색</h3><p>내 비번(파랑 테두리)과 헷갈리지 않게 두꺼운 초록 상자. 기본은 꺼짐.</p><div class="pick">확정: <b>두꺼운 초록 상자</b></div></div>
- <div class="d"><h3>6. 보내는 범위</h3><p>오늘부터 약 7개월(215일). 링크 한 줄에 들어가는 최대치이고, 세이람과 같은 형식입니다.</p><div class="pick">권장: <b>215일</b></div></div>
+<h2>내 달력으로 돌아가는 방법</h2>
+<div class="ret">
+ <div class="d"><h3>아래 [달력] 탭 누르기</h3><p>공유 탭 어디에 있든 아래 [달력]을 한 번 누르면 바로 내 달력입니다. 알람·설정 탭과 같은 방식이라 따로 익힐 것이 없습니다.</p></div>
+ <div class="d"><h3>Android 뒤로가기</h3><p>공유 탭에서 뒤로가기를 누르면 앱이 꺼지지 않고 내 달력 탭으로 돌아갑니다.</p></div>
+ <div class="d"><h3>앱을 다시 열 때</h3><p>앱을 새로 켜면 항상 내 달력 탭부터 보입니다. 공유 탭에 있다가 꺼도 마찬가지입니다.</p></div>
 </div>
-<p class="note">시안의 근무표와 이름(엄마·동생·공유1)은 예시입니다. 실제 앱은 9개 언어로 나오고, 라이트 테마도 같은 배치입니다.</p>
+<p class="note">근무표와 이름(엄마·동생·공유1)은 예시입니다. 실제 앱은 9개 언어, 라이트 테마도 같은 배치입니다. 달력은 위아래로 이어서 스크롤합니다(시안은 한 달만 그림).</p>
 </div>
 <script>
 {
-const P=[{n:'나',c:'#a29bfe'},{n:'엄마',c:'#f0a35e'},{n:'동생',c:'#5ec8f0'},{n:'공유1',c:'#f06e9c'},{n:'아빠',c:'#e6d36a'},{n:'친구',c:'#9be07a'}];
+const P=[{n:'나',c:'#a29bfe'},{n:'엄마',c:'#f0a35e'},{n:'동생',c:'#5ec8f0'},{n:'공유1',c:'#f06e9c'}];
 const S={초:['초번','#2f3f55','#cfe2ff'],말:['말번','#4a3a2a','#f5d2a8'],야:['야간','#3a2a4a','#e0c2ff'],주:['주간','#2a4a3a','#bff0d6']};
-// 2026년 11월: 1일=일요일
 const me=d=>['초','말','비'][(d+1)%3];
 const mom=d=>['주','주','야','야','비','비'][(d+3)%6];
 const sis=d=>{const w=(d-1)%7;return w===0||w===6?'비':'주'};
 const p3=d=>['주','비','주','비','비'][d%5];
-const dad=d=>['초','초','비'][d%3];
-const fr=d=>['야','비','비','주'][d%4];
-const F=[me,mom,sis,p3,dad,fr];
+const F=[me,mom,sis,p3];
 const wk='<div class="wk">'+'일월화수목금토'.split('').map(x=>`<div>${x}</div>`).join('')+'</div>';
-const lead='<div class="c"></div>'.repeat(0);
-function cal(fn,opt={}){let h='';for(let d=1;d<=30;d++){const w=(d-1)%7;let cls='c'+(w===0?' sun':'')+(d===22?' today':'')+(d===opt.sel?' sel':'');let inner=`<span class="n">${d}</span>`;
- if(opt.all){const work=F.filter(f=>f(d)!=='비');const allOff=work.length===0||F.slice(0,4).every(f=>f(d)==='비');if(opt.together&&F.slice(0,4).every(f=>f(d)==='비'))cls+=' all';
-  const ds=P.map((p,i)=>F[i](d)!=='비'?p.c:null).filter(Boolean);inner+=`<span class="dots">${ds.slice(0,4).map(c=>`<i style="background:${c}"></i>`).join('')}</span>`+(ds.length>4?`<span class="more">+${ds.length-4}</span>`:'');}
+function cal(fn,opt={}){let h='';for(let d=1;d<=30;d++){const w=(d-1)%7;let cls='c'+(w===0?' sun':'')+(d===22?' today':'');let inner=`<span class="n">${d}</span>`;
+ if(opt.all){if(opt.together&&F.every(f=>f(d)==='비'))cls+=' all';const ds=P.map((p,i)=>F[i](d)!=='비'?p.c:null).filter(Boolean);inner+=`<span class="dots">${ds.map(c=>`<i style="background:${c}"></i>`).join('')}</span>`;}
  else{const s=fn(d);if(s==='비'){cls+=' off';inner+='<span class="chip" style="color:#4593fc;font-weight:800">비번</span>'}else inner+=`<span class="chip" style="background:${S[s][1]};color:${S[s][2]}">${S[s][0]}</span>`}
- h+=`<div class="${cls}">${inner}</div>`}return wk+'<div class="grid">'+h+'</div>'}
-function tabs(on){return '<div class="tabs">'+['전체',...P.map(p=>p.n)].map((n,i)=>`<span class="tab${n===on?' on':''}">${i?`<span class="dot" style="background:${P[i-1].c}"></span>`:''}${n}</span>`).join('')+'</div>'}
-const top='<div class="top"><span class="t">2026년 11월</span><span class="btn p">↗ 보내기</span></div>';
-document.getElementById('p1').innerHTML=top+tabs('엄마')+'<div class="sub"><span>● 엄마의 근무표 · 11/20 받음</span><span>보기만</span></div>'+cal(mom);
-document.getElementById('p2').innerHTML=top+tabs('전체')+'<div class="toggle"><span class="sw"></span>다 같이 쉬는 날 보기 <span style="margin-left:auto;color:#a6a6c8">4명 보는 중</span></div>'+cal(null,{all:1,together:1});
-const d=18;
-document.getElementById('p3').innerHTML=top+tabs('전체')+cal(null,{all:1,sel:d})+'<div class="sheet"><h4>11월 18일 수요일</h4>'+P.slice(0,4).map((p,i)=>{const s=F[i](d);return `<div class="row"><span class="dot" style="background:${p.c}"></span><span class="nm">${p.n}</span><span style="color:${s==='비'?'#4593fc':'#e0e0f5'};font-weight:700">${s==='비'?'비번':S[s][0]}</span><span class="btn" style="padding:2px 8px;font-size:11px">보기</span></div>`}).join('')+'</div>';
-document.getElementById('p4').innerHTML=top+tabs('나')+cal(me)+'<div class="dim"></div><div class="modal"><h4>근무표를 받을까요?</h4><p>11월 22일 ~ 2027년 6월 24일 · 보기만 하고 알람은 울리지 않아요</p><div class="lbl">이름 (비우면 공유1)</div><div class="fld">엄마</div><div class="lbl">색 (자동으로 골랐어요 · 눌러서 바꾸기)</div><div class="cols">'+['#f0a35e','#5ec8f0','#f06e9c','#e6d36a','#9be07a'].map((c,i)=>`<i style="background:${c}"${i?'':' class="on"'}></i>`).join('')+'</div><div class="acts"><span>취소</span><span class="p">받기</span></div></div>';
+ h+=`<div class="${cls}">${inner}</div>`}return '<div class="mh">2026년 11월</div>'+wk+'<div class="grid">'+h+'</div>'}
+const ic={cal:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',al:'<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="7"/><path d="M12 9v4l3 2M5 4 2 7M19 4l3 3"/></svg>',sh:'<svg viewBox="0 0 24 24"><circle cx="8" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M2 20c0-3.5 2.7-6 6-6s6 2.5 6 6M14 15.5c.9-.6 1.9-1 3-1 2.8 0 5 2.2 5 5"/></svg>',st:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>'};
+const bar=on=>'<div class="bar">'+[['cal','달력'],['al','알람'],['sh','공유'],['st','설정']].map(([k,n])=>`<span class="${k===on?'on':''}${k==='sh'&&on==='cal'?' new':''}">${ic[k]}${n}</span>`).join('')+'</div>';
+const chips=on=>'<div class="tabs">'+['전체',...P.map(p=>p.n)].map((n,i)=>`<span class="tab${n===on?' on':''}">${i?`<span class="dot" style="background:${P[i-1].c}"></span>`:''}${n}</span>`).join('')+'</div>';
+const shTop='<div class="top"><span class="t">공유 근무표</span><span class="btn p">↗ 보내기</span></div>';
+const set=(id,html,tab)=>document.getElementById(id).innerHTML='<div class="body">'+html+'</div>'+bar(tab);
+set('p1','<div class="hdr"><div class="dt">11월 22일 일요일</div><div class="clk">14:10</div><div class="dt">오늘 초번 · 내일 말번</div></div>'+cal(me),'cal');
+set('p2',shTop+chips('전체')+'<div class="toggle"><span class="sw"></span>다 같이 쉬는 날 보기<span style="margin-left:auto;color:#a6a6c8;font-weight:400">나 포함 4명</span></div>'+cal(null,{all:1,together:1}),'sh');
+set('p3',shTop+chips('엄마')+'<div class="sub">● 엄마의 근무표 · 11/20 받음 · 보기만</div>'+cal(mom),'sh');
+set('p4',shTop+chips('전체')+cal(null,{all:1})+'<div class="dim"></div><div class="modal"><h4>근무표를 받을까요?</h4><p>11월 22일 ~ 2027년 6월 24일 · 보기만 하고 알람은 울리지 않아요</p><div class="lbl">이름 (비우면 공유2)</div><div class="fld">아빠</div><div class="lbl">색 (자동으로 골랐어요 · 눌러서 바꾸기)</div><div class="cols">'+['#e6d36a','#9be07a','#ff8a65','#4ecdc4','#c792ea'].map((c,i)=>`<i style="background:${c}"${i?'':' class="on"'}></i>`).join('')+'</div><div class="acts"><span>취소</span><span class="p">받기</span></div></div>','sh');
 }
 </script>
 </body></html>
