@@ -16,11 +16,19 @@
 - 알람 소리 고르기(앱에 넣은 소리 여러 개 중 선택)는 사용자에게 제안만 함, 아직 미정.
 
 ## 진행 중 — 알람 소리 고르기 (1.6.0, 2026-11-23, 세이람도 같은 작업 진행 예정)
-- **현재: 시안 단계, 코드 변경 없음.** 시안 `docs/시안/알람소리-시안.html`(사용자 승낙 대기). 승낙 뒤 개발.
+- **현재: 개발 완료(2026-11-23).** 시안 승낙 → 구현 → Android 32·노트 Release 설치(기기 테스트 88/88) → 폰 Release 설치 → TestFlight.
+  - 표 한 곳: `src/constants/alarmTones.ts`(id·이름·iOS 파일 `assets/sounds/tone_*.caf`·Android `res/raw/snd_*.m4a`), 네이티브 `AlarmTones.kt`.
+  - 전달: core.ts(`notifSound(soundOn, tone)`·data.tone) → `scheduleNative(…, tone, crescendo)` → AlarmModule → AlarmStore(`tone`/`cres`) →
+    AlarmScheduling 인텐트 → AlarmReceiver(본·+1/+2분 rep) → AlarmService(`AlarmTones.rawRes`, 스누즈도 같은 소리). AlarmKit은 `sound` 필드.
+  - UI: `src/components/AlarmForm/ToneSelector.tsx`(일반·근무표 폼 둘 다, 진동만이면 흐림), 미리듣기 `src/utils/tonePreview.ts`(미디어 음량 3초, Android AlarmModule.previewTone / iOS AlarmappAlarmKit.previewSound).
+  - 점점 크게(Android): 켜면 2%에서 20초. 꺼져 있으면 예전 그대로(15%에서 15초 페이드).
+  - 테스트: `scripts/logic-tests/alarm-tone.test.js`, 정적 체크 ⑦(하드코딩 금지·파일 존재·30초·전달 경로).
+  - iOS `ios/`는 git 밖 — 이번엔 xcodeproj(ruby)로 caf 6개를 리소스에 직접 넣음. prebuild하면 app.json sounds로 다시 들어감.
+  - 아직 실제 알람 소리(고른 소리로 울리는지)는 사람이 귀로 확인 못 함.
 - 소리: freesound CC0 6개, 고음질 미리듣기 mp3를 `~/Desktop/알람소리/01~06_*.mp3`에 받아 둠
   (디지털비프 20초·종소리행진 31·옛날자명종 31·마림바 77·잔잔한피아노 34·오르골왈츠 59초). 30초 이하로 자를 것.
 - 설계(시안): 알람 수정 화면에 "알람 소리" 한 줄 → 시트에서 기본+6개, 누르면 3초 미리듣기. 알람마다 저장, 기존 알람은 '기본'.
-  Android만: 폰 벨소리(RingtoneManager)·점점 크게(20초). 근무표 알람은 알람당 하나 추천(사용자 답 대기).
+  Android만: 점점 크게(20초). 폰 벨소리는 뺌(11-23 결정). 근무표 알람도 알람당 소리 하나(11-23 결정). 개발 중.
 - 가져갈 때 주의:
   ① iOS 알림 소리는 앱 번들 안 파일만, 30초 이하·CAF(IMA4) 권장(~1MB 이하). AlarmKit은 `.named(파일명)`.
      iOS는 폰 벨소리·음량 조절 불가.

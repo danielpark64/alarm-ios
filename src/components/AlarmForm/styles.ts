@@ -198,5 +198,21 @@ return StyleSheet.create({
   // 시작일을 안 보고 바로 근무 버튼부터 누르는 사용자가 많아, 확인 전까지 눈에 띄는 배지로 유도
   wzStartHint:      { fontSize: 12, fontWeight: '700', color: '#e07070' },
   wzStartBadge:     { position: 'absolute', top: -3, right: -3, width: 9, height: 9, borderRadius: 5, backgroundColor: '#e07070' },
+
+  // 알람 소리 고르기(ToneSelector) — 폼의 한 줄 + 아래에서 올라오는 시트
+  toneRow:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingVertical: 13, paddingHorizontal: 14, borderRadius: 13, borderWidth: 1, borderColor: C.border2, backgroundColor: C.bg2 },
+  toneRowLabel:     { fontSize: 14, fontWeight: '700', color: C.txt },
+  toneRowValue:     { flexShrink: 1, marginLeft: 12, fontSize: 14, fontWeight: '700', color: C.accent },
+  sheetOverlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
+  sheet:            { backgroundColor: C.bg2, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 },
+  sheetGrab:        { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: C.border2, marginBottom: 10 },
+  toneItem:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 13, paddingHorizontal: 12, borderRadius: 12 },
+  toneItemSel:      { backgroundColor: C.bg3 },
+  toneItemText:     { fontSize: 15, fontWeight: '700', color: C.txt2 },
+  toneItemTextSel:  { color: C.txt },
+  tonePlay:         { fontSize: 12, color: C.txt3 },
+  toneCheck:        { fontSize: 15, fontWeight: '900', color: C.accent },
+  toneHint:         { fontSize: 12, color: C.txt3, marginTop: 4 },
+  toneCresRow:      { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.border2 },
 });
 }

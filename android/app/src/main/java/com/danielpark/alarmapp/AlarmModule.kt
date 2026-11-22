@@ -4,8 +4,12 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.view.WindowManager
 import com.facebook.react.bridge.Arguments
@@ -31,6 +35,8 @@ class AlarmModule(private val reactContext: ReactApplicationContext) :
      * soundOn      - 알람 소리 재생 여부
      * vibOn        - 진동 여부
      * volume       - 알람 최대 볼륨 (0.0~1.0, 사용자가 설정에서 지정한 알람 기본 볼륨)
+     * tone         - 알람 소리 id(AlarmTones, JS constants/alarmTones.ts) — 원장에도 남겨 재부팅 뒤에도 같은 소리
+     * crescendo    - 점점 크게 울리기(작게 시작해 20초 동안 키움)
      * baseAlarmId  - JS 알람 원본 id (합성 아님) — AlarmReceiver의 비활성 차단 게이트가
      *                activeAlarmIds(bare id 목록)와 비교할 때 사용. 합성 requestCode와
      *                bare id를 비교하면 항상 불일치라 게이트가 전체 차단이 되는 버그가 있었음.
@@ -41,7 +47,8 @@ class AlarmModule(private val reactContext: ReactApplicationContext) :
         title: String, body: String,
         recurrence: String, hour: Int, min: Int, weekday: Int,
         soundOn: Boolean, vibOn: Boolean, volume: Double,
-        baseAlarmId: Int
+        baseAlarmId: Int,
+        tone: String, crescendo: Boolean
     ) {
         val ctx = reactContext
         val entry = AlarmStore.Entry(
@@ -51,10 +58,50 @@ class AlarmModule(private val reactContext: ReactApplicationContext) :
             recurrence = recurrence, hour = hour, min = min, weekday = weekday,
             soundOn = soundOn, vibOn = vibOn, volume = volume.toFloat(),
             baseAlarmId = baseAlarmId,
+            tone = tone, crescendo = crescendo,
         )
         AlarmScheduling.arm(ctx, entry)
         // 재부팅·앱 교체로 AlarmManager가 비워져도 BootReceiver가 되살릴 수 있게 원장에 남긴다.
         AlarmStore.put(ctx, entry)
+    }
+
+    // ── 알람 소리 미리듣기(소리 고르기 시트) — 미디어 음량으로 ms만큼만. 실제 알람(AlarmService)과 무관 ──
+    private var previewPlayer: MediaPlayer? = null
+    private val previewHandler = Handler(Looper.getMainLooper())
+    private val previewStopper = Runnable { releasePreview() }
+
+    @ReactMethod
+    fun previewTone(tone: String, ms: Int) {
+        previewHandler.post {
+            releasePreview()
+            try {
+                val afd = reactContext.resources.openRawResourceFd(AlarmTones.rawRes(tone))
+                previewPlayer = MediaPlayer().apply {
+                    setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                            .build()
+                    )
+                    setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                    afd.close()
+                    prepare()
+                    start()
+                }
+                previewHandler.postDelayed(previewStopper, ms.toLong().coerceAtLeast(0L))
+            } catch (e: Exception) { e.printStackTrace(); releasePreview() }
+        }
+    }
+
+    @ReactMethod
+    fun stopPreview() {
+        previewHandler.post { releasePreview() }
+    }
+
+    private fun releasePreview() {
+        previewHandler.removeCallbacks(previewStopper)
+        previewPlayer?.let { try { it.stop() } catch (_: Exception) {}; it.release() }
+        previewPlayer = null
     }
 
     @ReactMethod

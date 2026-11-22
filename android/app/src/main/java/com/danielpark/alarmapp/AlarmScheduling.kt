@@ -40,6 +40,8 @@ object AlarmScheduling {
             putExtra("soundOn",     e.soundOn)
             putExtra("vibOn",       e.vibOn)
             putExtra("volume",      e.volume)
+            putExtra("tone",        e.tone)
+            putExtra("crescendo",   e.crescendo)
         }
 
     /** 원장 엔트리 하나를 실제 AlarmManager 예약으로 건다. */

@@ -1,5 +1,6 @@
 import ExpoModulesCore
 import Foundation
+import AVFoundation
 import SwiftUI
 #if canImport(AlarmKit)
 import AlarmKit
@@ -23,6 +24,8 @@ struct ScheduleOptions: Record {
   @Field var snoozeText: String = ""
   @Field var snoozeMin: Int = 0
   @Field var silent: Bool = false
+  // 알람마다 고른 소리(앱 번들 파일 이름, JS constants/alarmTones.ts). 비어 있으면(옛 JS) 기본 소리.
+  @Field var sound: String = ""
 }
 
 #if canImport(AlarmKit)
@@ -114,6 +117,14 @@ public class AlarmappAlarmKitModule: Module {
       return 0
     }
 
+    // 알람 소리 미리듣기 — 소리 고르기 시트에서 줄을 누르면 ms만큼만 재생(미디어 음량). 실제 알람과 무관.
+    Function("previewSound") { (name: String, ms: Int) in
+      DispatchQueue.main.async { Self.startPreview(name, ms) }
+    }
+    Function("stopPreview") { () in
+      DispatchQueue.main.async { Self.endPreview() }
+    }
+
     AsyncFunction("listScheduled") { () -> [[String: Any]] in
       #if canImport(AlarmKit)
       if #available(iOS 26.0, *) {
@@ -129,6 +140,35 @@ public class AlarmappAlarmKitModule: Module {
       #endif
       return []
     }
+  }
+
+  private static var previewPlayer: AVAudioPlayer?
+  private static var previewStop: DispatchWorkItem?
+
+  static func startPreview(_ name: String, _ ms: Int) {
+    endPreview()
+    let base = (name as NSString).deletingPathExtension
+    let ext = (name as NSString).pathExtension
+    guard let url = Bundle.main.url(forResource: base, withExtension: ext.isEmpty ? nil : ext) else { return }
+    do {
+      try AVAudioSession.sharedInstance().setCategory(.playback, options: [.duckOthers])
+      try AVAudioSession.sharedInstance().setActive(true)
+      let p = try AVAudioPlayer(contentsOf: url)
+      p.play()
+      previewPlayer = p
+      let w = DispatchWorkItem { endPreview() }
+      previewStop = w
+      DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(max(0, ms)), execute: w)
+    } catch {
+      NSLog("[AlarmTone] 미리듣기 실패 %@", String(describing: error))
+    }
+  }
+
+  static func endPreview() {
+    previewStop?.cancel(); previewStop = nil
+    guard let p = previewPlayer else { return }
+    p.stop(); previewPlayer = nil
+    try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
   }
 
   #if canImport(AlarmKit)
@@ -177,8 +217,10 @@ public class AlarmappAlarmKitModule: Module {
       : AlarmPresentation(alert: alert)
     let attributes = AlarmAttributes<AlarmappAlarmMetadata>(presentation: presentation, metadata: AlarmappAlarmMetadata(), tintColor: accent)
     let countdown = snooze != nil ? Alarm.CountdownDuration(preAlert: nil, postAlert: TimeInterval(o.snoozeMin * 60)) : nil
-    // 소리: 앱 번들의 alarm_long.wav(expo-notifications 플러그인이 넣는다). 개발 테스트만 무음 파일.
-    let sound: AlertConfiguration.AlertSound = .named(o.silent ? "silent_short.wav" : "alarm_long.wav")
+    // 소리: 알람마다 고른 앱 번들 파일(expo-notifications 플러그인이 넣는다, JS가 o.sound로 넘김). 개발 테스트만 무음 파일.
+    // o.sound가 비면(옛 JS) 기본 소리 — 파일 이름은 JS constants/alarmTones.ts 한 곳에서만 정한다.
+    let fallback = "alarm_long.wav" // tone-fallback: 옛 JS가 sound를 안 보낼 때만
+    let sound: AlertConfiguration.AlertSound = .named(o.silent ? "silent_short.wav" : (o.sound.isEmpty ? fallback : o.sound))
     let config = AlarmManager.AlarmConfiguration<AlarmappAlarmMetadata>(
       countdownDuration: countdown, schedule: sched, attributes: attributes, sound: sound)
 

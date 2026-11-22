@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, Modal, Vibration, Platform } from 'react-native';
 import { Text } from './common/AppText';
 import * as Notifications from 'expo-notifications';
-import { SNOOZE_ENABLED } from '../constants';
+import { SNOOZE_ENABLED, notifSoundFor } from '../constants';
 import { useT } from '../i18n';
 
 interface Props {
@@ -10,20 +10,21 @@ interface Props {
   title: string;
   body: string;
   source?: 'native' | 'expo';
+  tone?: string; // 알람마다 고른 소리 id(알림 data.tone)
   onStop: () => void;
   onSnooze: () => void;
 }
 
 const REPEAT_INTERVAL_MS = 24000;
 
-export function AlarmRinging({ visible, title, body, source = 'expo', onStop, onSnooze }: Props) {
+export function AlarmRinging({ visible, title, body, source = 'expo', tone, onStop, onSnooze }: Props) {
   const { t } = useT();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingIdsRef = useRef<string[]>([]);
 
   const scheduleRepeat = async () => {
     const id = await Notifications.scheduleNotificationAsync({
-      content: { title, body, sound: 'alarm_long.wav' },
+      content: { title, body, sound: notifSoundFor(Platform.OS, true, tone) as string },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(Date.now() + REPEAT_INTERVAL_MS) },
     });
     pendingIdsRef.current.push(id);

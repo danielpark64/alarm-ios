@@ -88,7 +88,13 @@
           "color": "#000000",
           "sounds": [
             "./assets/alarm_long.wav",
-            "./assets/silent_short.wav"
+            "./assets/silent_short.wav",
+            "./assets/sounds/tone_beep.caf",
+            "./assets/sounds/tone_chime.caf",
+            "./assets/sounds/tone_oldclock.caf",
+            "./assets/sounds/tone_marimba.caf",
+            "./assets/sounds/tone_piano.caf",
+            "./assets/sounds/tone_musicbox.caf"
           ]
         }
       ],

@@ -51,6 +51,9 @@ class AlarmService : Service() {
                 val soundOn = intent.getBooleanExtra("soundOn", true)
                 val vibOn   = intent.getBooleanExtra("vibOn", true)
                 val volume  = intent.getFloatExtra("volume", 1f)
+                // 스누즈 재알림도 같은 소리 — JS snoozeAlarm 경로엔 extra가 없으니 지금 울리던 소리를 쓴다
+                val tone      = intent.getStringExtra("tone") ?: ringingTone
+                val crescendo = if (intent.hasExtra("crescendo")) intent.getBooleanExtra("crescendo", false) else ringingCrescendo
                 cancelReps(alarmId)
                 stopRinging()
                 cancelCoverRelaunch()
@@ -59,7 +62,7 @@ class AlarmService : Service() {
                 // 비활성화되어 rescheduleAll → cancelNativeAlarms가 방금 건 SNOOZE_REQUEST_CODE까지 지운다.
                 currentRinging = null
                 stopForeground(STOP_FOREGROUND_REMOVE)
-                scheduleSnooze(title, body, soundOn, vibOn, volume)
+                scheduleSnooze(title, body, soundOn, vibOn, volume, tone, crescendo)
                 stopSelf()
                 return START_NOT_STICKY
             }
@@ -71,9 +74,13 @@ class AlarmService : Service() {
         val vibOn   = intent?.getBooleanExtra("vibOn", true) ?: true
         val volume  = intent?.getFloatExtra("volume", 1f) ?: 1f
         val baseAlarmId = intent?.getIntExtra("baseAlarmId", -1) ?: -1
+        val tone      = intent?.getStringExtra("tone") ?: AlarmTones.DEFAULT
+        val crescendo = intent?.getBooleanExtra("crescendo", false) ?: false
+        ringingTone = tone
+        ringingCrescendo = crescendo
 
-        startForeground(NOTIFICATION_ID, buildNotification(title, body, alarmId, soundOn, vibOn, volume))
-        startRinging(soundOn, vibOn, volume)
+        startForeground(NOTIFICATION_ID, buildNotification(title, body, alarmId, soundOn, vibOn, volume, tone, crescendo))
+        startRinging(soundOn, vibOn, volume, tone, crescendo)
         currentRinging = RingingInfo(title, body, alarmId, baseAlarmId)
         emitRingingEvent(title, body, alarmId, baseAlarmId)
         bringRingingActivityToFront(title, alarmId)
@@ -278,8 +285,12 @@ class AlarmService : Service() {
         } catch (e: Exception) { e.printStackTrace() }
     }
 
-    private fun startRinging(soundOn: Boolean, vibOn: Boolean, volume: Float = 1f) {
+    // tone: 알람마다 고른 소리(AlarmTones). crescendo: 점점 크게 — 켜면 아주 작게 시작해 20초 동안 키운다.
+    // 꺼져 있으면 예전과 똑같이 15%에서 15초 동안 올린다(기존 동작 그대로).
+    private fun startRinging(soundOn: Boolean, vibOn: Boolean, volume: Float = 1f, tone: String = AlarmTones.DEFAULT, crescendo: Boolean = false) {
         val targetVolume = volume.coerceIn(0f, 1f)
+        val fadeStart = if (crescendo) CRESCENDO_START_VOLUME else FADE_START_VOLUME
+        val fadeMs = if (crescendo) CRESCENDO_DURATION_MS else FADE_DURATION_MS
         if (soundOn && mediaPlayer?.isPlaying != true) {
             try {
                 mediaPlayer = MediaPlayer().apply {
@@ -289,16 +300,16 @@ class AlarmService : Service() {
                             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                             .build()
                     )
-                    val afd = resources.openRawResourceFd(R.raw.alarm_long)
+                    val afd = resources.openRawResourceFd(AlarmTones.rawRes(tone))
                     setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
                     afd.close()
                     isLooping = true
                     prepare()
-                    val startVolume = FADE_START_VOLUME.coerceAtMost(targetVolume)
+                    val startVolume = fadeStart.coerceAtMost(targetVolume)
                     setVolume(startVolume, startVolume)
                     start()
                 }
-                startVolumeFade(targetVolume)
+                startVolumeFade(targetVolume, fadeStart, fadeMs)
             } catch (e: Exception) { e.printStackTrace() }
         }
 
@@ -325,10 +336,10 @@ class AlarmService : Service() {
     }
 
     // 알람 소리를 작게 시작해서 점점 사용자가 설정한 최대 볼륨까지 올림
-    private fun startVolumeFade(targetVolume: Float) {
+    private fun startVolumeFade(targetVolume: Float, fadeStart: Float = FADE_START_VOLUME, fadeMs: Long = FADE_DURATION_MS) {
         val handler = Handler(Looper.getMainLooper())
-        val totalSteps = (FADE_DURATION_MS / FADE_STEP_MS).toInt()
-        val startVolume = FADE_START_VOLUME.coerceAtMost(targetVolume)
+        val totalSteps = (fadeMs / FADE_STEP_MS).toInt()
+        val startVolume = fadeStart.coerceAtMost(targetVolume)
         var step = 0
         val runnable = object : Runnable {
             override fun run() {
@@ -357,7 +368,7 @@ class AlarmService : Service() {
     // 의도적으로 AlarmStore 원장에 기록하지 않는다 — 스누즈는 수명 5분짜리 일회성 예약이라
     // 부팅 복구 대상이 아니고, 매 rescheduleAll이 지우는 대상이라 원장에 넣으면 정합성만 나빠진다.
     // 절충: 스누즈 대기 중에 재부팅하면 그 스누즈는 사라진다(원래 알람 예약은 정상 복구됨).
-    private fun scheduleSnooze(title: String, body: String, soundOn: Boolean, vibOn: Boolean, volume: Float) {
+    private fun scheduleSnooze(title: String, body: String, soundOn: Boolean, vibOn: Boolean, volume: Float, tone: String, crescendo: Boolean) {
         val intent = Intent(this, AlarmReceiver::class.java).apply {
             putExtra(EXTRA_TITLE, title)
             putExtra(EXTRA_BODY, body)
@@ -365,6 +376,8 @@ class AlarmService : Service() {
             putExtra("soundOn", soundOn)
             putExtra("vibOn", vibOn)
             putExtra("volume", volume)
+            putExtra("tone", tone)
+            putExtra("crescendo", crescendo)
         }
         val pi = PendingIntent.getBroadcast(
             this, AlarmIds.SNOOZE_REQUEST_CODE, intent,
@@ -395,7 +408,7 @@ class AlarmService : Service() {
         }
     }
 
-    private fun buildNotification(title: String, body: String, alarmId: Int, soundOn: Boolean, vibOn: Boolean, volume: Float): Notification {
+    private fun buildNotification(title: String, body: String, alarmId: Int, soundOn: Boolean, vibOn: Boolean, volume: Float, tone: String, crescendo: Boolean): Notification {
         val stopPi = PendingIntent.getService(
             this, 10,
             Intent(this, AlarmService::class.java).apply {
@@ -413,6 +426,8 @@ class AlarmService : Service() {
                 putExtra("soundOn", soundOn)
                 putExtra("vibOn", vibOn)
                 putExtra("volume", volume)
+                putExtra("tone", tone)
+                putExtra("crescendo", crescendo)
             },
             PendingIntent.FLAG_IMMUTABLE
         )
@@ -453,6 +468,9 @@ class AlarmService : Service() {
         // alarmId는 합성 requestCode, baseAlarmId는 JS 알람 원본 id(없으면 -1 — 구버전 예약분)
         data class RingingInfo(val title: String, val body: String, val alarmId: Int, val baseAlarmId: Int = -1)
         @Volatile var currentRinging: RingingInfo? = null
+        // 지금 울리는 알람의 소리 — JS snoozeAlarm(extra 없음) 경로의 스누즈 재알림이 같은 소리를 쓰게
+        @Volatile var ringingTone: String = AlarmTones.DEFAULT
+        @Volatile var ringingCrescendo: Boolean = false
 
         // 네이티브 경로로 마지막에 끈 알람 기록 — AlarmModule.consumeLastStopped가 읽고 지운다
         const val PREFS_STOPPED       = "AlarmLastStopped"
@@ -468,6 +486,9 @@ class AlarmService : Service() {
         private const val FADE_START_VOLUME = 0.15f
         private const val FADE_DURATION_MS  = 15_000L
         private const val FADE_STEP_MS      = 1_000L
+        // 점점 크게 울리기(알람별 설정, 기본 꺼짐) — JS constants/alarmTones.ts CRESCENDO_MS와 같은 20초
+        private const val CRESCENDO_START_VOLUME = 0.02f
+        private const val CRESCENDO_DURATION_MS  = 20_000L
 
         // 커버 디스플레이 AOD 강제 전환(약 4초)보다 짧게 잡아 끄기 화면을 계속 앞으로 띄움
         private const val COVER_RELAUNCH_INTERVAL_MS = 2_500L

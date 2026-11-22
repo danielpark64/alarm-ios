@@ -597,10 +597,10 @@ export default function App() {
             setEditAlarm(null);
             if (pendingNav) { setTab(pendingNav); setPendingNav(null); }
           }}
-          onSubmitPattern={async (groupId, pattern, sd, snd, vib) => {
+          onSubmitPattern={async (groupId, pattern, sd, snd, vib, sound) => {
             // 비그룹 알람(일반/레거시)을 근무표로 전환 저장하는 경우 — 원본을 새 세트로
             // 대체하지 않으면 편집하던 알람이 목록에 그대로 남아 중복된다
-            await submitWorkPattern(groupId, pattern, sd, snd, vib, groupId == null ? editAlarm.id : undefined);
+            await submitWorkPattern(groupId, pattern, sd, snd, vib, groupId == null ? editAlarm.id : undefined, sound);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setEditAlarm(null);
             if (pendingNav) { setTab(pendingNav); setPendingNav(null); }
@@ -663,8 +663,8 @@ export default function App() {
                   setTutorialStep(9);
                 }
               }}
-              onSubmitPattern={async (groupId, pattern, sd, snd, vib) => {
-                await submitWorkPattern(groupId, pattern, sd, snd, vib);
+              onSubmitPattern={async (groupId, pattern, sd, snd, vib, sound) => {
+                await submitWorkPattern(groupId, pattern, sd, snd, vib, undefined, sound);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 setTab(pendingNav ?? 'alarms');
                 setPendingNav(null);
@@ -708,6 +708,7 @@ export default function App() {
           title={ringing?.title ?? ''}
           body={ringing?.body ?? ''}
           source={ringing?.source ?? 'expo'}
+          tone={ringing?.tone}
           onStop={stopRinging}
           onSnooze={snoozeRinging}
         />

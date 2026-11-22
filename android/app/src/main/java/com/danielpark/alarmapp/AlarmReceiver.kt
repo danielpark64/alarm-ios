@@ -23,6 +23,9 @@ class AlarmReceiver : BroadcastReceiver() {
         val soundOn = intent.getBooleanExtra("soundOn", true)
         val vibOn   = intent.getBooleanExtra("vibOn", true)
         val volume  = intent.getFloatExtra("volume", 1f)
+        // 알람 소리·점점 크게 — 옛 예약 인텐트엔 없으므로 기본음·꺼짐(기존 동작)
+        val tone      = intent.getStringExtra("tone") ?: AlarmTones.DEFAULT
+        val crescendo = intent.getBooleanExtra("crescendo", false)
 
         // 비활성 알람 차단 — JS 측이 꺼둔 알람은 울리지 않음.
         // 비교 기준은 반드시 baseAlarmId(JS 알람 원본 id)여야 한다 — alarmId extra는 합성
@@ -53,6 +56,8 @@ class AlarmReceiver : BroadcastReceiver() {
             putExtra("soundOn", soundOn)
             putExtra("vibOn", vibOn)
             putExtra("volume", volume)
+            putExtra("tone", tone)
+            putExtra("crescendo", crescendo)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             context.startForegroundService(svcIntent)
@@ -74,6 +79,8 @@ class AlarmReceiver : BroadcastReceiver() {
                 putExtra("soundOn", soundOn)
                 putExtra("vibOn", vibOn)
                 putExtra("volume", volume)
+                putExtra("tone", tone)            // 보조(+1/+2분) 울림도 같은 소리
+                putExtra("crescendo", crescendo)
             }
             val repPi = PendingIntent.getBroadcast(
                 context, AlarmIds.repSlotId(alarmId, repIdx), repIntent,

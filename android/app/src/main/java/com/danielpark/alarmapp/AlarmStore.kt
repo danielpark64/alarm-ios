@@ -42,6 +42,9 @@ object AlarmStore {
         val vibOn: Boolean,
         val volume: Float,
         val baseAlarmId: Int,
+        // 알람 소리 id(AlarmTones)·점점 크게 — 옛 원장엔 없으므로 기본음·꺼짐(기존 동작)으로 읽는다
+        val tone: String = AlarmTones.DEFAULT,
+        val crescendo: Boolean = false,
     )
 
     // requestCode → Entry. 예약/취소가 짧은 시간에 수십~수백 번 몰아쳐 들어오므로
@@ -148,6 +151,8 @@ object AlarmStore {
         put("vib", e.vibOn)
         put("vol", e.volume.toDouble())
         put("base", e.baseAlarmId)
+        put("tone", e.tone)
+        put("cres", e.crescendo)
     }
 
     private fun fromJson(o: JSONObject) = Entry(
@@ -163,5 +168,7 @@ object AlarmStore {
         vibOn = o.optBoolean("vib", true),
         volume = o.optDouble("vol", 1.0).toFloat(),
         baseAlarmId = o.optInt("base", -1),
+        tone = o.optString("tone", AlarmTones.DEFAULT),
+        crescendo = o.optBoolean("cres", false),
     )
 }

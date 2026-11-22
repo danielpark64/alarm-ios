@@ -9,7 +9,7 @@
 import { Platform } from 'react-native';
 import { requireOptionalNativeModule } from 'expo-modules-core';
 import { alarmKitEnabled, shouldAskAlarmKit, alarmKitUuid, alarmKitWeekdays, type AlarmKitAuth, type AlarmKitEnv } from '../alarmkitRoute';
-import { SNOOZE_ENABLED } from '../../constants';
+import { SNOOZE_ENABLED, toneIosFile } from '../../constants';
 import { t } from '../../i18n/translate';
 
 type ScheduleOptions = {
@@ -17,7 +17,8 @@ type ScheduleOptions = {
   fireMs: number;          // 날짜 예약(.fixed) — weekdays가 비어 있을 때
   hour: number; minute: number; weekdays: string[]; // 요일 반복(.relative weekly)
   title: string; stopText: string; snoozeText: string; snoozeMin: number;
-  silent: boolean;         // 개발 테스트 전용(무음 파일) — 사용자 알람은 항상 false(alarm_long.wav)
+  silent: boolean;         // 개발 테스트 전용(무음 파일) — 사용자 알람은 항상 false
+  sound: string;           // 앱 번들 소리 파일 이름(알람마다 고른 소리, constants/alarmTones.ts)
 };
 type Native = {
   isAvailable(): boolean;
@@ -27,6 +28,8 @@ type Native = {
   cancelForAlarm(alarmId: number): Promise<number>;
   cancelAll(keepActiveIds: number[]): Promise<number>;
   listScheduled(): Promise<{ id: string; alarmId: number; state: string }[]>;
+  previewSound?(name: string, ms: number): void;
+  stopPreview?(): void;
 };
 
 const native = Platform.OS === 'ios' ? requireOptionalNativeModule<Native>('AlarmappAlarmKit') : null;
@@ -67,16 +70,16 @@ function buttons() {
 }
 
 // 날짜 하나에 한 번 — key는 근무일(YYYY-MM-DD). 반환 false면 예약 실패(한도 초과 등).
-export function scheduleAlarmKitDate(alarmId: number, key: string, fire: Date, title: string): Promise<boolean> {
+export function scheduleAlarmKitDate(alarmId: number, key: string, fire: Date, title: string, tone?: unknown): Promise<boolean> {
   if (!native) return Promise.resolve(false);
-  const o: ScheduleOptions = { id: alarmKitUuid(alarmId, key), alarmId, fireMs: fire.getTime(), hour: 0, minute: 0, weekdays: [], title, ...buttons(), silent: false };
+  const o: ScheduleOptions = { id: alarmKitUuid(alarmId, key), alarmId, fireMs: fire.getTime(), hour: 0, minute: 0, weekdays: [], title, ...buttons(), silent: false, sound: toneIosFile(tone) };
   return serial(() => native.schedule(o)).catch(() => false);
 }
 
 // 요일 반복 — 끝없이 반복되므로 14일 창이 필요 없다(Expo WEEKLY 경로와 같은 조건일 때만 쓴다).
-export function scheduleAlarmKitWeekly(alarmId: number, days: number[], hour: number, minute: number, title: string): Promise<boolean> {
+export function scheduleAlarmKitWeekly(alarmId: number, days: number[], hour: number, minute: number, title: string, tone?: unknown): Promise<boolean> {
   if (!native) return Promise.resolve(false);
-  const o: ScheduleOptions = { id: alarmKitUuid(alarmId, 'weekly'), alarmId, fireMs: 0, hour, minute, weekdays: alarmKitWeekdays(days), title, ...buttons(), silent: false };
+  const o: ScheduleOptions = { id: alarmKitUuid(alarmId, 'weekly'), alarmId, fireMs: 0, hour, minute, weekdays: alarmKitWeekdays(days), title, ...buttons(), silent: false, sound: toneIosFile(tone) };
   return serial(() => native.schedule(o)).catch(() => false);
 }
 
@@ -101,6 +104,10 @@ export function listAlarmKit(): Promise<{ id: string; alarmId: number; state: st
 export function scheduleAlarmKitTest(minutes: number): Promise<boolean> {
   if (!native) return Promise.resolve(false);
   const fire = new Date(Date.now() + minutes * 60_000);
-  const o: ScheduleOptions = { id: alarmKitUuid(-1, String(fire.getTime())), alarmId: -1, fireMs: fire.getTime(), hour: 0, minute: 0, weekdays: [], title: '⏰ AlarmKit 테스트', ...buttons(), silent: true };
+  const o: ScheduleOptions = { id: alarmKitUuid(-1, String(fire.getTime())), alarmId: -1, fireMs: fire.getTime(), hour: 0, minute: 0, weekdays: [], title: '⏰ AlarmKit 테스트', ...buttons(), silent: true, sound: toneIosFile('default') };
   return serial(() => native.schedule(o)).catch(() => false);
 }
+
+// 알람 소리 미리듣기(iOS) — 번들 파일을 미디어 음량으로 ms만큼만 재생. 실제 알람 경로와 무관.
+export function previewIosSound(name: string, ms: number) { try { native?.previewSound?.(name, ms); } catch {} }
+export function stopIosPreview() { try { native?.stopPreview?.(); } catch {} }

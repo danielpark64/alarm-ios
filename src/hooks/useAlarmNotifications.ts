@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Platform, AppState, NativeModules, DeviceEventEmitter } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
-import { Alarm } from '../constants';
+import { Alarm, notifSoundFor } from '../constants';
 import { requestNotificationPermission, registerNotificationCategories, rescheduleAll, refreshRepsOnly, cancelExpoGroupReps, cancelRepSeries } from '../utils/notifications';
 import { getAlarmDefaults } from './useAlarmDefaults';
 import { getDayOverridesCache } from '../utils/dayOverrideStore';
@@ -18,7 +18,7 @@ const { AlarmModule } = NativeModules;
 
 // alarmId: Expo 경로면 알람 원본 id, 네이티브 경로면 합성 requestCode. baseAlarmId: 네이티브 경로에서
 // 함께 오는 알람 원본 id(구버전 예약분은 없음) — '한 번' 알람 자동 비활성화 등 알람 목록 조회에 쓴다.
-export type RingingState = { title: string; body: string; alarmId?: number; baseAlarmId?: number; groupKey?: string; source?: 'native' | 'expo' };
+export type RingingState = { title: string; body: string; alarmId?: number; baseAlarmId?: number; groupKey?: string; source?: 'native' | 'expo'; tone?: string };
 
 // 알림 권한/리스너/포그라운드 재스케줄/네이티브 울림 이벤트를 한곳에서 관리
 // loaded: useAlarms의 로드 완료 여부 — 로드 전엔 alarms가 []라 포그라운드 재스케줄을 돌리면 안 된다.
@@ -137,7 +137,7 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
           if (prev?.source === 'native') return prev;
           return {
             title: title ?? tr('⏰ 알람'), body: body ?? '',
-            alarmId: d?.alarmId, groupKey: d?.groupKey,
+            alarmId: d?.alarmId, groupKey: d?.groupKey, tone: d?.tone,
           };
         });
       }
@@ -176,7 +176,7 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       if (r.actionIdentifier === 'snooze') {
         // Android 전용 — iOS는 스누즈 버튼 없음
         Notifications.scheduleNotificationAsync({
-          content: { title: tr('⏰ 스누즈'), body: r.notification.request.content.body ?? undefined, sound: __DEV__ ? true : 'alarm_long.wav', categoryIdentifier: 'alarm' },
+          content: { title: tr('⏰ 스누즈'), body: r.notification.request.content.body ?? undefined, sound: notifSoundFor(Platform.OS, true, data?.tone, __DEV__), categoryIdentifier: 'alarm', data: { tone: data?.tone } },
           trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(Date.now()+5*60*1000) },
         });
       } else {
@@ -291,7 +291,7 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
     }
     if (ringing)
       Notifications.scheduleNotificationAsync({
-        content: { title: tr('⏰ 스누즈'), body: ringing.body, sound: 'alarm_long.wav' },
+        content: { title: tr('⏰ 스누즈'), body: ringing.body, sound: notifSoundFor(Platform.OS, true, ringing.tone) as string, data: { tone: ringing.tone } },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(Date.now() + 5 * 60 * 1000) },
       });
     setRinging(null);

@@ -63,6 +63,7 @@ export function workPatternPreviewLabel(pattern: WorkSegment[]): string {
 
 function buildRoleAlarm(
   pattern: WorkSegment[], sd: string, role: 'commute' | 'offwork', snd: SoundMode, vib: VibMode,
+  sound?: { tone?: Alarm['tone']; crescendo?: boolean },
 ): Omit<Alarm, 'id' | 'active'> {
   const first = firstWorkSegment(pattern);
   const t = (role === 'commute' ? first?.commuteTime : first?.offworkTime) ?? first?.commuteTime ?? { hour: 9, min: 0 };
@@ -74,11 +75,14 @@ function buildRoleAlarm(
     pattern,
     shift: first?.shift, shiftCustom: first?.shiftCustom, // 레거시 폴백(패턴 모르는 코드용) — 첫 근무 세그먼트 값
     groupRole: role,
+    // 알람 소리 — 근무표 알람(출근·퇴근)은 알람 하나에 소리 하나라 둘이 같은 값을 갖는다. 안 넘기면 기존 값 유지.
+    ...(sound ? { tone: sound.tone, crescendo: sound.crescendo } : {}),
   };
 }
 
 export function reconcileWorkPattern(
   existingGroupAlarms: Alarm[], pattern: WorkSegment[], sd: string, snd: SoundMode, vib: VibMode,
+  sound?: { tone?: Alarm['tone']; crescendo?: boolean },
 ): ReconcileResult {
   const toAdd: Omit<Alarm, 'id' | 'active'>[] = [];
   const toUpdate: { id: number; data: Partial<Alarm> }[] = [];
@@ -88,12 +92,12 @@ export function reconcileWorkPattern(
   const commute = existingGroupAlarms.find(a => a.groupRole === 'commute');
   const offwork = existingGroupAlarms.find(a => a.groupRole === 'offwork');
 
-  const commuteData = buildRoleAlarm(pattern, sd, 'commute', snd, vib);
+  const commuteData = buildRoleAlarm(pattern, sd, 'commute', snd, vib, sound);
   if (commute) toUpdate.push({ id: commute.id, data: commuteData });
   else toAdd.push(commuteData);
 
   if (needsOffwork) {
-    const offworkData = buildRoleAlarm(pattern, sd, 'offwork', snd, vib);
+    const offworkData = buildRoleAlarm(pattern, sd, 'offwork', snd, vib, sound);
     if (offwork) toUpdate.push({ id: offwork.id, data: offworkData });
     else toAdd.push(offworkData);
   } else if (offwork) {

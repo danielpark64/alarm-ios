@@ -746,6 +746,62 @@ elif ! grep -q "incomingSeq" "$ROOT/src/components/Home/ShareBar.tsx"; then fail
 elif ! grep -q "incomingSeq" "$ROOT/src/components/Home/ShareTab.tsx"; then fail "ShareTab 날짜 시트가 링크가 와도 닫히지 않음(incomingSeq)"
 else ok ""; fi
 
+# ⑦ 알람 소리 고르기(2026-11-23) — 알람마다 소리 하나. 소리 파일 이름은 src/constants/alarmTones.ts(JS)와
+#    AlarmTones.kt(Android 네이티브) 한 곳에서만 정한다. 다른 곳에 'alarm_long.wav'·R.raw.alarm_long을 박아 두면
+#    그 경로만 고른 소리를 무시하고 기본음으로 울린다(스누즈·보조 알림·AlarmKit 등 경로가 여러 개라 빠뜨리기 쉽다).
+printf "  알람 소리: 파일 이름 하드코딩 금지(alarmTones 한 곳) ... "
+_TONE_HARD=$(grep -rnE "'alarm_long\.wav'|\"alarm_long\.wav\"" "$ROOT/src" "$ROOT/app" "$ROOT/modules" 2>/dev/null \
+  | grep -v "src/constants/alarmTones.ts" | grep -v "tone-fallback" | grep -vE ':[[:space:]]*(//|\*)' | head -3)
+_TONE_HARD_KT=$(grep -rn "R\.raw\.alarm_long" "$NATIVE_DIR" 2>/dev/null | grep -v "AlarmTones.kt" | head -3)
+if [ ! -f "$ROOT/src/constants/alarmTones.ts" ]; then fail "src/constants/alarmTones.ts 없음"
+elif [ -n "$_TONE_HARD" ]; then fail "JS/Swift에 alarm_long.wav 하드코딩 — 고른 소리 무시: $_TONE_HARD"
+elif [ ! -f "$NATIVE_DIR/AlarmTones.kt" ]; then fail "AlarmTones.kt 없음(Android 소리 id → R.raw 매핑)"
+elif [ -n "$_TONE_HARD_KT" ]; then fail "Kotlin에 R.raw.alarm_long 하드코딩 — 고른 소리 무시: $_TONE_HARD_KT"
+else ok ""; fi
+
+# 목록의 모든 소리 파일이 실제로 있어야 한다 — iOS는 app.json sounds(번들 포함), Android는 res/raw.
+# 없으면 iOS는 조용히 기본음(또는 무음), Android는 리소스가 없어 빌드가 깨지거나 기본음으로 떨어진다.
+printf "  알람 소리: 파일이 app.json·assets·res/raw에 모두 있음 ... "
+_TONE_MISS=""
+if [ -f "$ROOT/src/constants/alarmTones.ts" ]; then
+  for f in $(grep -oE "ios: *'[^']+'" "$ROOT/src/constants/alarmTones.ts" | sed -E "s/ios: *'([^']+)'/\1/"); do
+    grep -q "assets/sounds/$f\"\|assets/$f\"" "$ROOT/app.json" || _TONE_MISS="$_TONE_MISS app.json:$f"
+    [ -f "$ROOT/assets/sounds/$f" ] || [ -f "$ROOT/assets/$f" ] || _TONE_MISS="$_TONE_MISS assets:$f"
+  done
+  for r in $(grep -oE "android: *'[^']+'" "$ROOT/src/constants/alarmTones.ts" | sed -E "s/android: *'([^']+)'/\1/"); do
+    ls "$ROOT/android/app/src/main/res/raw/$r."* >/dev/null 2>&1 || _TONE_MISS="$_TONE_MISS raw:$r"
+    grep -q "R\.raw\.$r\b" "$NATIVE_DIR/AlarmTones.kt" 2>/dev/null || _TONE_MISS="$_TONE_MISS kt:$r"
+  done
+else _TONE_MISS="alarmTones.ts 없음"; fi
+[ -z "$_TONE_MISS" ] && ok "" || fail "소리 파일 누락 —$_TONE_MISS"
+
+# iOS 알림 소리는 30초 이하여야 한다(넘으면 iOS가 기본음으로 바꿔 울린다). 원본 mp3는 앱에 넣지 않는다(용량).
+printf "  알람 소리: iOS 파일 30초 이하·원본 mp3 미포함 ... "
+_TONE_LONG=""
+if command -v afinfo >/dev/null 2>&1; then
+  for f in "$ROOT"/assets/sounds/*.caf; do
+    [ -f "$f" ] || continue
+    d=$(afinfo "$f" 2>/dev/null | awk '/estimated duration/ {print $3}')
+    awk -v d="${d:-99}" 'BEGIN{exit !(d>=30)}' && _TONE_LONG="$_TONE_LONG ${f##*/}(${d}s)"
+  done
+fi
+if [ -n "$_TONE_LONG" ]; then fail "30초 넘는 iOS 소리:$_TONE_LONG"
+elif ls "$ROOT"/assets/sounds/*.mp3 "$ROOT"/android/app/src/main/res/raw/*.mp3 >/dev/null 2>&1; then fail "원본 mp3가 앱에 들어감"
+else ok ""; fi
+
+# 고른 소리가 예약 데이터로 끝까지 가야 한다 — JS scheduleNative → AlarmModule → AlarmStore(부팅 복구) →
+# 인텐트(AlarmScheduling) → AlarmReceiver(보조 rep 포함) → AlarmService. 한 군데라도 빠지면 재부팅 뒤·보조 울림만 기본음.
+printf "  알람 소리: tone·crescendo가 예약~재생까지 전달 ... "
+_TP=""
+grep -q "tone" "$ROOT/src/utils/notifications/android.ts" || _TP="$_TP android.ts"
+grep -q "tone" "$NATIVE_DIR/AlarmModule.kt" || _TP="$_TP AlarmModule"
+grep -q '"tone"' "$NATIVE_DIR/AlarmStore.kt" && grep -q '"cres"' "$NATIVE_DIR/AlarmStore.kt" || _TP="$_TP AlarmStore"
+grep -q '"tone"' "$NATIVE_DIR/AlarmScheduling.kt" && grep -q '"crescendo"' "$NATIVE_DIR/AlarmScheduling.kt" || _TP="$_TP AlarmScheduling"
+[ "$(grep -c '"tone"' "$NATIVE_DIR/AlarmReceiver.kt")" -ge 3 ] || _TP="$_TP AlarmReceiver(본·rep 둘 다)"
+grep -q "AlarmTones" "$NATIVE_DIR/AlarmService.kt" || _TP="$_TP AlarmService"
+grep -q "o.sound\|o\.sound" "$ROOT/modules/alarmapp-alarmkit/ios/AlarmappAlarmKitModule.swift" || _TP="$_TP AlarmKit.swift"
+[ -z "$_TP" ] && ok "" || fail "소리 id 전달 끊김 —$_TP"
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

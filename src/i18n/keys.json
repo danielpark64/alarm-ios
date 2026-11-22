@@ -852,6 +852,12 @@
   ]
  },
  {
+  "key": "기본",
+  "files": [
+   "src/constants/alarmTones.ts"
+  ]
+ },
+ {
   "key": "기본 사용법",
   "files": [
    "src/content/help.ko.ts"
@@ -1001,6 +1007,7 @@
  {
   "key": "닫기",
   "files": [
+   "src/components/AlarmForm/ToneSelector.tsx",
    "src/components/Help/HelpScreen.tsx",
    "src/components/Home/CalendarView.tsx",
    "src/components/Home/ShareBar.tsx",
@@ -1100,6 +1107,12 @@
   ]
  },
  {
+  "key": "디지털 비프",
+  "files": [
+   "src/constants/alarmTones.ts"
+  ]
+ },
+ {
   "key": "라벨에 내용을 적어보세요. (예: 기상)",
   "files": [
    "src/content/tutorialSteps.ko.ts"
@@ -1115,6 +1128,12 @@
   "key": "링크가 너무 길어서 읽을 수 없어요.",
   "files": [
    "src/hooks/useShiftShare.tsx"
+  ]
+ },
+ {
+  "key": "마림바",
+  "files": [
+   "src/constants/alarmTones.ts"
   ]
  },
  {
@@ -1652,6 +1671,12 @@
   ]
  },
  {
+  "key": "알람 소리",
+  "files": [
+   "src/components/AlarmForm/ToneSelector.tsx"
+  ]
+ },
+ {
   "key": "알람 소리 크기 (안드로이드)",
   "files": [
    "src/content/help.ko.ts"
@@ -1871,6 +1896,12 @@
   ]
  },
  {
+  "key": "옛날 자명종",
+  "files": [
+   "src/constants/alarmTones.ts"
+  ]
+ },
+ {
   "key": "오늘",
   "files": [
    "src/components/Home/CalendarView.tsx",
@@ -1913,6 +1944,12 @@
   "key": "오늘부터 약 7개월 근무표를 링크 한 줄로 카톡·문자에 보내요. 받은 사람은 달력에서 보기만 해요.",
   "files": [
    "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "오르골 왈츠",
+  "files": [
+   "src/constants/alarmTones.ts"
   ]
  },
  {
@@ -2163,9 +2200,21 @@
   ]
  },
  {
+  "key": "작게 시작해 20초 동안 커져요.",
+  "files": [
+   "src/components/AlarmForm/ToneSelector.tsx"
+  ]
+ },
+ {
   "key": "작은 후원으로 응원해주세요",
   "files": [
    "src/components/Home/PromoBanner.tsx"
+  ]
+ },
+ {
+  "key": "잔잔한 피아노",
+  "files": [
+   "src/constants/alarmTones.ts"
   ]
  },
  {
@@ -2197,6 +2246,12 @@
   ]
  },
  {
+  "key": "점점 크게 울리기",
+  "files": [
+   "src/components/AlarmForm/ToneSelector.tsx"
+  ]
+ },
+ {
   "key": "정말 잘하셨어요! 이제부터는 직접 자유롭게 사용해보세요.",
   "files": [
    "src/content/tutorialSteps.ko.ts"
@@ -2206,6 +2261,12 @@
   "key": "정보",
   "files": [
    "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "종소리 행진",
+  "files": [
+   "src/constants/alarmTones.ts"
   ]
  },
  {
@@ -2242,6 +2303,12 @@
   "key": "주야비휴",
   "files": [
    "src/constants/shiftPresets.ts"
+  ]
+ },
+ {
+  "key": "줄을 누르면 고르면서 3초 들려줘요.",
+  "files": [
+   "src/components/AlarmForm/ToneSelector.tsx"
   ]
  },
  {

@@ -1,7 +1,7 @@
 import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { View, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { Text } from '../common/AppText';
-import { Alarm, ShiftPeriod, WorkSegment, SoundMode, VibMode } from '../../constants';
+import { Alarm, ShiftPeriod, WorkSegment, SoundMode, VibMode, ToneId } from '../../constants';
 import { useColors } from '../../hooks/useTheme';
 import { useAlarmFormState } from '../../hooks/useAlarmFormState';
 import { TypeSelector } from './TypeSelector';
@@ -12,6 +12,7 @@ import { newBlockId } from '../../utils/workPattern';
 import { WorkPatternBuilder } from './WorkPatternBuilder';
 import { RotationWizard, RotationTutorialEvent } from './RotationWizard';
 import { SndVibSelector } from './SndVibSelector';
+import { ToneSelector } from './ToneSelector';
 import { DateSection } from './DateSection';
 import { DateModal } from './DateModal';
 import { TimePickerSection } from './TimePickerSection';
@@ -31,7 +32,7 @@ export interface AlarmFormHandle {
 interface Props {
   initial: Partial<Alarm>;
   onSubmit: (data: Omit<Alarm, 'id' | 'active'>) => void;
-  onSubmitPattern?: (groupId: number | undefined, pattern: WorkSegment[], sd: string, snd: SoundMode, vib: VibMode) => void;
+  onSubmitPattern?: (groupId: number | undefined, pattern: WorkSegment[], sd: string, snd: SoundMode, vib: VibMode, sound?: { tone: ToneId; crescendo: boolean }) => void;
   onCancel: () => void;
   onDelete?: () => void;
   onTypeChange?: (typeId: string) => void;
@@ -233,6 +234,7 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
                 />
                 <Text style={s.sLabel}>{t('소리/진동')}</Text>
                 <SndVibSelector layout="row" sndVibMode={form.sndVibMode} setSndVibMode={form.setSndVibMode} />
+                <ToneSelector tone={form.tone} setTone={form.setTone} crescendo={form.crescendo} setCrescendo={form.setCrescendo} disabled={form.sndVibMode === 'vib'} />
               </>
             ) : (
               <>
@@ -259,6 +261,7 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
                   setSndVibMode={form.setSndVibMode}
                   pickerRef={timeRef}
                 />
+                <ToneSelector tone={form.tone} setTone={form.setTone} crescendo={form.crescendo} setCrescendo={form.setCrescendo} disabled={form.sndVibMode === 'vib'} />
 
                 <RepeatModeSelector
                   rm={form.rm}

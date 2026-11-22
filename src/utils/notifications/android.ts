@@ -11,9 +11,11 @@ export function scheduleNative(
   recurrence: string, hour: number, min: number, calWeekday: number,
   soundOn: boolean, vibOn: boolean, volume: number,
   baseAlarmId: number,
+  // 알람 소리 id(constants/alarmTones.ts)·점점 크게 — 네이티브가 원장(AlarmStore)에도 남겨 재부팅 뒤에도 같은 소리로 울린다
+  tone: string = 'default', crescendo: boolean = false,
 ) {
   if (Platform.OS !== 'android' || !AlarmModule) return;
-  AlarmModule.scheduleAlarm(requestCode, triggerDate.getTime(), title, body, recurrence, hour, min, calWeekday, soundOn, vibOn, volume, baseAlarmId);
+  AlarmModule.scheduleAlarm(requestCode, triggerDate.getTime(), title, body, recurrence, hour, min, calWeekday, soundOn, vibOn, volume, baseAlarmId, tone, crescendo);
 }
 
 // alarmId에 연결된 모든 네이티브 AlarmManager 예약 취소 (요일 슬롯 + 날짜 슬롯 + rep 슬롯 + 스누즈)

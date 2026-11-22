@@ -117,9 +117,10 @@ export function useAlarms() {
     // 일반(비그룹) 알람을 편집해서 근무표로 전환하는 경우, 새 세트만 추가하면 편집 중이던
     // 원본 알람이 목록에 그대로 남아 중복된다 — 원본 id를 받아 같은 원자적 계산에서 제거한다.
     replaceAlarmId?: number,
+    sound?: { tone?: Alarm['tone']; crescendo?: boolean }, // 알람 소리 — 출근·퇴근 알람이 같은 값
   ) => {
     const existing = groupId != null ? alarms.filter(a => a.groupId === groupId) : [];
-    const { toAdd, toUpdate, toRemove } = reconcileWorkPattern(existing, pattern, sd, snd, vib);
+    const { toAdd, toUpdate, toRemove } = reconcileWorkPattern(existing, pattern, sd, snd, vib, sound);
 
     let nid = nextId;
     let gid = groupId;

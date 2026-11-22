@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Alert } from 'react-native';
-import { Alarm, ShiftPeriod, WorkSegment, SoundMode, VibMode, MONTH_KEYS } from '../constants';
+import { Alarm, ShiftPeriod, WorkSegment, SoundMode, VibMode, MONTH_KEYS, ToneId, normalizeTone } from '../constants';
 import { getType, pad, todayStr, lunarToSolarInYear, shiftPrefixFor, localizeDefaultLabel } from '../utils';
 import { t as tr } from '../i18n/translate';
 import { newBlockId } from '../utils/workPattern';
@@ -56,7 +56,7 @@ export function useAlarmFormState(
   onTypeChange?: (typeId: string) => void,
   onRmChange?: (rm: string) => void,
   onCalendarClose?: () => void,
-  onSubmitPattern?: (groupId: number | undefined, pattern: WorkSegment[], sd: string, snd: SoundMode, vib: VibMode) => void,
+  onSubmitPattern?: (groupId: number | undefined, pattern: WorkSegment[], sd: string, snd: SoundMode, vib: VibMode, sound?: { tone: ToneId; crescendo: boolean }) => void,
   onRepeatConfigClose?: () => void,
 ) {
   const { t } = useT();
@@ -77,6 +77,9 @@ export function useAlarmFormState(
   const [rd,       setRd]      = useState(initial.rd      ?? 1);
   const [snd,      setSnd]     = useState(initial.snd     ?? 'default');
   const [vib,      setVib]     = useState(initial.vib     ?? 'pulse');
+  // 알람 소리(2026-11-23) — 기존 알람은 tone이 없다 → '기본'. 점점 크게는 Android만 쓰고 기본 꺼짐.
+  const [tone,     setTone]    = useState<ToneId>(() => normalizeTone(initial.tone));
+  const [crescendo, setCrescendo] = useState(initial.crescendo ?? false);
   const [sd,       setSd]      = useState(initial.sd      ?? todayStr());
   const [lastDay,  setLastDay] = useState(initial.lastDay ?? false);
   const [lunar,    setLunar]   = useState(initial.lunar   ?? false);
@@ -207,6 +210,8 @@ export function useAlarmFormState(
     }
     if (snd     !== (initial.snd     ?? 'default'))       return true;
     if (vib     !== (initial.vib     ?? 'pulse'))         return true;
+    if (tone    !== normalizeTone(initial.tone))          return true;
+    if (crescendo !== (initial.crescendo ?? false))       return true;
     if (sd      !== (initial.sd      ?? todayStr()))      return true;
     if (lastDay !== (initial.lastDay ?? false))           return true;
     if (lunar   !== (initial.lunar   ?? false))           return true;
@@ -277,7 +282,7 @@ export function useAlarmFormState(
         );
         return;
       }
-      onSubmitPattern?.(initial.groupId, blocks, sd, snd, vib);
+      onSubmitPattern?.(initial.groupId, blocks, sd, snd, vib, { tone, crescendo });
       return;
     }
     const effectiveDays = (rm === 'wdcustom' && days.length === 0)
@@ -287,6 +292,7 @@ export function useAlarmFormState(
       typeId, hour, min,
       label: label.trim() || tr(type.label),
       rm: rm as Alarm['rm'], days: effectiveDays, cd, rd, snd, vib, sd,
+      tone, crescendo,
       lastDay: rm === 'monthly' ? lastDay : false,
       lunar: rm === 'yearly' ? lunar : false,
       shift, // isPatternMode(=shift!=='none') 분기에서 이미 return했으므로 여기선 항상 'none'
@@ -353,6 +359,7 @@ export function useAlarmFormState(
     handleTypeChange, handleShiftChange, handleShiftCustomChange, toggleDay, handleSubmit, submit, isDirty,
     type, isToday, dateLabel, dateLocked, isLeapDay, lunarSolarPreview, repeatSummary,
     sndVibMode, setSndVibMode,
+    tone, setTone, crescendo, setCrescendo,
     blocks, setBlocks, isPatternMode, applyShiftGate,
     showWizard, completeWizard, cancelWizard, wizardInitialShift, applyPreset, isNewPatternEntry,
   };

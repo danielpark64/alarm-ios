@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { Alarm, DayOverrides, ShiftPeriod, IOS_REP_INTERVAL_SEC, ANDROID_REP_COUNT } from '../../constants';
+import { Alarm, DayOverrides, ShiftPeriod, IOS_REP_INTERVAL_SEC, ANDROID_REP_COUNT, notifSoundFor, normalizeTone, groupTone, crescendoOn } from '../../constants';
 import { getType, pad, getNextFireDate, lunarToSolarInYear, effectiveShift, effectiveTime, dayWorkFor, isOverridableAlarm, isHolidaySkipped, skipsStatutoryHoliday, overnightFrom, alarmLabel, workDateOfFire } from '../index';
 import { isStatutoryHoliday } from '../../constants/holidays';
 import { roleLabel } from '../workPattern';
@@ -22,9 +22,9 @@ function getVibrationPattern(vib: string): number[] | undefined {
 // 그래서 "진동만"은 iOS에서 0.5초 무음 파일(silent_short.wav)을 소리로 붙여 iOS가 "소리를 재생했다"고
 // 보고 진동을 울리게 한다 — 실제 소리는 안 난다(2026-10-10, 진동만 모드가 iOS에서 무음 배너로만 뜨던 문제).
 // Android는 vibrate 패턴을 따로 주므로 소리 없음 = undefined 그대로.
-function notifSound(soundOn: boolean): string | boolean | undefined {
-  if (soundOn) return __DEV__ ? true : 'alarm_long.wav';
-  return Platform.OS === 'ios' ? 'silent_short.wav' : undefined;
+// tone: 알람마다 고른 소리(2026-11-23) — 파일 이름은 constants/alarmTones.ts 한 곳에서만 정한다.
+function notifSound(soundOn: boolean, tone?: unknown): string | boolean | undefined {
+  return notifSoundFor(Platform.OS, soundOn, tone, __DEV__);
 }
 // iOS 시간 민감 알림 — 집중 모드·방해금지를 뚫고 뜬다(app.entitlements time-sensitive 필요).
 const iosInterruption: Partial<Notifications.NotificationContentInput> =
@@ -55,6 +55,8 @@ async function schedulePatternAlarmTriggers(alarm: Alarm, overrides: DayOverride
   const vibOn   = alarm.vib === 'pulse';
   const volume  = getAlarmDefaults().volume;
   const role    = alarm.groupRole ?? 'commute';
+  const tone    = normalizeTone(alarm.tone);
+  const cres    = crescendoOn(alarm);
   // iOS 26+ AlarmKit 경로 — 발화일 계산(override·skips·dayOffset)은 아래 루프 그대로 쓰고, 마지막 예약만 AlarmKit으로 건다.
   const viaAK   = usesAlarmKit(alarm, isAlarmKitMode());
 
@@ -98,18 +100,18 @@ async function schedulePatternAlarmTriggers(alarm: Alarm, overrides: DayOverride
     const bodyText = tr('{time} 알람', { time: `${pad(t.hour)}:${pad(t.min)}` });
     const content = {
       title, body: bodyText,
-      sound: notifSound(soundOn),
+      sound: notifSound(soundOn, tone),
       vibrate: getVibrationPattern(alarm.vib),
       // ⚠️ pattern 알람은 groupKey를 넣지 않는다 — 보조 알림이 그룹(grp_*)이 아니라 알람별(alarm_{id}_rep*)로
       // 걸리므로, 응답 리스너가 groupKey 분기로 가면 엉뚱한 식별자를 취소하고 실제 보조 알림은 남는다.
-      data: { alarmId: alarm.id, rm: alarm.rm },
+      data: { alarmId: alarm.id, rm: alarm.rm, tone },
       categoryIdentifier: 'alarm',
       ...iosInterruption,
       ...(threadIdentifier ? { threadIdentifier } : {}),
     } as Notifications.NotificationContentInput;
 
     if (viaAK) {
-      await scheduleAlarmKitDate(alarm.id, ds, ft, title); // Expo 알림은 걸지 않는다(두 번 울림 방지)
+      await scheduleAlarmKitDate(alarm.id, ds, ft, title, tone); // Expo 알림은 걸지 않는다(두 번 울림 방지)
     } else {
       await Notifications.scheduleNotificationAsync({
         identifier: makeId(alarm.id, `date_${ds}`),
@@ -118,7 +120,7 @@ async function schedulePatternAlarmTriggers(alarm: Alarm, overrides: DayOverride
       });
     }
     if (isStaleGen(gen)) return; // 더 새로운 rescheduleAll이 시작됨 — 이 호출은 여기서 멈춘다
-    scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', t.hour, t.min, -1, soundOn, vibOn, volume, alarm.id);
+    scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', t.hour, t.min, -1, soundOn, vibOn, volume, alarm.id, tone, cres);
     nativeIdx++;
   }
 }
@@ -139,13 +141,15 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
   const soundOn  = alarm.snd === 'default';
   const vibOn    = alarm.vib === 'pulse';
   const volume   = getAlarmDefaults().volume;
+  const tone     = normalizeTone(alarm.tone);
+  const cres     = crescendoOn(alarm);
   const viaAK    = usesAlarmKit(alarm, isAlarmKitMode()); // iOS 26+ AlarmKit 경로(로테이션 루프와 같은 판정)
 
   const baseContent = {
     title, body: bodyText,
-    sound: notifSound(soundOn),
+    sound: notifSound(soundOn, tone),
     vibrate: getVibrationPattern(alarm.vib),
-    data: { alarmId: alarm.id, rm: alarm.rm, groupKey: `${alarm.hour}_${alarm.min}` },
+    data: { alarmId: alarm.id, rm: alarm.rm, groupKey: `${alarm.hour}_${alarm.min}`, tone },
     categoryIdentifier: 'alarm',
     ...iosInterruption,
     ...(threadIdentifier ? { threadIdentifier } : {}),
@@ -190,7 +194,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
   if (alarm.rm === 'wdcustom' && alarm.days.length > 0 && !hasUpcomingSkips && !hasUpcomingOverride && !hasUpcomingHoliday) {
     // AlarmKit은 요일 반복을 한 건(.relative weekly)으로 건다 — Expo WEEKLY처럼 앱을 안 열어도 끝없이 반복된다.
     if (viaAK) {
-      await scheduleAlarmKitWeekly(alarm.id, alarm.days, alarm.hour, alarm.min, title);
+      await scheduleAlarmKitWeekly(alarm.id, alarm.days, alarm.hour, alarm.min, title, tone);
       return;
     }
     const iw = (d: number) => (d + 2) % 7 || 7;
@@ -201,7 +205,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
         trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: iw(d), hour: alarm.hour, minute: alarm.min },
       });
       if (isStaleGen(gen)) return;
-      scheduleNative(weekdaySlotId(alarm.id, d), nextJsWeekday(alarm.hour, alarm.min, appDayToJs(d)), title, bodyText, 'weekly', alarm.hour, alarm.min, appDayToCalendar(d), soundOn, vibOn, volume, alarm.id);
+      scheduleNative(weekdaySlotId(alarm.id, d), nextJsWeekday(alarm.hour, alarm.min, appDayToJs(d)), title, bodyText, 'weekly', alarm.hour, alarm.min, appDayToCalendar(d), soundOn, vibOn, volume, alarm.id, tone, cres);
     }
     return;
   }
@@ -272,7 +276,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
     if (ft <= new Date()) continue;
 
     if (viaAK) {
-      await scheduleAlarmKitDate(alarm.id, ds, ft, title); // Expo 알림은 걸지 않는다(두 번 울림 방지)
+      await scheduleAlarmKitDate(alarm.id, ds, ft, title, tone); // Expo 알림은 걸지 않는다(두 번 울림 방지)
     } else {
       await Notifications.scheduleNotificationAsync({
         identifier: makeId(alarm.id, `date_${ds}`),
@@ -290,7 +294,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
     // 실패해서(+1분/+2분 보조 알림이 안 지워짐) 알람을 꺼도 잠시 뒤 다시 울린다.
     // 대가로 override 날엔 네이티브 알림 문구(화면 텍스트)가 원래 시각으로 보일 수 있으나,
     // 실제 발화 시각(ft/hh/mm)은 정확하다 — 문구 정확도보다 rep 취소 정확도가 우선이다.
-    scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', hh, mm, -1, soundOn, vibOn, volume, alarm.id);
+    scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', hh, mm, -1, soundOn, vibOn, volume, alarm.id, tone, cres);
     nativeIdx++;
     if (alarm.rm === 'once') break;
   }
@@ -343,7 +347,7 @@ export async function scheduleGroupReps(group: Alarm[], overrides: DayOverrides 
   const repBase = {
     title: `⏰ ${label}`,
     body: tr('{time} 알람', { time: `${pad(first.hour)}:${pad(first.min)}` }),
-    sound: notifSound(hasSound),
+    sound: notifSound(hasSound, groupTone(active)),
     vibrate: hasVib ? [0,200,150,200,150,200] : undefined,
     categoryIdentifier: 'alarm',
     threadIdentifier: `grp_${gkey}`,
@@ -357,6 +361,7 @@ export async function scheduleGroupReps(group: Alarm[], overrides: DayOverrides 
     alarmId: active.length === 1 ? active[0].id : undefined,
     groupKey: gkey,
     rm: active.length === 1 ? active[0].rm : 'group',
+    tone: groupTone(active),
   }, next, count, gen);
 }
 
@@ -383,9 +388,9 @@ export async function schedulePatternAlarmReps(alarm: Alarm, overrides: DayOverr
   const repBase = {
     title: `⏰ ${label}`,
     body: tr('{time} 알람', { time: `${pad(next.getHours())}:${pad(next.getMinutes())}` }),
-    sound: notifSound(alarm.snd === 'default'),
+    sound: notifSound(alarm.snd === 'default', alarm.tone),
     categoryIdentifier: 'alarm',
     ...iosInterruption,
   } as Notifications.NotificationContentInput;
-  await scheduleRepSeries(`alarm_${alarm.id}`, repBase, { alarmId: alarm.id, rm: alarm.rm }, next, count, gen);
+  await scheduleRepSeries(`alarm_${alarm.id}`, repBase, { alarmId: alarm.id, rm: alarm.rm, tone: normalizeTone(alarm.tone) }, next, count, gen);
 }

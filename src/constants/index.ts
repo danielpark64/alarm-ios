@@ -1,4 +1,6 @@
 import { N } from '../i18n/lang';
+import type { ToneId } from './alarmTones';
+export * from './alarmTones';
 export const TYPES = [
   { id: 'commute',  label: N('출근'), icon: '🚇', color: '#2196F3' },
   // 빨강은 비번 전용으로 양보 — 비번이 달력에서 유일하게 빨갛게 띄도록
@@ -113,6 +115,8 @@ export interface Alarm {
   groupId?: number; // 근무 시간대 로테이션 그룹 소속 알람들이 공유하는 id(그룹 첫 알람 자신의 id를 재사용)
   groupRole?: 'commute' | 'offwork'; // 그룹 내에서 이 알람이 출근/퇴근 중 무엇인지
   pattern?: WorkSegment[]; // rm==='pattern'일 때 전체 블록 시퀀스 — 그룹 멤버 전원에 동일하게 복제 저장
+  tone?: ToneId; // 알람 소리(2026-11-23) — 없으면 '기본'(alarm_long). 표·파일 이름은 alarmTones.ts
+  crescendo?: boolean; // 점점 크게 울리기(Android 전용) — 없으면 꺼짐(기존 동작)
 }
 
 // ─── 하루 근무 변경(day override) ───────────────────────────────────────
