@@ -33,7 +33,7 @@ figcaption b{color:var(--ink);display:block;font-size:17px}
 .wk div{font-size:11px;color:#a6a6c8;padding-bottom:4px}.wk div:first-child,.wk div:last-child{color:#f0a0a0}
 .c{min-height:52px;border-radius:9px;padding:3px 1px;display:flex;flex-direction:column;align-items:center;gap:3px;border:1.5px solid transparent;font-size:13px;font-weight:600}
 .c.off{border-color:#4593fc;background:rgba(69,147,252,.16)}
-.c.all{border-color:#2ecc9a;background:rgba(46,204,154,.16)}
+.c.all{border:3.5px solid #2ecc9a;background:rgba(46,204,154,.22);box-shadow:0 0 0 1px #0b0b1c,0 0 12px rgba(46,204,154,.55)}
 .c.today .n{background:#6c5ce7;color:#fff;border-radius:7px;padding:0 5px}
 .c.sel{outline:2px solid #f0f0ff}
 .c.sun .n{color:#f0a0a0}
@@ -69,20 +69,20 @@ h2{font-size:24px;margin:0 0 6px}
 <div class="band" style="padding-top:0">
 <div class="phones">
  <figure><div class="ph" id="p1"></div><figcaption><b>① 가족 창</b>지금 내 달력 화면을 그대로 다시 씁니다. 위에 누구 것인지와 받은 날짜가 보입니다. 오른쪽 위 [보내기]로 내 근무표를 카톡에 보냅니다.</figcaption></figure>
- <figure><div class="ph" id="p2"></div><figcaption><b>② 전체 창</b>칸마다 사람별 색 점만 찍습니다(쉬는 사람은 점 없음). 점은 4개까지, 넘으면 +2처럼. [다 같이 쉬는 날]을 켜면 모두 쉬는 날이 초록 테두리로 보입니다.</figcaption></figure>
+ <figure><div class="ph" id="p2"></div><figcaption><b>② 전체 창</b>칸마다 사람별 색 점만 찍습니다(쉬는 사람은 점 없음). 점은 4개까지, 넘으면 +2처럼. [다 같이 쉬는 날]을 켜면 모두 쉬는 날이 두꺼운 초록 상자로 크게 보입니다.</figcaption></figure>
  <figure><div class="ph" id="p3"></div><figcaption><b>③ 전체 창에서 날짜를 누르면</b>그날 각자 근무가 아래에서 올라옵니다. 사람 옆 [보기]를 끄면 전체 창에서 그 사람이 빠집니다(겹침 볼 사람 고르기).</figcaption></figure>
- <figure><div class="ph" id="p4"></div><figcaption><b>④ 카톡 링크를 눌러 받을 때</b>이름과 색을 바로 정합니다. 이름을 비워 두면 공유1·공유2 순서로 붙습니다. 같은 사람이 다시 보내면 “엄마의 근무표를 새것으로 바꿀까요?”로 묻습니다.</figcaption></figure>
+ <figure><div class="ph" id="p4"></div><figcaption><b>④ 카톡 링크를 눌러 받을 때</b>색은 겹치지 않게 자동으로 골라 두고, 원하면 바꿉니다(나중에 창을 길게 눌러도 바꿈). 이름을 비워 두면 공유1·공유2 순서로 붙습니다. 같은 사람이 다시 보내면 “엄마의 근무표를 새것으로 바꿀까요?”로 묻습니다.</figcaption></figure>
 </div>
 </div>
 <div class="band" style="padding-top:0">
 <h2>정해 주실 것</h2>
-<p class="lead">아래는 제가 권하는 안입니다. 다르게 하고 싶은 것만 말씀해 주세요.</p>
+<p class="lead">2026-11-22 사용자 승낙. 색 자동 지정·두꺼운 상자를 반영했고, 달력은 세이람처럼 위아래로 이어서 스크롤합니다(이 시안은 한 달만 그림).</p>
 <div class="dec">
  <div class="d"><h3>1. 창 줄의 모양</h3><p>둥근 칩을 가로로 늘어놓고 많으면 옆으로 밀어 봅니다. 순서는 전체 · 나 · 받은 순서, 맨 끝에 [+ 받는 법] 안내.</p><div class="pick">권장: <b>시안 그대로</b></div></div>
  <div class="d"><h3>2. 전체 창 표시</h3><p>근무 글자 대신 색 점(4개까지 + 나머지 숫자). 글자까지 넣으면 칸이 좁아 읽기 어렵습니다.</p><div class="pick">권장: <b>점</b> · 다른 안: 2명까지만 글자</div></div>
  <div class="d"><h3>3. [보내기] 버튼 위치</h3><p>달력 위 오른쪽(①). 설정 화면에도 같은 항목을 하나 둡니다.</p><div class="pick">권장: <b>달력 위 + 설정</b></div></div>
- <div class="d"><h3>4. 자동 이름</h3><p>이름을 안 지으면 공유1, 공유2… 나중에 창을 길게 눌러 이름·색 바꾸기, 지우기.</p><div class="pick">권장: <b>공유1·공유2</b></div></div>
- <div class="d"><h3>5. “다 같이 쉬는 날” 색</h3><p>내 비번(파랑 테두리)과 헷갈리지 않게 초록 테두리. 기본은 꺼짐.</p><div class="pick">권장: <b>초록, 기본 꺼짐</b></div></div>
+ <div class="d"><h3>4. 자동 이름·색</h3><p>이름을 안 지으면 공유1, 공유2… 색은 겹치지 않게 자동. 창을 길게 눌러 이름·색 바꾸기, 지우기.</p><div class="pick">확정: <b>자동 + 바꾸기</b></div></div>
+ <div class="d"><h3>5. “다 같이 쉬는 날” 색</h3><p>내 비번(파랑 테두리)과 헷갈리지 않게 두꺼운 초록 상자. 기본은 꺼짐.</p><div class="pick">확정: <b>두꺼운 초록 상자</b></div></div>
  <div class="d"><h3>6. 보내는 범위</h3><p>오늘부터 약 7개월(215일). 링크 한 줄에 들어가는 최대치이고, 세이람과 같은 형식입니다.</p><div class="pick">권장: <b>215일</b></div></div>
 </div>
 <p class="note">시안의 근무표와 이름(엄마·동생·공유1)은 예시입니다. 실제 앱은 9개 언어로 나오고, 라이트 테마도 같은 배치입니다.</p>
@@ -112,7 +112,7 @@ document.getElementById('p1').innerHTML=top+tabs('엄마')+'<div class="sub"><sp
 document.getElementById('p2').innerHTML=top+tabs('전체')+'<div class="toggle"><span class="sw"></span>다 같이 쉬는 날 보기 <span style="margin-left:auto;color:#a6a6c8">4명 보는 중</span></div>'+cal(null,{all:1,together:1});
 const d=18;
 document.getElementById('p3').innerHTML=top+tabs('전체')+cal(null,{all:1,sel:d})+'<div class="sheet"><h4>11월 18일 수요일</h4>'+P.slice(0,4).map((p,i)=>{const s=F[i](d);return `<div class="row"><span class="dot" style="background:${p.c}"></span><span class="nm">${p.n}</span><span style="color:${s==='비'?'#4593fc':'#e0e0f5'};font-weight:700">${s==='비'?'비번':S[s][0]}</span><span class="btn" style="padding:2px 8px;font-size:11px">보기</span></div>`}).join('')+'</div>';
-document.getElementById('p4').innerHTML=top+tabs('나')+cal(me)+'<div class="dim"></div><div class="modal"><h4>근무표를 받을까요?</h4><p>11월 22일 ~ 2027년 6월 24일 · 보기만 하고 알람은 울리지 않아요</p><div class="lbl">이름 (비우면 공유1)</div><div class="fld">엄마</div><div class="lbl">색</div><div class="cols">'+['#f0a35e','#5ec8f0','#f06e9c','#e6d36a','#9be07a'].map((c,i)=>`<i style="background:${c}"${i?'':' class="on"'}></i>`).join('')+'</div><div class="acts"><span>취소</span><span class="p">받기</span></div></div>';
+document.getElementById('p4').innerHTML=top+tabs('나')+cal(me)+'<div class="dim"></div><div class="modal"><h4>근무표를 받을까요?</h4><p>11월 22일 ~ 2027년 6월 24일 · 보기만 하고 알람은 울리지 않아요</p><div class="lbl">이름 (비우면 공유1)</div><div class="fld">엄마</div><div class="lbl">색 (자동으로 골랐어요 · 눌러서 바꾸기)</div><div class="cols">'+['#f0a35e','#5ec8f0','#f06e9c','#e6d36a','#9be07a'].map((c,i)=>`<i style="background:${c}"${i?'':' class="on"'}></i>`).join('')+'</div><div class="acts"><span>취소</span><span class="p">받기</span></div></div>';
 }
 </script>
 </body></html>
