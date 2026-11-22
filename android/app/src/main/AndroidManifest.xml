@@ -94,6 +94,13 @@
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="alarmapp"/>
       </intent-filter>
+      <!-- 근무표 공유 받기(1.6.0~) — 옛 버전은 이 주소를 몰라 안내 페이지가 스토어로 보낸다 -->
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="alarmappshare"/>
+      </intent-filter>
     </activity>
   </application>
 </manifest>

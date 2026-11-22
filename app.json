@@ -5,7 +5,10 @@
     "version": "1.5.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "alarmapp",
+    "scheme": [
+      "alarmapp",
+      "alarmappshare"
+    ],
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",

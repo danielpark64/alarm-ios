@@ -18,6 +18,9 @@ import { useSayramShare } from '../../hooks/useSayramShare';
 import type { SiblingEvents } from '../../utils/sayramShare';
 import { doubleTapZoom, panZoom, pinchZoom, type Zoom } from '../../utils/calendarZoom';
 import { buildMonthLayout, monthAt, indexOf as monthIndexOf, monthIndexAt } from '../../utils/monthScroll';
+import { useShiftShare } from '../../hooks/useShiftShare';
+import { ShareBar, ShareSubRow, ShareDaySheet, rowFor, TOGETHER_GREEN, type ShareWin, type SheetRow } from './ShareBar';
+import { dayStatus, isTogetherOff, dotsFor, shiftOn, MY_COLOR, type ShiftData } from '../../utils/shiftShareLink';
 
 // 달력 화면 — 근무 알람(주기+출근/퇴근)은 배경색으로 근무조를 표시하고,
 // 그 외 알람만 칩으로 보여준다. 날짜를 누르면 하루 상세 팝업이 뜬다.
@@ -50,6 +53,13 @@ const YEARS_PER_PAGE = YEAR_ROWS * 2;
 const YEAR_CENTER_OFFSET = 2; // 페이지 시작 연도 = 현재 연도 - 2 (1열의 3번째 자리에 오도록)
 
 interface DayInfo { alarms: Alarm[]; shift: Alarm|null; off: boolean }
+
+// 근무표 공유 창(1.6.0) — 나: 지금까지의 달력 그대로 / 사람: 받은 근무표(보기만) / 전체: 칸마다 근무하는 사람 색 점 + 다 같이 쉬는 날
+type GridView =
+  | { kind: 'me' }
+  | { kind: 'person'; data: ShiftData | null }
+  | { kind: 'all'; others: { color: string; data: ShiftData | null }[]; together: boolean };
+const ME_VIEW: GridView = { kind: 'me' };
 
 function buildDayMap(alarms: Alarm[], year: number, month: number): Record<string, DayInfo> {
   const daysInMonth = new Date(year, month+1, 0).getDate();
@@ -93,10 +103,11 @@ interface MonthGridProps {
   holidayVersion: number;
   // 같은 폰의 세이람 일정(공유가 꺼져 있으면 null) — 알람 칩 자리를 같이 쓰고, 점선 테두리로 알람과 구분한다
   sibling: SiblingEvents | null;
+  view: GridView;
   onSelectDate: (ds: string) => void;
 }
 
-const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneIdxOf, density, cellScale, today, showLunar, width, cv, cellH, title, overrides, weekStart, sibling, onSelectDate }: MonthGridProps) {
+const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneIdxOf, density, cellScale, today, showLunar, width, cv, cellH, title, overrides, weekStart, sibling, view, onSelectDate }: MonthGridProps) {
   // memo 컴포넌트라 부모가 다시 그려져도 건너뛴다 — 언어 변경은 이 컨텍스트 구독으로 직접 받는다.
   const { t } = useT();
   const cells = useMemo(() => buildCells(year, month, weekStart), [year, month, weekStart]);
@@ -151,6 +162,47 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
         const sd = subNeed > 0 ? Math.max(0.55, Math.min(1, availH / subNeed)) : 1;
         // 절기는 공휴일과 같은 슬롯을 재사용 — 겹치는 날엔 공휴일을 우선 보여주고 그 아래 절기를 덧붙인다.
         const solarTerm = showLunar ? getSolarTerm(ds) : undefined;
+
+        if (view.kind !== 'me') {
+          // 받은 근무표 창·전체 창 — 알람 칩·세이람 일정·경조사 점은 내 창에만. 날짜·음력·공휴일은 같이 보인다.
+          const dayNum = (
+            <Text style={[cv.dayNum, { fontSize: 15.5 * density }, (dow === 0 || dow === 6 || holiday) && { color: C.weekendFg }, isToday && cv.dayNumToday]}>{d}</Text>
+          );
+          const sub = (
+            <>
+              {showLunar && <Text style={[cv.lunarLabel, { fontSize: 9.5 * density }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{solarTerm ?? lunarShortText(ds)}</Text>}
+              {holiday && <Text style={[cv.holidayLabel, { fontSize: 9.5 * density }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>{getHolidayShort(ds)}</Text>}
+            </>
+          );
+          if (view.kind === 'person') {
+            const sh = shiftOn(view.data, new Date(year, month, d));
+            return (
+              <TouchableOpacity key={`${ds}-p${sh?.off ? 1 : 0}`} activeOpacity={0.7} onPress={() => onSelectDate(ds)}
+                style={[cv.cell, { height: cellH }, sh?.off && cv.cellOff]}>
+                {dayNum}{sub}
+                {sh && (sh.off
+                  ? <Text style={[cv.offLabel, { fontSize: 14 * density }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{sh.label}</Text>
+                  : <Text style={[cv.shiftLabel, { color: C.txt, backgroundColor: `${sh.color}55`, fontSize: 11.5 * density }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{sh.label}</Text>)}
+              </TouchableOpacity>
+            );
+          }
+          // 전체 창 — 나도 한 사람(내 근무는 이 칸의 판정 그대로: 하루 근무 변경 → 근무조 → 비번)
+          const mine: 'work' | 'off' | null = effOff ? 'off' : (ovWorkTone || (info.shift && resolvedShift)) ? 'work' : null;
+          const sts = view.others.map(o => dayStatus(o.data, ds));
+          const working = [...(mine === 'work' ? [MY_COLOR] : []), ...view.others.filter((_, k) => sts[k] === 'work').map(o => o.color)];
+          const { dots, more } = dotsFor(working);
+          const together = view.together && isTogetherOff([mine, ...sts]);
+          return (
+            <TouchableOpacity key={`${ds}-a${together ? 1 : 0}`} activeOpacity={0.7} onPress={() => onSelectDate(ds)}
+              style={[cv.cell, { height: cellH }, together && cv.cellTogether]}>
+              {dayNum}{sub}
+              <View style={cv.dotRow}>
+                {dots.map((c, k) => <View key={k} style={[cv.personDot, { backgroundColor: c }]} />)}
+              </View>
+              {more > 0 && <Text style={cv.moreChip}>+{more}</Text>}
+            </TouchableOpacity>
+          );
+        }
 
         return (
           <TouchableOpacity
@@ -278,6 +330,19 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
   const { weekStart } = useWeekStart();
   // 같은 폰의 세이람 일정(공유가 꺼져 있으면 null). 읽기만 한다 — 이 일정으로 알람을 만들지 않는다.
   const { events: siblingEvents } = useSayramShare();
+  // 근무표 공유 — 받은 근무는 여기서 그리기만 한다(알람 예약에 넘기지 않는다)
+  const share = useShiftShare();
+  const [win, setWinState] = useState<ShareWin>('me');
+  const [shareDate, setShareDate] = useState<string | null>(null);
+  // 지운 사람의 창이었거나 받은 사람이 없어진 전체 창이면 내 창으로
+  const curWin: ShareWin = win === 'me' || (win === 'all' && share.people.length > 0) || share.people.some(p => p.id === win) ? win : 'me';
+  const setWin = useCallback((w: ShareWin) => { setWinState(w); setShareDate(null); }, []);
+  const gridView: GridView = useMemo(() => {
+    if (curWin === 'me') return ME_VIEW;
+    if (curWin === 'all') return { kind: 'all', together: share.together, others: share.people.filter(p => p.visible).map(p => ({ color: p.color, data: p.data })) };
+    return { kind: 'person', data: share.people.find(p => p.id === curWin)?.data ?? null };
+  }, [curWin, share.people, share.together]);
+  const onPickDate = useCallback((ds: string) => { if (curWin === 'me') setSelDate(ds); else setShareDate(ds); }, [curWin]);
   const [showLunarRaw, setShowLunar] = useState(false);
   const isKR = lang === 'ko';
   const showLunar = showLunarRaw && isKR; // 음력 표기는 한국어일 때만
@@ -605,13 +670,31 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
   const pages = useMemo(() => Array.from({ length: MONTH_COUNT }, (_, i) => i), []);
   const renderMonth = useCallback(({ item }: { item: number }) => {
     const { year: y, month: m } = indexToYearMonth(item);
-    return <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} title={monthTitle(y, m)} overrides={overrides} weekStart={weekStart} holidayVersion={holidayVersion} sibling={siblingEvents} onSelectDate={setSelDate} />;
-  }, [indexToYearMonth, alarms, C, toneIdxOf, density, cellScale, today, showLunar, winWidth, cv, cellH, monthTitle, overrides, weekStart, holidayVersion, siblingEvents]);
+    return <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} title={monthTitle(y, m)} overrides={overrides} weekStart={weekStart} holidayVersion={holidayVersion} sibling={siblingEvents} view={gridView} onSelectDate={onPickDate} />;
+  }, [indexToYearMonth, alarms, C, toneIdxOf, density, cellScale, today, showLunar, winWidth, cv, cellH, monthTitle, overrides, weekStart, holidayVersion, siblingEvents, gridView, onPickDate]);
+  // 전체·사람 창에서 누른 날의 목록 — 나(전체 창일 때) + 받은 사람
+  const myDayLabel = (ds: string): { label: string | null; off: boolean } => {
+    const ov = dayOverrideDisplay(overrides[ds]);
+    if (ov) return { label: t(ov.label), off: ov.isOff };
+    const sh = shiftForDate(alarms, ds);
+    const r = sh ? effectiveShift(sh, ds) : null;
+    if (sh && r) return { label: shiftPeriodLabel(sh, r), off: false };
+    if (isOffDay(alarms, ds)) return { label: t('비번'), off: true };
+    return { label: null, off: false };
+  };
+  const shareRows: SheetRow[] = !shareDate ? [] : curWin === 'all'
+    ? [{ id: 'me', name: t('나'), color: MY_COLOR, ...myDayLabel(shareDate) }, ...share.people.map(p => rowFor(p, shareDate, t))]
+    : share.people.filter(p => p.id === curWin).map(p => ({ ...rowFor(p, shareDate, t), visible: undefined }));
   const getItemLayout = useCallback((_: unknown, index: number) => ({ length: layout.heights[index], offset: layout.offsets[index], index }), [layout]);
 
   return (
     <View style={{flex:1, backgroundColor:C.bg}}>
       <View style={{paddingHorizontal:14, paddingTop:6}}>
+        {/* 근무표 공유 창 줄 — 전체 · 나 · 받은 사람들, 오른쪽 [보내기] */}
+        <ShareBar win={curWin} onWin={setWin} people={share.people} onSend={() => share.sendShare(alarms, overrides)}
+          onEdit={share.editPerson} onRemove={share.removePerson} />
+        {/* 사람 창 "○○의 근무표 · 받은 날" / 전체 창 [다 같이 쉬는 날 보기](켜면 초록) — 창을 바꾸면 칸 크기가 다시 계산된다 */}
+        <ShareSubRow win={curWin} people={share.people} together={share.together} onTogether={share.setTogether} />
         {/* 월 네비 */}
         <View style={cv.nav}>
           <TouchableOpacity onPress={prevMonth} style={cv.navBtn}>
@@ -676,7 +759,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
           const { year: y, month: m } = indexToYearMonth(visibleIdx);
           return (
             <View style={{ position: 'absolute', top: 0, left: 0, zIndex: 1 }}>
-              <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} title={monthTitle(y, m)} overrides={overrides} weekStart={weekStart} holidayVersion={holidayVersion} sibling={siblingEvents} onSelectDate={setSelDate} />
+              <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} title={monthTitle(y, m)} overrides={overrides} weekStart={weekStart} holidayVersion={holidayVersion} sibling={siblingEvents} view={gridView} onSelectDate={onPickDate} />
             </View>
           );
         })()}
@@ -709,7 +792,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
       </GestureDetector>
 
       {/* 하루 근무 변경 집계 — 위 제목 달의 이번 달/올해 종류별 개수. 0개인 종류는 애초에 tally에 안 들어간다. */}
-      {tally.length > 0 && (
+      {tally.length > 0 && curWin === 'me' && (
         <View style={cv.tallyWrap}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={cv.tallyRow}>
             {tally.map(tl => (
@@ -719,6 +802,10 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
         </View>
       )}
       </View>
+
+      {/* 전체·사람 창에서 날짜를 누르면 — 그날 각자 근무. 전체 창은 [보기]로 전체 창에 넣을 사람 고르기 */}
+      <ShareDaySheet date={shareDate} rows={shareRows} onClose={() => setShareDate(null)}
+        onToggle={curWin === 'all' ? share.setVisible : undefined} />
 
       {/* 연도 선택 팝업 */}
       <Modal visible={showYearPicker} transparent animationType="fade" onRequestClose={() => setShowYearPicker(false)}>
@@ -1101,6 +1188,11 @@ function makeStyles(C: Palette) {
     yearBtnTextActive:{ color:'#fff', fontWeight:'900' },
     grid:        { flexDirection:'row', flexWrap:'wrap' },
     // 달 사이 작은 제목 — 그 달이 시작되는 곳을 알린다(지금 보는 달은 위 큰 제목에)
+    // 전체 창 — 근무하는 사람 색 점(4개까지)
+    dotRow:      { flexDirection:'row', flexWrap:'wrap', justifyContent:'center', gap:3, marginTop:3, paddingHorizontal:2 },
+    personDot:   { width:7, height:7, borderRadius:4 },
+    // 다 같이 쉬는 날 — 두꺼운 초록 상자(내 비번 파란 2px 테두리와 확실히 구별)
+    cellTogether:{ borderWidth:3.5, borderColor:TOGETHER_GREEN, backgroundColor:'rgba(46,204,154,0.22)' },
     monthTitleRow:{ justifyContent:'flex-end', paddingHorizontal:18, paddingBottom:3 },
     monthTitle:  { fontSize:13, fontWeight:'800', color:C.txt3 },
     headCell:    { width:'14.28%', alignItems:'center', paddingVertical:3 },

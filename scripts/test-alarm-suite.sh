@@ -688,6 +688,35 @@ _AK="$ROOT/src/utils/notifications/alarmkit.ts"
 if [ -f "$_AK" ] && ! grep -vE '^\s*//' "$_AK" | grep -E "native[!?]?\.(schedule|cancelForAlarm|cancelAll)\(" | grep -vq "serial("; then ok ""
 else fail "alarmkit.ts가 없거나 schedule/cancel 네이티브 호출이 serial()을 거치지 않음"; fi
 
+# ── 근무표 공유(1.6.0, 2026-11-22) — 받은 근무표는 보기만, 알람 예약 경로에 절대 들어가지 않는다 ──
+# ① 알람 예약·위젯 파일은 공유 모듈·받은 목록을 모른다(import·저장 키 둘 다). 들어가면 남의 근무로 내 알람이 울린다.
+printf "  받은 근무표가 알람 예약 경로에 안 들어가는지 ... "
+_SS_BAD=""
+for _f in src/utils/notifications/core.ts src/utils/notifications/index.ts src/utils/notifications/android.ts src/utils/notifications/alarmkit.ts \
+          src/hooks/useAlarms.ts src/hooks/useAlarmNotifications.ts src/utils/widgetSync.ts src/utils/iosWidget.ts src/utils/alarmkitRoute.ts; do
+  [ -f "$ROOT/$_f" ] || continue
+  grep -qE "shiftShareLink|useShiftShare|shift_share_people" "$ROOT/$_f" && _SS_BAD="$_SS_BAD $_f"
+done
+[ -z "$_SS_BAD" ] && ok "" || fail "알람 경로가 근무표 공유를 참조함:$_SS_BAD"
+
+# ② 공유 쪽도 알람을 만들지 않는다 — 공유 모듈·훅·화면이 예약 함수(notifications·useAlarms·rescheduleAll)를 부르지 않는다.
+printf "  근무표 공유 코드가 알람 예약을 부르지 않는지 ... "
+_SS_FILES="$ROOT/src/utils/shiftShareLink.ts $ROOT/src/hooks/useShiftShare.tsx $ROOT/src/components/Home/ShareBar.tsx $ROOT/src/components/Home/ShareReceiveModal.tsx"
+if ! ls $_SS_FILES >/dev/null 2>&1; then fail "근무표 공유 파일이 없음"
+elif cat $_SS_FILES | grep -vE '^\s*(//|\*)' | grep -qE "notifications|useAlarms|rescheduleAll|scheduleAlarm|addAlarm|submitWorkPattern"; then fail "근무표 공유 코드가 알람 예약·추가 함수를 참조함"
+else ok ""; fi
+
+# ③ 받기 주소는 1.6.0에서 새로 등록한 alarmappshare:// — 옛 버전은 이 주소를 몰라 앱이 안 열리고 안내 페이지가 스토어를 보여 준다.
+#    app.json·iOS Info.plist·Android 매니페스트 세 곳 모두 등록, 안내 페이지는 alarmapp://로 열지 않는다. 받기 창은 앱 전체에 한 번.
+printf "  공유 받기 새 주소(alarmappshare) 등록 + 안내 페이지 + Provider ... "
+_MF="$ROOT/android/app/src/main/AndroidManifest.xml"
+if ! grep -q '"alarmappshare"' "$ROOT/app.json"; then fail "app.json scheme에 alarmappshare 없음"
+elif ! grep -q "<string>alarmappshare</string>" "$ROOT/ios/app/Info.plist" 2>/dev/null; then fail "ios/app/Info.plist CFBundleURLSchemes에 alarmappshare 없음"
+elif ! grep -q 'android:scheme="alarmappshare"' "$_MF" 2>/dev/null; then fail "AndroidManifest에 alarmappshare intent-filter 없음"
+elif [ ! -f "$ROOT/docs/s.html" ] || ! grep -q "alarmappshare://" "$ROOT/docs/s.html" || grep -q "alarmapp://" "$ROOT/docs/s.html"; then fail "docs/s.html이 없거나 alarmappshare://로 열지 않음(또는 옛 alarmapp://를 씀)"
+elif ! grep -q "<ShiftShareProvider>" "$ROOT/app/_layout.tsx"; then fail "app/_layout.tsx에 ShiftShareProvider 없음 — 받기 팝업이 안 뜸"
+else ok ""; fi
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

@@ -26,9 +26,10 @@ const WEEK_STARTS: { id: WeekStartSetting; label: string }[] = [
 interface Props {
   onStartRotationTutorial?: () => void;
   onOpenHelp?: () => void;
+  onSendShifts?: () => void; // 근무표 공유 — 달력 위 [보내기]와 같은 동작
 }
 
-export function SettingsView({ onStartRotationTutorial, onOpenHelp }: Props) {
+export function SettingsView({ onStartRotationTutorial, onOpenHelp, onSendShifts }: Props) {
   const C = useColors();
   const s = makeStyles(C);
   const { theme, setTheme } = useThemeSetting();
@@ -104,6 +105,22 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp }: Props) {
           </View>
         </View>
       </View>
+
+      {/* 근무표 공유(1.6.0) — 달력 위 [보내기]와 같은 항목. 링크 한 줄로 보내고 서버에 저장하지 않는다 */}
+      {onSendShifts && (
+        <>
+          <Text style={s.sectionLabel}>{t('근무표 공유')}</Text>
+          <TouchableOpacity style={s.card} activeOpacity={0.75} onPress={onSendShifts} accessibilityRole="button">
+            <View style={s.row}>
+              <View style={{ flex: 1, minWidth: 0, marginRight: 12 }}>
+                <Text style={s.rowLabel}>{t('내 근무표 보내기')}</Text>
+                <Text style={s.rowSub}>{t('오늘부터 약 7개월 근무표를 링크 한 줄로 카톡·문자에 보내요. 받은 사람은 달력에서 보기만 해요.')}</Text>
+              </View>
+              <Text style={s.rowValue}>›</Text>
+            </View>
+          </TouchableOpacity>
+        </>
+      )}
 
       {/* 세이람과 일정 공유 — 같은 폰의 세이람만 읽을 수 있는 창구로 근무표를 내보내고 세이람 일정을 읽는다(인터넷 없음).
           한쪽 앱에서만 켜도 공유된다. Android는 ContentProvider, iOS는 App Group 공유 폴더(2026-10-20~). */}

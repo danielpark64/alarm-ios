@@ -20,6 +20,7 @@ import { useSelectMode } from '../src/hooks/useSelectMode';
 import { useHolidaySync, refreshHolidays } from '../src/hooks/useHolidaySync';
 import { useSayramShare } from '../src/hooks/useSayramShare';
 import { publishOwnShare } from '../src/utils/sayramShareNative';
+import { useShiftShare } from '../src/hooks/useShiftShare';
 import { ClockHeader } from '../src/components/Home/ClockHeader';
 import { TodayShiftRow } from '../src/components/Home/TodayShiftRow';
 import { NextAlarmLine } from '../src/components/Home/NextAlarmLine';
@@ -45,6 +46,7 @@ export default function App() {
   const s = makeStyles(C);
   const { alarms, loaded, addAlarm, updateAlarm, deleteAlarms, toggleAlarm, submitWorkPattern } = useAlarms();
   const { overrides, overridesLoaded, setOverride } = useDayOverrides(alarms);
+  const shiftShare = useShiftShare(); // 근무표 보내기(설정 항목) — 받은 근무는 달력에서만 쓴다
   useHolidaySync();
   const { notifGranted, requestPermission, overlayGranted, requestOverlayPermission, tick, ringing, stopRinging, snoozeRinging } = useAlarmNotifications(alarms, updateAlarm, loaded);
   const { selectMode, selectedIds, enterSelectMode, toggleSelect, selectAll, exitSelectMode } = useSelectMode();
@@ -616,6 +618,7 @@ export default function App() {
             <SettingsView
               onStartRotationTutorial={() => setRotationTutorialStep(0)}
               onOpenHelp={() => setShowHelp(true)}
+              onSendShifts={() => shiftShare.sendShare(alarms, overrides)}
             />
           )}
 
