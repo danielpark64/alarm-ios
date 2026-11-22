@@ -9,14 +9,15 @@ import { personName, type SharedPersonView } from '../../hooks/useShiftShare';
 import { MY_COLOR, shiftOn } from '../../utils/shiftShareLink';
 import { ColorPicker } from './ShareReceiveModal';
 
-// 근무표 공유 창 줄(시안 ①②) — 전체 · 나 · 받은 사람들(받은 순서), 가로 스크롤 칩. 오른쪽 [보내기].
+// [공유] 탭의 창 줄(시안 ②③) — 전체 · 나 · 받은 사람들(받은 순서) · + 받는 법. 화면 폭 전체 가로 스크롤이라
+// 칩이 많아도 끝까지 밀어서 보인다([보내기]는 탭 제목 줄로 옮겼다 — 같은 줄에 있으면 칩 자리가 줄어 끝이 잘렸다).
 // 받은 사람 칩을 길게 누르면 이름·색 바꾸기, 지우기.
 export type ShareWin = 'me' | 'all' | string; // string = 받은 사람 id
 
 export const TOGETHER_GREEN = '#2ECC9A';
 
-export function ShareBar({ win, onWin, people, onSend, onEdit, onRemove }: {
-  win: ShareWin; onWin: (w: ShareWin) => void; people: SharedPersonView[]; onSend: () => void;
+export function ShareBar({ win, onWin, people, onEdit, onRemove }: {
+  win: ShareWin; onWin: (w: ShareWin) => void; people: SharedPersonView[];
   onEdit: (id: string, patch: { name?: string; color?: string }) => void; onRemove: (id: string) => void;
 }) {
   const C = useColors();
@@ -38,7 +39,7 @@ export function ShareBar({ win, onWin, people, onSend, onEdit, onRemove }: {
   };
   return (
     <View style={s.row}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabs} style={{ flex: 1 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabs} style={{ flexGrow: 0 }}>
         {people.length > 0 && chip('all', t('전체'))}
         {chip('me', t('나'), MY_COLOR)}
         {people.map(p => chip(p.id, personName(p, t), p.color, () => openEdit(p)))}
@@ -47,9 +48,6 @@ export function ShareBar({ win, onWin, people, onSend, onEdit, onRemove }: {
           <Text style={s.howText}>{t('+ 받는 법')}</Text>
         </TouchableOpacity>
       </ScrollView>
-      <TouchableOpacity style={s.send} onPress={onSend} accessibilityRole="button">
-        <Text style={s.sendText}>{t('보내기')}</Text>
-      </TouchableOpacity>
 
       <Modal visible={editing != null} transparent animationType="fade" onRequestClose={() => setEditing(null)}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -71,7 +69,7 @@ export function ShareBar({ win, onWin, people, onSend, onEdit, onRemove }: {
                 const p = editing; if (!p) return;
                 Alert.alert(t('지우기'), t('{name}의 근무표를 지울까요?', { name: personName(p, t) }), [
                   { text: t('취소'), style: 'cancel' },
-                  { text: t('지우기'), style: 'destructive', onPress: () => { setEditing(null); if (win === p.id) onWin('me'); onRemove(p.id); } },
+                  { text: t('지우기'), style: 'destructive', onPress: () => { setEditing(null); if (win === p.id) onWin('all'); onRemove(p.id); } },
                 ]);
               }}>
                 <Text style={s.delText}>{t('이 근무표 지우기')}</Text>
@@ -110,7 +108,7 @@ export function ShareSubRow({ win, people, together, onTogether }: {
     <View style={s.sub}>
       <View style={[s.dot, { backgroundColor: p.color }]} />
       <Text style={s.subText} numberOfLines={1}>
-        {t('{name}의 근무표 · {date} 받음', { name: personName(p, t), date: t('{month} {d}일', { month: t(MONTH_KEYS[d.getMonth()]), d: d.getDate() }) })}
+        {t('{name}의 근무표 · {date} 받음 · 보기만', { name: personName(p, t), date: t('{month} {d}일', { month: t(MONTH_KEYS[d.getMonth()]), d: d.getDate() }) })}
       </Text>
     </View>
   );
@@ -161,17 +159,15 @@ export function rowFor(p: SharedPersonView, ds: string, t: (k: string, v?: any) 
 
 function makeStyles(C: Palette) {
   return StyleSheet.create({
-    row: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-    tabs: { flexDirection: 'row', gap: 6, alignItems: 'center', paddingRight: 6 },
-    tab: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: C.bg3, borderWidth: 1, borderColor: C.border2, maxWidth: 140 },
+    row: { marginBottom: 8 },
+    tabs: { flexDirection: 'row', gap: 6, alignItems: 'center', paddingHorizontal: 14 },
+    tab: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: C.bg3, borderWidth: 1, borderColor: C.border2, maxWidth: 140, flexShrink: 0 },
     tabOn: { backgroundColor: C.txt, borderColor: C.txt },
     tabText: { fontSize: 13, fontWeight: '700', color: C.txt2 },
     tabTextOn: { color: C.bg },
     dot: { width: 8, height: 8, borderRadius: 4 },
-    howBtn: { paddingHorizontal: 10, paddingVertical: 6 },
+    howBtn: { paddingHorizontal: 10, paddingVertical: 6, flexShrink: 0 },
     howText: { fontSize: 12.5, fontWeight: '700', color: C.txt3 },
-    send: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12, backgroundColor: C.accent2 },
-    sendText: { fontSize: 13, fontWeight: '800', color: '#fff' },
     sub: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, marginBottom: 6 },
     subText: { fontSize: 12.5, fontWeight: '700', color: C.txt2, flexShrink: 1 },
     toggle: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, borderWidth: 1.5, borderColor: C.border2, backgroundColor: C.bg3, paddingHorizontal: 10, paddingVertical: 7, marginBottom: 6 },

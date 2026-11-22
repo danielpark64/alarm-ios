@@ -80,7 +80,7 @@ xcrun devicectl device install app --device <UDID> ~/Library/Developer/Xcode/Der
 # 개발 딥링크(잠금 키 필요, 같은 URL은 1회만 처리되므로 n=<임의 숫자> 추가)
 adb -s RF9R3049REV shell am start -a android.intent.action.VIEW -d "alarmapp://?k=1ef80163d089870d\&lang=en\&tab=calendar\&n=1" com.danielpark.alarmapp
 ```
-딥링크 종류: `testAlarm=<분>`, `testPattern=night`, `demo=1`/`demo=2`(스크린샷용), `clearAll=1`, `clearTestAlarms=1`, `report=1`, `lang=<코드|system>`, `tab=calendar|alarms|settings|add`.
+딥링크 종류: `testAlarm=<분>`, `testPattern=night`, `demo=1`/`demo=2`(스크린샷용), `clearAll=1`, `clearTestAlarms=1`, `report=1`, `lang=<코드|system>`, `tab=calendar|alarms|share|settings|add`.
 
 ## 일하는 방식 (사용자 요청)
 - TDD: 정적 체크·로직 테스트 먼저 → FAIL 확인 → 수정 → PASS.

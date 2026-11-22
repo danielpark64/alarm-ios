@@ -222,6 +222,12 @@
   ]
  },
  {
+  "key": "[보내기]를 누르고 카카오톡·문자로 링크를 보내요. 받은 사람은 링크를 누르면 교대알람 [공유] 탭에서 내 근무표를 봐요.",
+  "files": [
+   "src/components/Home/ShareTab.tsx"
+  ]
+ },
+ {
   "key": "{cd}일 알람 → {rd}일 휴식 반복",
   "files": [
    "src/components/AlarmForm/CycleRestControls.tsx",
@@ -337,7 +343,7 @@
   ]
  },
  {
-  "key": "{name}의 근무표 · {date} 받음",
+  "key": "{name}의 근무표 · {date} 받음 · 보기만",
   "files": [
    "src/components/Home/ShareBar.tsx"
   ]
@@ -461,6 +467,7 @@
   "files": [
    "src/components/Home/CalendarView.tsx",
    "src/components/Home/ShareReceiveModal.tsx",
+   "src/components/Home/ShareTab.tsx",
    "src/components/common/CalendarPicker.tsx"
   ]
  },
@@ -480,6 +487,12 @@
   "key": "‹ 종류 다시 선택",
   "files": [
    "src/components/Home/CalendarView.tsx"
+  ]
+ },
+ {
+  "key": "↗ 보내기",
+  "files": [
+   "src/components/Home/ShareTab.tsx"
   ]
  },
  {
@@ -526,9 +539,16 @@
   ]
  },
  {
+  "key": "가족·동료와 근무표를 주고받으면 여기서 함께 볼 수 있어요. 내 달력과는 따로 보여요.",
+  "files": [
+   "src/components/Home/ShareTab.tsx"
+  ]
+ },
+ {
   "key": "가족·친구가 교대알람에서 [보내기]로 보낸 링크를 누르면 여기에 그 사람 창이 생겨요. 받은 근무표는 보기만 하고 알람은 울리지 않아요.\n\n창을 길게 누르면 이름·색을 바꾸거나 지울 수 있어요.",
   "files": [
-   "src/components/Home/ShareBar.tsx"
+   "src/components/Home/ShareBar.tsx",
+   "src/components/Home/ShareTab.tsx"
   ]
  },
  {
@@ -602,6 +622,18 @@
   "key": "고른 뒤 시각과 일수를 내 근무에 맞게 고칠 수 있어요",
   "files": [
    "src/components/AlarmForm/PresetModal.tsx"
+  ]
+ },
+ {
+  "key": "공유",
+  "files": [
+   "src/components/Home/BottomNav.tsx"
+  ]
+ },
+ {
+  "key": "공유 근무표",
+  "files": [
+   "src/components/Home/ShareTab.tsx"
   ]
  },
  {
@@ -850,8 +882,8 @@
  {
   "key": "나",
   "files": [
-   "src/components/Home/CalendarView.tsx",
-   "src/components/Home/ShareBar.tsx"
+   "src/components/Home/ShareBar.tsx",
+   "src/components/Home/ShareTab.tsx"
   ]
  },
  {
@@ -863,7 +895,8 @@
  {
   "key": "내 근무표 보내기",
   "files": [
-   "src/components/Home/SettingsView.tsx"
+   "src/components/Home/SettingsView.tsx",
+   "src/components/Home/ShareTab.tsx"
   ]
  },
  {
@@ -1248,6 +1281,18 @@
   ]
  },
  {
+  "key": "받는 법",
+  "files": [
+   "src/components/Home/ShareTab.tsx"
+  ]
+ },
+ {
+  "key": "받은 근무표가 아직 없어요",
+  "files": [
+   "src/components/Home/ShareTab.tsx"
+  ]
+ },
+ {
   "key": "변경",
   "files": [
    "src/components/AlarmForm/WorkPatternBuilder.tsx"
@@ -1266,9 +1311,9 @@
   ]
  },
  {
-  "key": "보내기",
+  "key": "보내는 법",
   "files": [
-   "src/components/Home/ShareBar.tsx"
+   "src/components/Home/ShareTab.tsx"
   ]
  },
  {
@@ -1284,6 +1329,7 @@
    "src/components/AlarmForm/RotationWizard.tsx",
    "src/components/AlarmForm/WorkPatternBuilder.tsx",
    "src/components/Home/CalendarView.tsx",
+   "src/components/Home/ShareTab.tsx",
    "src/components/Home/TodayShiftRow.tsx",
    "src/utils/sayramShare.ts",
    "src/utils/widgetSync.ts"
@@ -1816,6 +1862,7 @@
   "key": "오늘",
   "files": [
    "src/components/Home/CalendarView.tsx",
+   "src/components/Home/ShareTab.tsx",
    "src/components/Home/TodayShiftRow.tsx"
   ]
  },

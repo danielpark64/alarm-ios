@@ -11,7 +11,8 @@ import {
 import { ShareReceiveModal, type ReceiveDraft } from '../components/Home/ShareReceiveModal';
 
 // 근무표 공유(1.6.0) — 받은 사람 목록(이름·색·근무표 원문만), 전체 창 설정, 보내기·받기.
-// ⚠️ 여기 데이터는 달력 표시에만 쓴다. 알람 예약(notifications/*)·useAlarms로 절대 넘기지 않는다(정적 체크 — test-alarm-suite.sh).
+// ⚠️ 여기 데이터는 [공유] 탭(ShareTab) 표시에만 쓴다 — 내 달력(CalendarView)은 이 훅을 모른다(정적 체크 ④).
+// ⚠️ 알람과도 무관: 알람 예약(notifications/*)·useAlarms로 절대 넘기지 않는다(정적 체크 — test-alarm-suite.sh).
 // 받기: 1.6.0에서 새로 등록한 앱 주소(alarmappshare://)로 앱이 열리면 "근무표를 받을까요?" 팝업.
 const K_PEOPLE = 'shift_share_people_v1';
 const K_TOGETHER = 'shift_share_together_v1';
@@ -27,10 +28,11 @@ interface Ctx {
   editPerson: (id: string, patch: { name?: string; color?: string }) => void;
   removePerson: (id: string) => void;
   sendShare: (alarms: Alarm[], overrides: DayOverrides) => Promise<void>;
+  incomingSeq: number;               // 공유 링크로 열릴 때마다 +1 — 메인 화면이 [공유] 탭으로 옮긴다
 }
 const Context = createContext<Ctx>({
   people: [], together: false, setTogether: () => {}, setVisible: () => {}, editPerson: () => {}, removePerson: () => {},
-  sendShare: async () => {},
+  sendShare: async () => {}, incomingSeq: 0,
 });
 
 export function ShiftShareProvider({ children }: { children: React.ReactNode }) {
@@ -41,6 +43,7 @@ export function ShiftShareProvider({ children }: { children: React.ReactNode }) 
   const senderRef = useRef<string | null>(null);
   const [draft, setDraft] = useState<ReceiveDraft | null>(null);
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+  const [incomingSeq, setIncomingSeq] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -76,6 +79,7 @@ export function ShiftShareProvider({ children }: { children: React.ReactNode }) 
     const r = parseShareLink(url);
     if (!r.ok) {
       if (r.reason === 'notShare') return; // 개발 딥링크·위젯 등 다른 주소
+      setIncomingSeq(n => n + 1);
       const msg = r.reason === 'version' ? t('새 형식의 근무표예요. 앱을 최신 버전으로 업데이트한 뒤 링크를 다시 눌러 주세요.')
         : r.reason === 'expired' ? t('기간이 다 지난 근무표예요. 새로 보내 달라고 해 주세요.')
         : r.reason === 'tooLong' ? t('링크가 너무 길어서 읽을 수 없어요.')
@@ -83,6 +87,7 @@ export function ShiftShareProvider({ children }: { children: React.ReactNode }) 
       Alert.alert(t('근무표 받기'), msg);
       return;
     }
+    setIncomingSeq(n => n + 1); // 받기 팝업은 [공유] 탭 위에서
     const d = decideIncoming(peopleRef.current, r.sender, r.data.sentAt!, senderRef.current ?? undefined);
     if (d.kind === 'self') { Alert.alert(t('근무표 받기'), t('내가 보낸 근무표예요.')); return; }
     if (d.kind === 'same') { Alert.alert(t('근무표 받기'), t('이미 받은 근무표예요.')); return; }
@@ -133,7 +138,7 @@ export function ShiftShareProvider({ children }: { children: React.ReactNode }) 
   const views = useMemo(() => people.map(p => ({ ...p, data: dataOf(p) })), [people]);
 
   return (
-    <Context.Provider value={{ people: views, together, setTogether, setVisible, editPerson, removePerson, sendShare }}>
+    <Context.Provider value={{ people: views, together, setTogether, setVisible, editPerson, removePerson, sendShare, incomingSeq }}>
       {children}
       <ShareReceiveModal draft={draft} onCancel={() => setDraft(null)} onAccept={accept} />
     </Context.Provider>

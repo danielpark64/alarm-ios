@@ -701,7 +701,7 @@ done
 
 # ② 공유 쪽도 알람을 만들지 않는다 — 공유 모듈·훅·화면이 예약 함수(notifications·useAlarms·rescheduleAll)를 부르지 않는다.
 printf "  근무표 공유 코드가 알람 예약을 부르지 않는지 ... "
-_SS_FILES="$ROOT/src/utils/shiftShareLink.ts $ROOT/src/hooks/useShiftShare.tsx $ROOT/src/components/Home/ShareBar.tsx $ROOT/src/components/Home/ShareReceiveModal.tsx"
+_SS_FILES="$ROOT/src/utils/shiftShareLink.ts $ROOT/src/hooks/useShiftShare.tsx $ROOT/src/components/Home/ShareBar.tsx $ROOT/src/components/Home/ShareReceiveModal.tsx $ROOT/src/components/Home/ShareTab.tsx"
 if ! ls $_SS_FILES >/dev/null 2>&1; then fail "근무표 공유 파일이 없음"
 elif cat $_SS_FILES | grep -vE '^\s*(//|\*)' | grep -qE "notifications|useAlarms|rescheduleAll|scheduleAlarm|addAlarm|submitWorkPattern"; then fail "근무표 공유 코드가 알람 예약·추가 함수를 참조함"
 else ok ""; fi
@@ -715,6 +715,23 @@ elif ! grep -q "<string>alarmappshare</string>" "$ROOT/ios/app/Info.plist" 2>/de
 elif ! grep -q 'android:scheme="alarmappshare"' "$_MF" 2>/dev/null; then fail "AndroidManifest에 alarmappshare intent-filter 없음"
 elif [ ! -f "$ROOT/docs/s.html" ] || ! grep -q "alarmappshare://" "$ROOT/docs/s.html" || grep -q "alarmapp://" "$ROOT/docs/s.html"; then fail "docs/s.html이 없거나 alarmappshare://로 열지 않음(또는 옛 alarmapp://를 씀)"
 elif ! grep -q "<ShiftShareProvider>" "$ROOT/app/_layout.tsx"; then fail "app/_layout.tsx에 ShiftShareProvider 없음 — 받기 팝업이 안 뜸"
+else ok ""; fi
+
+# ④ 내 달력과 공유 근무표는 섞지 않는다(2026-11-22 사용자 "내 기존 달력과 섞이면 안 돼, 따로").
+#    내 달력 화면(CalendarView)은 공유 부품·훅·링크 모듈을 import하지 않는다 — 받은 근무는 [공유] 탭(ShareTab)에서만.
+printf "  내 달력 화면이 근무표 공유 부품을 모르는지 ... "
+_CV="$ROOT/src/components/Home/CalendarView.tsx"
+if [ ! -f "$_CV" ]; then fail "CalendarView.tsx 없음"
+elif grep -vE '^\s*(//|\*)' "$_CV" | grep -qE "ShareBar|useShiftShare|shiftShareLink|ShareTab|ShareCalendar"; then fail "CalendarView가 근무표 공유 부품을 import함 — 공유는 [공유] 탭에서만"
+else ok ""; fi
+
+# ⑤ [공유] 탭 — 아래 탭 줄에 있고, Android 뒤로가기는 앱을 끄지 않고 달력 탭으로, 링크로 받으면 공유 탭으로 간다.
+printf "  공유 탭(탭 줄·뒤로가기→달력·받기→공유 탭) ... "
+_IX="$ROOT/app/index.tsx"
+if ! grep -q "'share'" "$ROOT/src/components/Home/BottomNav.tsx"; then fail "BottomNav에 share 탭 없음"
+elif [ ! -f "$ROOT/src/components/Home/ShareTab.tsx" ]; then fail "ShareTab.tsx 없음"
+elif ! grep -q "BackHandler" "$_IX" || ! awk '/hardwareBackPress/,/\}\);/' "$_IX" | grep -q "setTab('calendar')"; then fail "공유 탭에서 Android 뒤로가기가 달력 탭으로 가지 않음"
+elif ! grep -q "incomingSeq" "$_IX"; then fail "링크로 받을 때 공유 탭으로 이동하지 않음(incomingSeq 구독 없음)"
 else ok ""; fi
 
 if $STATIC_ONLY; then

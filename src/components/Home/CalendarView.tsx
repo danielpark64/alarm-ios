@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { View, FlatList, TouchableOpacity, Modal, StyleSheet, useWindowDimensions, NativeSyntheticEvent, NativeScrollEvent, LayoutChangeEvent, TextInput, ScrollView, Keyboard, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Pressable, TouchableOpacity, Modal, StyleSheet, useWindowDimensions, TextInput, ScrollView, Keyboard, KeyboardAvoidingView, Platform } from 'react-native';
 import { GestureDetector, usePanGesture, usePinchGesture, useSimultaneousGestures } from 'react-native-gesture-handler';
 import { Text } from '../common/AppText';
 import { Alarm, DAYS, DAYS_DISPLAY, MONTH_KEYS, DayOverride, DayOverrides, OverrideKind, OVERRIDE_KINDS, pickableOverrideKinds, SHIFTS, DEFAULT_SHIFT_TIMES, DEFAULT_SHIFT_TIME_FALLBACK, ShiftPeriod } from '../../constants';
@@ -17,10 +17,9 @@ import { useT, N } from '../../i18n';
 import { useSayramShare } from '../../hooks/useSayramShare';
 import type { SiblingEvents } from '../../utils/sayramShare';
 import { doubleTapZoom, panZoom, pinchZoom, type Zoom } from '../../utils/calendarZoom';
-import { buildMonthLayout, monthAt, indexOf as monthIndexOf, monthIndexAt } from '../../utils/monthScroll';
-import { useShiftShare } from '../../hooks/useShiftShare';
-import { ShareBar, ShareSubRow, ShareDaySheet, rowFor, TOGETHER_GREEN, type ShareWin, type SheetRow } from './ShareBar';
-import { dayStatus, isTogetherOff, dotsFor, shiftOn, MY_COLOR, type ShiftData } from '../../utils/shiftShareLink';
+import { indexOf as monthIndexOf } from '../../utils/monthScroll';
+// 연속 스크롤 부품은 [공유] 탭과 같이 쓰지만 상태는 각자 — 이 화면은 내 근무만 그린다(받은 근무표는 ShareTab에서만, 정적 체크 ④)
+import { CELL_MB, TITLE_H, BEFORE, buildCells, useGridCellH, useMonthScroll, MonthList } from './MonthScroll';
 
 // 달력 화면 — 근무 알람(주기+출근/퇴근)은 배경색으로 근무조를 표시하고,
 // 그 외 알람만 칩으로 보여준다. 날짜를 누르면 하루 상세 팝업이 뜬다.
@@ -34,32 +33,15 @@ interface Props {
   onUpdateAlarm?: (id: number, data: Partial<Alarm>) => void;
 }
 
-// 칸 높이는 "6주가 한 화면"에 맞춘다(예전 한 달 넘김 화면과 같은 칸 크기). 달은 실제 주 수(4~6주)만 그린다.
-const ROWS = 6;
-const CELL_MB = 2;
-// 달 사이 작은 제목 줄 높이(그 달이 시작되는 곳 표시)
-const TITLE_H = 26;
-// 칸 높이는 고정값이 아니라 실제 할당된 화면 공간을 측정해서 계산한다(폰/태블릿 화면비가 달라도 한 달이 항상 한 화면에 들어오도록).
-// 측정 전 첫 렌더용 대체값.
-const FALLBACK_CELL_H = 58;
-// 앞뒤 10년치 — 연도 선택으로 멀리 뛰어도 끝에 잘 안 닿는다. 높이표는 계산만이라 가볍다(그리는 건 보이는 달뿐)
-const BEFORE = 120;
-const AFTER = 120;
-const MONTH_COUNT = BEFORE + AFTER + 1;
 // 연도 선택 팝업 — 2열 세로 배치. 현재 연도가 1열 가운데(위에서 3번째)에 오도록 페이지를 잡아서
 // 바로 앞뒤 연도가 같은 열 안에서 위/아래로 붙게 한다(다른 열로 떨어지면 "앞뒤"라는 인접감이 안 느껴짐).
 const YEAR_ROWS = 4;
+// 둥근 글자 배경(근무 알약·오늘 배지·알람 칩) — Android는 Text 배경을 이미 둥글게 그려 잘라내기가 필요 없다(잘라내면 GPU만 더 쓴다)
+const TEXT_CLIP = Platform.OS === 'ios' ? 'hidden' : 'visible';
 const YEARS_PER_PAGE = YEAR_ROWS * 2;
 const YEAR_CENTER_OFFSET = 2; // 페이지 시작 연도 = 현재 연도 - 2 (1열의 3번째 자리에 오도록)
 
 interface DayInfo { alarms: Alarm[]; shift: Alarm|null; off: boolean }
-
-// 근무표 공유 창(1.6.0) — 나: 지금까지의 달력 그대로 / 사람: 받은 근무표(보기만) / 전체: 칸마다 근무하는 사람 색 점 + 다 같이 쉬는 날
-type GridView =
-  | { kind: 'me' }
-  | { kind: 'person'; data: ShiftData | null }
-  | { kind: 'all'; others: { color: string; data: ShiftData | null }[]; together: boolean };
-const ME_VIEW: GridView = { kind: 'me' };
 
 function buildDayMap(alarms: Alarm[], year: number, month: number): Record<string, DayInfo> {
   const daysInMonth = new Date(year, month+1, 0).getDate();
@@ -74,17 +56,6 @@ function buildDayMap(alarms: Alarm[], year: number, month: number): Record<strin
     };
   }
   return map;
-}
-
-// ws: 주 시작 요일(0=일요일, 1=월요일 — useWeekStart). 첫 칸 앞의 빈 칸 수만 달라진다.
-function buildCells(year: number, month: number, ws: number = 0): (number|null)[] {
-  const offset = (new Date(year, month, 1).getDay() - ws + 7) % 7;
-  const daysInMonth = new Date(year, month+1, 0).getDate();
-  const cells: (number|null)[] = [];
-  for (let i=0; i<offset; i++) cells.push(null);
-  for (let d=1; d<=daysInMonth; d++) cells.push(d);
-  while (cells.length % 7) cells.push(null); // 실제 주 수만(monthScroll.monthWeeksCount와 같은 계산)
-  return cells;
 }
 
 interface MonthGridProps {
@@ -103,11 +74,10 @@ interface MonthGridProps {
   holidayVersion: number;
   // 같은 폰의 세이람 일정(공유가 꺼져 있으면 null) — 알람 칩 자리를 같이 쓰고, 점선 테두리로 알람과 구분한다
   sibling: SiblingEvents | null;
-  view: GridView;
   onSelectDate: (ds: string) => void;
 }
 
-const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneIdxOf, density, cellScale, today, showLunar, width, cv, cellH, title, overrides, weekStart, sibling, view, onSelectDate }: MonthGridProps) {
+const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneIdxOf, density, cellScale, today, showLunar, width, cv, cellH, title, overrides, weekStart, sibling, onSelectDate }: MonthGridProps) {
   // memo 컴포넌트라 부모가 다시 그려져도 건너뛴다 — 언어 변경은 이 컨텍스트 구독으로 직접 받는다.
   const { t } = useT();
   const cells = useMemo(() => buildCells(year, month, weekStart), [year, month, weekStart]);
@@ -163,57 +133,17 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
         // 절기는 공휴일과 같은 슬롯을 재사용 — 겹치는 날엔 공휴일을 우선 보여주고 그 아래 절기를 덧붙인다.
         const solarTerm = showLunar ? getSolarTerm(ds) : undefined;
 
-        if (view.kind !== 'me') {
-          // 받은 근무표 창·전체 창 — 알람 칩·세이람 일정·경조사 점은 내 창에만. 날짜·음력·공휴일은 같이 보인다.
-          const dayNum = (
-            <Text style={[cv.dayNum, { fontSize: 15.5 * density }, (dow === 0 || dow === 6 || holiday) && { color: C.weekendFg }, isToday && cv.dayNumToday]}>{d}</Text>
-          );
-          const sub = (
-            <>
-              {showLunar && <Text style={[cv.lunarLabel, { fontSize: 9.5 * density }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{solarTerm ?? lunarShortText(ds)}</Text>}
-              {holiday && <Text style={[cv.holidayLabel, { fontSize: 9.5 * density }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>{getHolidayShort(ds)}</Text>}
-            </>
-          );
-          if (view.kind === 'person') {
-            const sh = shiftOn(view.data, new Date(year, month, d));
-            return (
-              <TouchableOpacity key={`${ds}-p${sh?.off ? 1 : 0}`} activeOpacity={0.7} onPress={() => onSelectDate(ds)}
-                style={[cv.cell, { height: cellH }, sh?.off && cv.cellOff]}>
-                {dayNum}{sub}
-                {sh && (sh.off
-                  ? <Text style={[cv.offLabel, { fontSize: 14 * density }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{sh.label}</Text>
-                  : <Text style={[cv.shiftLabel, { color: C.txt, backgroundColor: `${sh.color}55`, fontSize: 11.5 * density }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{sh.label}</Text>)}
-              </TouchableOpacity>
-            );
-          }
-          // 전체 창 — 나도 한 사람(내 근무는 이 칸의 판정 그대로: 하루 근무 변경 → 근무조 → 비번)
-          const mine: 'work' | 'off' | null = effOff ? 'off' : (ovWorkTone || (info.shift && resolvedShift)) ? 'work' : null;
-          const sts = view.others.map(o => dayStatus(o.data, ds));
-          const working = [...(mine === 'work' ? [MY_COLOR] : []), ...view.others.filter((_, k) => sts[k] === 'work').map(o => o.color)];
-          const { dots, more } = dotsFor(working);
-          const together = view.together && isTogetherOff([mine, ...sts]);
-          return (
-            <TouchableOpacity key={`${ds}-a${together ? 1 : 0}`} activeOpacity={0.7} onPress={() => onSelectDate(ds)}
-              style={[cv.cell, { height: cellH }, together && cv.cellTogether]}>
-              {dayNum}{sub}
-              <View style={cv.dotRow}>
-                {dots.map((c, k) => <View key={k} style={[cv.personDot, { backgroundColor: c }]} />)}
-              </View>
-              {more > 0 && <Text style={cv.moreChip}>+{more}</Text>}
-            </TouchableOpacity>
-          );
-        }
-
         return (
-          <TouchableOpacity
+          // 칸은 Pressable — TouchableOpacity는 칸마다 Animated 값을 하나씩 만들어 스크롤로 새 달이 들어올 때 무겁다(32, 2026-11-22)
+          <Pressable
             // key는 칸 번호가 아니라 날짜+비번 여부 — 주 시작 요일이 바뀌면 같은 칸 번호에 다른 날짜가 오는데,
             // 칸 번호를 key로 쓰면 "비번 박스였던 칸"이 근무일로 재사용되면서 칸 전체(날짜 숫자 포함)가
             // 안 그려지는 현상이 실기기(32)에서 확인됐다(2026-10-14). 날짜별로 새로 만들게 해서 피한다.
             key={`${ds}-${effOff ? 1 : 0}`}
-            activeOpacity={0.7}
             onPress={() => onSelectDate(ds)}
-            style={[
+            style={({ pressed }) => [
               cv.cell,
+              pressed && cv.cellPressed,
               { height: cellH },
               // 비번 점선과 "오늘" 표시가 서로 덮지 않도록, 오늘은 셀 테두리가 아니라
               // 날짜 숫자의 원형 배지로 표시한다(아래 dayNumToday).
@@ -296,7 +226,7 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
             {!!overrides[ds]?.family && (
               <View style={cv.familyDot} pointerEvents="none" />
             )}
-          </TouchableOpacity>
+          </Pressable>
         );
       })}
     </View>
@@ -317,9 +247,6 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
   const anchorMonth = todayDate.getMonth();
 
   // 화면 위쪽(1/4 지점)에 걸린 달 — 위 제목·집계 줄이 이 달을 따른다
-  const [visibleIdx, setVisibleIdx] = useState(BEFORE);
-  const visibleIdxRef = useRef(BEFORE);
-  visibleIdxRef.current = visibleIdx;
   const [selDate, setSelDate] = useState<string|null>(null);
   // 하루 근무 변경 팝업 안 로컬 상태 — 종류 선택 그리드 → (대근/특근이면 근무조 선택 →) 시각
   // 편집 모달의 단계를 오간다. selDate가 바뀔 때마다 전부 초기화한다.
@@ -330,24 +257,10 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
   const { weekStart } = useWeekStart();
   // 같은 폰의 세이람 일정(공유가 꺼져 있으면 null). 읽기만 한다 — 이 일정으로 알람을 만들지 않는다.
   const { events: siblingEvents } = useSayramShare();
-  // 근무표 공유 — 받은 근무는 여기서 그리기만 한다(알람 예약에 넘기지 않는다)
-  const share = useShiftShare();
-  const [win, setWinState] = useState<ShareWin>('me');
-  const [shareDate, setShareDate] = useState<string | null>(null);
-  // 지운 사람의 창이었거나 받은 사람이 없어진 전체 창이면 내 창으로
-  const curWin: ShareWin = win === 'me' || (win === 'all' && share.people.length > 0) || share.people.some(p => p.id === win) ? win : 'me';
-  const setWin = useCallback((w: ShareWin) => { setWinState(w); setShareDate(null); }, []);
-  const gridView: GridView = useMemo(() => {
-    if (curWin === 'me') return ME_VIEW;
-    if (curWin === 'all') return { kind: 'all', together: share.together, others: share.people.filter(p => p.visible).map(p => ({ color: p.color, data: p.data })) };
-    return { kind: 'person', data: share.people.find(p => p.id === curWin)?.data ?? null };
-  }, [curWin, share.people, share.together]);
-  const onPickDate = useCallback((ds: string) => { if (curWin === 'me') setSelDate(ds); else setShareDate(ds); }, [curWin]);
   const [showLunarRaw, setShowLunar] = useState(false);
   const isKR = lang === 'ko';
   const showLunar = showLunarRaw && isKR; // 음력 표기는 한국어일 때만
   const [showYearPicker, setShowYearPicker] = useState(false);
-  const listRef = useRef<FlatList<number>>(null);
   // AppText와 같은 배율표 — 칸 높이를 글자 배율에 맞춰 키우기 위해 읽는다
   const { fontScale } = useFontScale();
   const cellScale = fontScale === 'large' ? 1.30 : fontScale === 'small' ? 0.9 : 1;
@@ -355,20 +268,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
   // 달력 영역(그리드+집계 줄)에 실제로 할당된 높이를 측정해서 칸 크기를 역산 — 폰/태블릿 등 화면비가 달라도
   // 6주가 한 화면 크기가 되게 한다. 집계 줄은 연도가 바뀔 때 생겼다 없어지므로 그것까지 합친 높이를 잰다 —
   // 그리드만 재면 스크롤 도중 칸 높이가 바뀌어 목록을 다시 만들게 된다. 측정 전에는 목록을 그리지 않는다.
-  const [gridAreaH, setGridAreaH] = useState(0);
-  const onGridAreaLayout = useCallback((e: LayoutChangeEvent) => {
-    const h = e.nativeEvent.layout.height;
-    setGridAreaH(prev => (Math.abs(prev - h) > 1 ? h : prev));
-  }, []);
-  // 글자크기 설정을 칸 높이에도 반영한다. 예전엔 상한이 90으로 고정이라 "크게"로 바꿔도
-  // 칸은 1px도 안 커져서 내용이 칸 밖으로 넘쳐 잘렸다(Android는 removeClippedSubviews 때문에
-  // 아예 안 그려짐). 상한만 배율만큼 풀어 "화면에 남는 여백을 먼저 쓰게" 한다 — 세로 스크롤은
-  // 넣지 않으므로 gridAreaH를 넘지는 않는다.
-  // 상한 90은 폰 기준이다 — 아이패드·태블릿처럼 칸이 넓으면 칸 폭에 맞춰 상한도 키워 화면 아래가 비지 않게 한다
-  const cellCap = Math.max(90, Math.round(winWidth / 7 * 1.5));
-  const cellH = gridAreaH > 0
-    ? Math.max(40, Math.min(Math.round(cellCap * cellScale), Math.floor((gridAreaH - TITLE_H) / ROWS) - CELL_MB))
-    : FALLBACK_CELL_H;
+  const { gridAreaH, onGridAreaLayout, cellH } = useGridCellH(winWidth, cellScale);
   // 칸에 실제로 들어가야 하는 높이를 추정해 넘치면 그 비율만큼 글자를 줄인다.
   // 음력을 켜면 줄이 하나 더 늘어 바로 넘치는데, 스크롤도 정보 삭제도 못 하므로
   // "들어갈 만큼만 키운다"가 유일한 해법이다. 여유가 있으면 1(=설정한 크기 그대로).
@@ -378,13 +278,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
     return Math.max(0.62, Math.min(1, cellH / need));
   }, [cellH, showLunar, cellScale]);
   const weekH = cellH + CELL_MB;
-  const indexToYearMonth = useMemo(() => monthAt(anchorYear, anchorMonth, BEFORE), [anchorYear, anchorMonth]);
-  // 달마다 높이(4~6주)가 달라 누적 위치표를 미리 만든다 — getItemLayout으로 측정 없이 그 달로 바로 뛴다
-  const layout = useMemo(
-    () => buildMonthLayout(anchorYear, anchorMonth, BEFORE, MONTH_COUNT, weekStart, weekH, TITLE_H),
-    [anchorYear, anchorMonth, weekStart, weekH],
-  );
-
+  const { visibleIdx, visibleIdxRef, listRef, indexToYearMonth, onScroll, getItemLayout, goToIndex: scrollToMonth } = useMonthScroll(anchorYear, anchorMonth, weekStart, weekH);
   const { year, month } = indexToYearMonth(visibleIdx);
   const monthTitle = useCallback((y: number, m: number) => `${t('{year}년', { year: y })} ${t(MONTH_KEYS[m])}`, [t]);
 
@@ -475,10 +369,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
 
   const goToIndex = (idx: number, animated = true) => {
     resetZoom(); // 확대한 채 달을 옮기면 새 달이 엉뚱한 곳을 확대한 채로 나온다
-    const clamped = Math.max(0, Math.min(MONTH_COUNT - 1, idx));
-    setVisibleIdx(clamped);
-    // 확대를 풀면 목록이 새로 만들어지므로(initialScrollIndex=visibleIdx) 다음 프레임에 스크롤한다
-    requestAnimationFrame(() => { try { listRef.current?.scrollToIndex({ index: clamped, animated }); } catch {} });
+    scrollToMonth(idx, animated);
   };
   const prevMonth = () => goToIndex(visibleIdx - 1);
   const nextMonth = () => goToIndex(visibleIdx + 1);
@@ -502,14 +393,6 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
   const prevYearPage = () => setYearPageStart(v => v - YEARS_PER_PAGE);
   const nextYearPage = () => setYearPageStart(v => v + YEARS_PER_PAGE);
 
-  // 위 제목의 달: 화면 위에서 1/4 지점에 걸린 달. 같은 달이면 상태를 바꾸지 않는다(스크롤 중 다시 그리기 최소 — 32)
-  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-    const atEnd = contentOffset.y + layoutMeasurement.height >= contentSize.height - 1;
-    const y = atEnd ? layout.total : contentOffset.y + layoutMeasurement.height / 4;
-    const idx = monthIndexAt(layout.offsets, y);
-    if (idx !== visibleIdxRef.current) setVisibleIdx(idx);
-  };
   // 자동 배색은 색이 아니라 인덱스로 받아, 셀에서 테마별 배지 톤(C.shiftAuto)을 꺼내 쓴다
   const toneIdxOf = useMemo(() => shiftToneIndexMap(alarms), [alarms]);
 
@@ -667,34 +550,13 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
       .sort((a, b) => order.indexOf(a.label) - order.indexOf(b.label));
   }, [overrides, alarms, year, month, today, holidayVersion, lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const pages = useMemo(() => Array.from({ length: MONTH_COUNT }, (_, i) => i), []);
   const renderMonth = useCallback(({ item }: { item: number }) => {
     const { year: y, month: m } = indexToYearMonth(item);
-    return <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} title={monthTitle(y, m)} overrides={overrides} weekStart={weekStart} holidayVersion={holidayVersion} sibling={siblingEvents} view={gridView} onSelectDate={onPickDate} />;
-  }, [indexToYearMonth, alarms, C, toneIdxOf, density, cellScale, today, showLunar, winWidth, cv, cellH, monthTitle, overrides, weekStart, holidayVersion, siblingEvents, gridView, onPickDate]);
-  // 전체·사람 창에서 누른 날의 목록 — 나(전체 창일 때) + 받은 사람
-  const myDayLabel = (ds: string): { label: string | null; off: boolean } => {
-    const ov = dayOverrideDisplay(overrides[ds]);
-    if (ov) return { label: t(ov.label), off: ov.isOff };
-    const sh = shiftForDate(alarms, ds);
-    const r = sh ? effectiveShift(sh, ds) : null;
-    if (sh && r) return { label: shiftPeriodLabel(sh, r), off: false };
-    if (isOffDay(alarms, ds)) return { label: t('비번'), off: true };
-    return { label: null, off: false };
-  };
-  const shareRows: SheetRow[] = !shareDate ? [] : curWin === 'all'
-    ? [{ id: 'me', name: t('나'), color: MY_COLOR, ...myDayLabel(shareDate) }, ...share.people.map(p => rowFor(p, shareDate, t))]
-    : share.people.filter(p => p.id === curWin).map(p => ({ ...rowFor(p, shareDate, t), visible: undefined }));
-  const getItemLayout = useCallback((_: unknown, index: number) => ({ length: layout.heights[index], offset: layout.offsets[index], index }), [layout]);
-
+    return <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} title={monthTitle(y, m)} overrides={overrides} weekStart={weekStart} holidayVersion={holidayVersion} sibling={siblingEvents} onSelectDate={setSelDate} />;
+  }, [indexToYearMonth, alarms, C, toneIdxOf, density, cellScale, today, showLunar, winWidth, cv, cellH, monthTitle, overrides, weekStart, holidayVersion, siblingEvents]);
   return (
     <View style={{flex:1, backgroundColor:C.bg}}>
       <View style={{paddingHorizontal:14, paddingTop:6}}>
-        {/* 근무표 공유 창 줄 — 전체 · 나 · 받은 사람들, 오른쪽 [보내기] */}
-        <ShareBar win={curWin} onWin={setWin} people={share.people} onSend={() => share.sendShare(alarms, overrides)}
-          onEdit={share.editPerson} onRemove={share.removePerson} />
-        {/* 사람 창 "○○의 근무표 · 받은 날" / 전체 창 [다 같이 쉬는 날 보기](켜면 초록) — 창을 바꾸면 칸 크기가 다시 계산된다 */}
-        <ShareSubRow win={curWin} people={share.people} together={share.together} onTogether={share.setTogether} />
         {/* 월 네비 */}
         <View style={cv.nav}>
           <TouchableOpacity onPress={prevMonth} style={cv.navBtn}>
@@ -759,31 +621,18 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
           const { year: y, month: m } = indexToYearMonth(visibleIdx);
           return (
             <View style={{ position: 'absolute', top: 0, left: 0, zIndex: 1 }}>
-              <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} title={monthTitle(y, m)} overrides={overrides} weekStart={weekStart} holidayVersion={holidayVersion} sibling={siblingEvents} view={gridView} onSelectDate={onPickDate} />
+              <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} title={monthTitle(y, m)} overrides={overrides} weekStart={weekStart} holidayVersion={holidayVersion} sibling={siblingEvents} onSelectDate={setSelDate} />
             </View>
           );
         })()}
         {!zoomed && gridAreaH > 0 && (
-        <FlatList
-          // 칸 높이·폭·주 시작이 바뀌면 높이표가 달라져 같은 스크롤 위치가 엉뚱한 달이 된다 —
-          // 새로 만들어 보던 달(initialScrollIndex)에서 다시 시작한다
-          key={`${winWidth}-${weekH}-${weekStart}`}
-          ref={listRef}
-          data={pages}
-          keyExtractor={(i) => String(i)}
+        <MonthList
+          listKey={`${winWidth}-${weekH}-${weekStart}`}
+          listRef={listRef}
           renderItem={renderMonth}
           getItemLayout={getItemLayout}
-          initialScrollIndex={visibleIdxRef.current}
+          initialIndex={visibleIdxRef.current}
           onScroll={onScroll}
-          onMomentumScrollEnd={onScroll}
-          scrollEventThrottle={100}
-          showsVerticalScrollIndicator={false}
-          // 32(저사양) 기준 — 한 달이 거의 한 화면이라 앞뒤 한 화면씩만 그려 둔다
-          windowSize={3}
-          maxToRenderPerBatch={1}
-          initialNumToRender={2}
-          updateCellsBatchingPeriod={50}
-          removeClippedSubviews={Platform.OS === 'android'}
           scrollEnabled={!pinching}
         />
         )}
@@ -792,7 +641,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
       </GestureDetector>
 
       {/* 하루 근무 변경 집계 — 위 제목 달의 이번 달/올해 종류별 개수. 0개인 종류는 애초에 tally에 안 들어간다. */}
-      {tally.length > 0 && curWin === 'me' && (
+      {tally.length > 0 && (
         <View style={cv.tallyWrap}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={cv.tallyRow}>
             {tally.map(tl => (
@@ -802,10 +651,6 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
         </View>
       )}
       </View>
-
-      {/* 전체·사람 창에서 날짜를 누르면 — 그날 각자 근무. 전체 창은 [보기]로 전체 창에 넣을 사람 고르기 */}
-      <ShareDaySheet date={shareDate} rows={shareRows} onClose={() => setShareDate(null)}
-        onToggle={curWin === 'all' ? share.setVisible : undefined} />
 
       {/* 연도 선택 팝업 */}
       <Modal visible={showYearPicker} transparent animationType="fade" onRequestClose={() => setShowYearPicker(false)}>
@@ -1188,11 +1033,6 @@ function makeStyles(C: Palette) {
     yearBtnTextActive:{ color:'#fff', fontWeight:'900' },
     grid:        { flexDirection:'row', flexWrap:'wrap' },
     // 달 사이 작은 제목 — 그 달이 시작되는 곳을 알린다(지금 보는 달은 위 큰 제목에)
-    // 전체 창 — 근무하는 사람 색 점(4개까지)
-    dotRow:      { flexDirection:'row', flexWrap:'wrap', justifyContent:'center', gap:3, marginTop:3, paddingHorizontal:2 },
-    personDot:   { width:7, height:7, borderRadius:4 },
-    // 다 같이 쉬는 날 — 두꺼운 초록 상자(내 비번 파란 2px 테두리와 확실히 구별)
-    cellTogether:{ borderWidth:3.5, borderColor:TOGETHER_GREEN, backgroundColor:'rgba(46,204,154,0.22)' },
     monthTitleRow:{ justifyContent:'flex-end', paddingHorizontal:18, paddingBottom:3 },
     monthTitle:  { fontSize:13, fontWeight:'800', color:C.txt3 },
     headCell:    { width:'14.28%', alignItems:'center', paddingVertical:3 },
@@ -1204,12 +1044,13 @@ function makeStyles(C: Palette) {
     familyDot:   { position:'absolute', top:3, right:3, width:6, height:6, borderRadius:3, backgroundColor:C.accent2 },
     // 비번 = 파란 2px 라인 박스(시안 4b/4d). 다른 셀은 전부 테두리가 없으니 이 테두리 하나로
     // "쉬는 날"이 한눈에 구분된다. 배경은 옅은 파란 틴트로 면도 살짝 보이게.
+    cellPressed: { opacity:0.7 },
     cellOff:     { backgroundColor:C.offCellBg, borderWidth:2, borderColor:C.offBorder },
     dayNum:      { fontSize:15.5, fontWeight:'800', color:C.txt, marginBottom:1, textAlign:'center' },
     // 오늘 = 날짜 숫자만 원형으로 채운다. 셀 테두리로 표시하면 비번 점선을 덮어버려
     // "오늘이면서 비번인 날"에 비번 표시가 사라지는 문제가 있었다.
     dayNumToday: { color:C.todayFg, fontWeight:'900', backgroundColor:C.todayBg,
-                   borderRadius:11, overflow:'hidden', paddingHorizontal:5 },
+                   borderRadius:11, overflow:TEXT_CLIP, paddingHorizontal:5 },
     lunarLabel:  { fontSize:10, fontWeight:'600', color:C.txt3, textAlign:'center', marginTop:-1, marginBottom:1 },
     // 공휴일 이름표 — 비번(빨강)과 헷갈리지 않게 골드 계열. 라이트에서 1.78:1까지 떨어지던 것을
     // 배지로 바꿔 6.4:1 확보.
@@ -1222,7 +1063,7 @@ function makeStyles(C: Palette) {
     // 근무조는 셀 폭을 다 채우는 띠가 아니라 **글자 폭에 맞는 알약**. 셀마다 폭이 달라지면서
     // 리듬이 생겨, 전부 같은 크기 배지가 늘어서던 "글자 벽"이 풀린다.
     shiftLabel:  { fontSize:11.5, fontWeight:'700', textAlign:'center', borderRadius:99,
-                   overflow:'hidden', paddingHorizontal:6, marginBottom:1, alignSelf:'center' },
+                   overflow:TEXT_CLIP, paddingHorizontal:6, marginBottom:1, alignSelf:'center' },
     // 비번 라벨은 셀 테두리와 같은 파란색(C.offFg) — 별도 배경 없이 글자만.
     offLabel:    { fontSize:14, fontWeight:'900', color:C.offFg,
                    textAlign:'center', marginBottom:1, letterSpacing:1 },
@@ -1231,7 +1072,7 @@ function makeStyles(C: Palette) {
     // 알람 칩은 위계 최하단 — 근무조 알약보다 작고 옅게, 폭도 글자에 맞춰서
     alarmChip:   { fontSize:9.5, fontWeight:'600', color:C.chipFg, backgroundColor:C.chipBg,
                    borderRadius:99, paddingHorizontal:5, marginBottom:1,
-                   overflow:'hidden', textAlign:'center', alignSelf:'center' },
+                   overflow:TEXT_CLIP, textAlign:'center', alignSelf:'center' },
     moreChip:    { fontSize:9.5, color:C.txt3, fontWeight:'700', textAlign:'center' },
     // 세이람 일정 칩 — 채운 알람 칩과 달리 테두리만(테마 accent). Text의 점선 테두리는 Android에서 안 그려져 실선으로 둔다.
     siblingChip: { color:C.txt2, backgroundColor:'transparent', borderWidth:1, borderColor:C.accent },

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   View, TextInput, TouchableOpacity, Alert,
-  StyleSheet, StatusBar, Platform,
+  StyleSheet, StatusBar, Platform, BackHandler,
 } from 'react-native';
 import { Text } from '../src/components/common/AppText';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,6 +27,7 @@ import { NextAlarmLine } from '../src/components/Home/NextAlarmLine';
 import { CalendarView } from '../src/components/Home/CalendarView';
 import { AlarmsTab } from '../src/components/Home/AlarmsTab';
 import { SettingsView } from '../src/components/Home/SettingsView';
+import { ShareTab } from '../src/components/Home/ShareTab';
 import { HelpScreen } from '../src/components/Help/HelpScreen';
 import { BottomNav, HomeTab } from '../src/components/Home/BottomNav';
 import { AlarmForm, AlarmFormHandle } from '../src/components/AlarmForm';
@@ -46,11 +47,12 @@ export default function App() {
   const s = makeStyles(C);
   const { alarms, loaded, addAlarm, updateAlarm, deleteAlarms, toggleAlarm, submitWorkPattern } = useAlarms();
   const { overrides, overridesLoaded, setOverride } = useDayOverrides(alarms);
-  const shiftShare = useShiftShare(); // 근무표 보내기(설정 항목) — 받은 근무는 달력에서만 쓴다
+  const shiftShare = useShiftShare(); // 근무표 보내기(설정 항목)·받기 신호 — 받은 근무는 [공유] 탭에서만 쓴다
   useHolidaySync();
   const { notifGranted, requestPermission, overlayGranted, requestOverlayPermission, tick, ringing, stopRinging, snoozeRinging } = useAlarmNotifications(alarms, updateAlarm, loaded);
   const { selectMode, selectedIds, enterSelectMode, toggleSelect, selectAll, exitSelectMode } = useSelectMode();
-  // 메인 화면은 달력 — 교대근무자는 약속 잡을 때 근무표(달력)부터 본다
+  // 메인 화면은 달력 — 교대근무자는 약속 잡을 때 근무표(달력)부터 본다.
+  // 탭은 저장하지 않는다 — 앱을 새로 켜면 항상 달력(공유 탭에 있다가 꺼도 마찬가지).
   const [tab, setTab] = useState<HomeTab>('calendar');
   const [editAlarm, setEditAlarm] = useState<Alarm|null>(null);
   // 저장 후 이동할 목적지 — 하단 내비 탭을 눌러서 저장한 경우, 저장 콜백이 기본으로
@@ -254,6 +256,24 @@ export default function App() {
     if (loaded && alarms.length === 0) setTab('alarms');
   }, [loaded]);
 
+  // 근무표 공유 링크로 열리면 [공유] 탭으로 옮긴 뒤 받기 팝업(팝업은 ShiftShareProvider가 띄운다).
+  // 위 "알람 없으면 알람 탭" 다음에 둬야 첫 실행이 링크로 열려도 공유 탭이 이긴다.
+  const { incomingSeq } = shiftShare;
+  useEffect(() => {
+    if (!loaded || incomingSeq === 0) return;
+    handleNavPress('share'); // 알람을 고치던 중이면 저장할지 먼저 묻는다
+  }, [incomingSeq, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Android 뒤로가기 — 공유 탭에서는 앱을 끄지 않고 내 달력 탭으로 돌아간다
+  useEffect(() => {
+    if (Platform.OS !== 'android' || tab !== 'share' || showHelp || editAlarm) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setTab('calendar');
+      return true;
+    });
+    return () => sub.remove();
+  }, [tab, showHelp, editAlarm]);
+
   // ── 개발용 딥링크: alarmapp://?k=<DEV_LINK_KEY>&testAlarm=<분>[&snd=default] ────────────────────────
   // N분 뒤 울리는 '한 번' 테스트 알람을 만든다(기본 진동만). iPhone은 adb처럼 화면을 자동 조작할
   // 수단이 없어, 반복 울림·진동 테스트를 돌릴 때 터미널에서 알람을 만들 유일한 통로다:
@@ -311,10 +331,10 @@ export default function App() {
     // alarmapp://?k=…&lang=en|ja|…|system — 언어 설정을 바꾼다(기기 테스트에서 언어별 화면을 찍는 용도).
     if (typeof q.lang === 'string' && (q.lang === 'system' || (LANGS as readonly string[]).includes(q.lang))) {
       setLangSetting(q.lang as LanguageSetting);
-      if (typeof q.tab === 'string' && ['calendar', 'alarms', 'settings', 'add'].includes(q.tab)) setTab(q.tab as any);
+      if (typeof q.tab === 'string' && ['calendar', 'alarms', 'share', 'settings', 'add'].includes(q.tab)) setTab(q.tab as any);
       return;
     }
-    if (typeof q.tab === 'string' && ['calendar', 'alarms', 'settings', 'add'].includes(q.tab)) { setTab(q.tab as any); return; }
+    if (typeof q.tab === 'string' && ['calendar', 'alarms', 'share', 'settings', 'add'].includes(q.tab)) { setTab(q.tab as any); return; }
     // alarmapp://?k=…&testPattern=night — 오늘 시작 "야간 2일(22:00~다음날 06:00) → 비번 2일" 근무표(진동만)를 만든다.
     // 자정 넘는 근무의 퇴근이 근무일 다음 날로 예약되는지 dumpsys alarm으로 확인하는 용도.
     if (q.testPattern === 'night') {
@@ -526,6 +546,8 @@ export default function App() {
       <StatusBar barStyle={theme === 'light' ? 'dark-content' : 'light-content'} backgroundColor={C.bg}/>
 
       {/* 헤더 — iPadOS 26은 창 왼쪽 위에 창 버튼(빨강·노랑·초록)을 겹쳐 그려서, 아이패드에선 위 여백을 늘려 날짜가 가려지지 않게 한다 */}
+      {/* 공유 탭은 자기 제목 줄("공유 근무표" + 보내기)을 쓴다 — 시계 헤더는 내 화면들(달력·알람·설정)에만 */}
+      {!(tab === 'share' && !showHelp && !editAlarm) && (
       <View style={[s.header, Platform.OS === 'ios' && Platform.isPad && s.headerPad]}>
         <View style={s.headerTop}>
           <View style={{flex:1}}>
@@ -540,6 +562,7 @@ export default function App() {
             보여도 그만큼 좁아서, "초번 출근 · 9/27 일 05:40"이 "초번 …"으로 잘렸다(32 실측). */}
         <NextAlarmLine next={next} textStyle={s.nextT} />
       </View>
+      )}
 
       {/* 표시 권한(다른 앱 위에 표시)은 안드로이드 전용 — iOS는 overlayGranted가 항상 null이라 Platform 체크 필수 */}
       {(!notifGranted || (Platform.OS === 'android' && !overlayGranted)) && (
@@ -613,6 +636,9 @@ export default function App() {
               setHighlightId(al.id);
               setTimeout(() => setHighlightId(null), 5000);
             }}/>}
+
+          {/* 받은 근무표는 여기서만 — 내 알람·근무는 읽기만 넘긴다 */}
+          {tab==='share' && <ShareTab alarms={alarms} overrides={overrides} />}
 
           {tab==='settings' && (
             <SettingsView
