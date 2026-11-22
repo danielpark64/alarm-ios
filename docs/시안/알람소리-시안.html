@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>교대알람 · 알람 소리 고르기 시안</title>
+<style>
+body{margin:0;font-family:-apple-system,"Apple SD Gothic Neo",sans-serif;background:#f3f1ec;color:#222}
+h1{font-size:20px;margin:20px 20px 4px}.sub{margin:0 20px 16px;color:#666;font-size:14px}
+.row{display:flex;gap:22px;flex-wrap:wrap;padding:0 20px 24px}
+.cap{font-size:14px;font-weight:600;margin:0 0 8px}
+.ph{width:300px;height:600px;border-radius:34px;background:#fff;border:8px solid #222;overflow:hidden;position:relative;box-shadow:0 6px 18px #0002}
+.bar{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;font-size:14px;border-bottom:1px solid #eee}
+.bar b{font-size:15px}.blue{color:#2f6fde}
+.sec{padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:14px}
+.time{font-size:44px;text-align:center;padding:18px 0;color:#333;letter-spacing:2px}
+.seg{display:flex;gap:6px}.seg span{flex:1;text-align:center;border:1px solid #ddd;border-radius:10px;padding:8px 0;font-size:13px}
+.seg .on{background:#e8f0ff;border-color:#2f6fde;color:#2f6fde;font-weight:600}
+.line{display:flex;justify-content:space-between;align-items:center}
+.new{outline:3px solid #ff9f1c;outline-offset:2px;border-radius:8px}
+.gray{color:#888}
+.dim{position:absolute;inset:0;background:#0006}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:18px 18px 0 0;padding:6px 0 14px}
+.grab{width:40px;height:4px;background:#ccc;border-radius:2px;margin:6px auto 8px}
+.st{font-weight:700;text-align:center;font-size:15px;margin-bottom:6px}
+.it{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;font-size:14px}
+.it .chk{color:#2f6fde;font-weight:700}.it.sel{background:#f2f7ff}
+.play{font-size:12px;color:#2f6fde}
+.hr{height:1px;background:#eee;margin:4px 18px}
+.tg{width:38px;height:22px;border-radius:11px;background:#34c759;position:relative}.tg:after{content:"";position:absolute;right:2px;top:2px;width:18px;height:18px;border-radius:50%;background:#fff}
+.note{max-width:960px;margin:0 20px 30px;background:#fff;border-radius:12px;padding:14px 18px;font-size:14px;line-height:1.6}
+.note li{margin:2px 0}
+</style></head><body>
+<h1>알람 소리 고르기 — 시안</h1>
+<p class="sub">주황 테두리가 새로 생기는 곳이에요. 알람마다 따로 고르고, 처음 값은 지금 쓰는 '기본' 소리예요.</p>
+<div class="row">
+ <div><p class="cap">① 알람 수정 화면 — 한 줄 추가</p>
+  <div class="ph">
+   <div class="bar"><span class="blue">취소</span><b>알람 수정</b><span class="blue">저장</span></div>
+   <div class="time">06 : 30</div>
+   <div class="sec"><div class="seg"><span class="on">소리+진동</span><span>소리만</span><span>진동만</span></div></div>
+   <div class="sec new line"><span>🎵 알람 소리</span><span class="gray">옛날 자명종 ›</span></div>
+   <div class="sec line"><span>반복</span><span class="gray">근무표 ›</span></div>
+   <div class="sec line"><span>다시 울림</span><span class="gray">5분 · 3번 ›</span></div>
+   <div class="sec gray" style="font-size:12px">'진동만'이면 이 줄은 흐리게 보여요.</div>
+  </div></div>
+
+ <div><p class="cap">② 소리 고르기 창 (아이폰)</p>
+  <div class="ph">
+   <div class="bar"><span class="blue">취소</span><b>알람 수정</b><span class="blue">저장</span></div>
+   <div class="time">06 : 30</div>
+   <div class="dim"></div>
+   <div class="sheet">
+    <div class="grab"></div><div class="st">알람 소리</div>
+    <div class="it"><span>기본</span><span class="play">▶ 듣기</span></div>
+    <div class="it"><span>디지털 비프</span><span class="play">▶</span></div>
+    <div class="it"><span>종소리 행진</span><span class="play">▶</span></div>
+    <div class="it sel"><span>옛날 자명종</span><span class="chk">✓</span></div>
+    <div class="it"><span>마림바</span><span class="play">▶</span></div>
+    <div class="it"><span>잔잔한 피아노</span><span class="play">▶</span></div>
+    <div class="it"><span>오르골 왈츠</span><span class="play">▶</span></div>
+    <div class="it gray" style="font-size:12px">줄을 누르면 고르면서 3초 들려줘요.</div>
+   </div>
+  </div></div>
+
+ <div><p class="cap">③ 소리 고르기 창 (안드로이드)</p>
+  <div class="ph">
+   <div class="bar"><span class="blue">취소</span><b>알람 수정</b><span class="blue">저장</span></div>
+   <div class="time">06 : 30</div>
+   <div class="dim"></div>
+   <div class="sheet">
+    <div class="grab"></div><div class="st">알람 소리</div>
+    <div class="it"><span>기본</span><span class="play">▶</span></div>
+    <div class="it"><span>디지털 비프 · 종소리 행진 …</span><span class="gray">(6개 같음)</span></div>
+    <div class="it sel"><span>옛날 자명종</span><span class="chk">✓</span></div>
+    <div class="hr"></div>
+    <div class="it new" style="margin:4px 12px"><span>📱 폰 벨소리에서 고르기</span><span class="gray">›</span></div>
+    <div class="hr"></div>
+    <div class="it new" style="margin:4px 12px"><span>점점 크게 울리기</span><span class="tg"></span></div>
+    <div class="it gray" style="font-size:12px">작게 시작해 20초 동안 커져요.</div>
+   </div>
+  </div></div>
+</div>
+<div class="note"><b>정할 것·알아 둘 것</b><ul>
+<li>소리 이름은 9개 언어로 번역해요(예: Digital Beep, Old Alarm Clock…).</li>
+<li>근무표(로테이션) 알람은 근무 블록마다 고를 수 있게 할지, 알람 하나에 하나만 둘지 정해 주세요. 추천은 <b>알람 하나에 하나</b>(단순).</li>
+<li>'점점 크게'는 안드로이드에만 넣어요. 아이폰은 시스템이 소리 크기를 정해서 앱이 조절할 수 없어요.</li>
+<li>'폰 벨소리'도 안드로이드에만 있어요. 아이폰은 다른 앱이 폰 벨소리를 쓰는 것을 막아 둬서 넣을 수 없어요.</li>
+<li>워치로 끄기, 다시 울림, 이미 만든 알람(전부 '기본' 그대로)은 지금과 똑같이 동작해요.</li>
+</ul></div>
+</body></html>
