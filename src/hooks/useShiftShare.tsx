@@ -130,7 +130,7 @@ export function ShiftShareProvider({ children }: { children: React.ReactNode }) 
     const link = buildShareLink(buildShareBody(alarms, overrides, new Date()), sid);
     try {
       // 안내 글 + 링크 한 줄. 데이터는 링크 # 뒤 — 서버로 가지 않는다
-      await Share.share({ message: `${t('제 근무표예요. 링크를 누르면 교대알람 달력에서 볼 수 있어요(보기만 하고 알람은 울리지 않아요).')}\n${link}` });
+      await Share.share({ message: `${t('제 근무표예요. 링크를 누르면 교대알람 공유 탭에서 볼 수 있어요(보기만 하고 알람은 울리지 않아요).')}\n${link}` });
     } catch {}
   }, [t]);
 

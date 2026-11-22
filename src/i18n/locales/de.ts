@@ -418,7 +418,7 @@ export const DE: Record<string, string> = {
   "이름": "Name",
   "이름 (비우면 공유{n})": "Name (leer: Geteilt {n})",
   "이미 받은 근무표예요.": "Diesen Dienstplan hast du schon.",
-  "제 근무표예요. 링크를 누르면 교대알람 달력에서 볼 수 있어요(보기만 하고 알람은 울리지 않아요).": "Hier ist mein Dienstplan. Tippe auf den Link, um ihn im RotaWake-Kalender anzusehen (nur ansehen – es klingelt kein Wecker).",
+  "제 근무표예요. 링크를 누르면 교대알람 공유 탭에서 볼 수 있어요(보기만 하고 알람은 울리지 않아요).": "Hier ist mein Dienstplan. Tippe auf den Link, um ihn im Tab „Geteilt“ von RotaWake anzusehen (nur ansehen – es klingelt kein Wecker).",
   "지우기": "Löschen",
   "[보내기]를 누르고 카카오톡·문자로 링크를 보내요. 받은 사람은 링크를 누르면 교대알람 [공유] 탭에서 내 근무표를 봐요.": "Tippe auf [Senden] und teile den Link per Chat oder SMS. Wer ihn antippt, sieht deinen Dienstplan im Tab [Geteilt] von RotaWake.",
   "{name}의 근무표 · {date} 받음 · 보기만": "Dienstplan von {name} · erhalten am {date} · nur ansehen",
