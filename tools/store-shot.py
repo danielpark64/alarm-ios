@@ -263,7 +263,7 @@ def make(src_path, out_path, W, H, c):
     s = W / 1080
     shot = load_screen(src_path)
     tablet = shot.height / shot.width < 1.6
-    tall = (not tablet) and W != 1080  # 아이폰 캔버스
+    tall = (not tablet) and H / W > 1.9  # 아이폰 캔버스(Play 9:16 은 1080·1350 폭 모두 아님)
     ts = s * (0.82 if tablet else 1.0)  # 글자 크기 배율(아이패드는 폰(태블릿) 화면에 자리를 더 준다)
     bz = round((8 if tablet else 14) * s)
     scr_ratio = shot.height / shot.width

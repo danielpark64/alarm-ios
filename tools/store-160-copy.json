@@ -1,0 +1,39 @@
+{
+  "ko": {
+    "hero": {
+      "tag": "교대근무 알람",
+      "title": "출근·퇴근 태그\n이제 [깜빡]\n안 해요",
+      "sub": "근무표대로 알려 드리는 교대근무 알람",
+      "props": [{"kind": "note", "text": "말번 13:40"}, {"kind": "note", "text": "초번 05:40"}]
+    },
+    "calendar": {
+      "src": "01_calendar.png",
+      "tag": "근무표 달력",
+      "title": "알람만 넣으면\n[근무표]가 저절로",
+      "sub": "위아래로 넘기며 몇 달 치를 한눈에",
+      "props": [{"kind": "calendar", "text": "근무표"}, {"kind": "note", "text": "초번 → 말번"}, {"kind": "note", "text": "비번"}]
+    },
+    "slides": [
+      {"slug": "reliable", "src": "02_alarmlist.png",
+       "play": {"tag": "출퇴근 알람", "title": "꺼진 화면에서도\n[제시간]에 알려 드려요", "sub": "출근 05:40 · 퇴근 15:00처럼 근무표대로",
+                "props": [{"kind": "note", "text": "출근 05:40"}, {"kind": "calendar", "text": "근무"}, {"kind": "note", "text": "퇴근 15:00"}]},
+       "iphone63": {"tag": "시계 알람처럼", "title": "무음 모드에서도\n[시계 알람]처럼", "sub": "iOS 26 이상 · 집중 모드에서도 알려 드려요",
+                "props": [{"kind": "note", "text": "무음 모드"}, {"kind": "calendar", "text": "알람"}, {"kind": "note", "text": "집중 모드"}]}},
+      {"slug": "share", "src": "share_receive.png",
+       "tag": "근무표 공유", "title": "카톡 링크 하나로\n근무표를 [주고받아요]", "sub": "가입·서버 없이 · 받은 근무표는 보기만 해요",
+       "props": [{"kind": "note", "text": "가족"}, {"kind": "calendar", "text": "공유"}, {"kind": "note", "text": "동료"}]},
+      {"slug": "together", "src": "share_all.png",
+       "tag": "다 같이 쉬는 날", "title": "모두 쉬는 날이\n[한눈에] 보여요", "sub": "내 달력과 따로 · 사람별 창으로도 봐요",
+       "props": [{"kind": "note", "text": "모두 휴무"}, {"kind": "calendar", "text": "28일"}, {"kind": "note", "text": "약속 잡기"}]},
+      {"slug": "widget", "widget": true, "src": {"play": "android-home.png", "iphone63": "ios-home.png"},
+       "tag": "홈 화면 위젯", "title": "앱을 안 열어도\n[오늘 근무]가 한눈에", "sub": "홈 화면에서 근무표와 다음 알람을 바로 확인",
+       "props": [{"kind": "note", "text": "오늘 비번"}, {"kind": "calendar", "text": "위젯"}, {"kind": "note", "text": "다음 05:40"}]},
+      {"slug": "rotation", "src": "03_workblocks.png",
+       "tag": "어떤 교대든", "title": "근무 순서를\n[쌓기]만 하면 끝", "sub": "4조3교대·주야비휴·나만의 순서까지",
+       "props": [{"kind": "note", "text": "초번 → 말번"}, {"kind": "calendar", "text": "교대"}, {"kind": "note", "text": "비번 → 휴무"}]},
+      {"slug": "override", "src": "05_dayoverride.png",
+       "tag": "하루 근무 변경", "title": "연차·대근은\n[그날만] 바꿔요", "sub": "알람이 알아서 꺼지고 켜져요",
+       "props": [{"kind": "note", "text": "연차"}, {"kind": "calendar", "text": "26일"}, {"kind": "note", "text": "대근"}]}
+    ]
+  }
+}

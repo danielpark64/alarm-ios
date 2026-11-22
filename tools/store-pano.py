@@ -31,7 +31,7 @@ _spec = importlib.util.spec_from_file_location("store_shot", os.path.join(HERE, 
 ss = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(ss)
 
-KINDS = {"1080x1920": "play", "1206x2622": "iphone63", "2064x2752": "ipad13"}
+KINDS = {"1080x1920": "play", "1350x2400": "play", "1206x2622": "iphone63", "2064x2752": "ipad13"}
 SRC_DIRS = {
     "play": "store-assets/screenshots/i18n-2026-10-14",
     "iphone63": "store-assets/appstore/screenshots-iphone63",
@@ -396,7 +396,7 @@ def make_widget(c, src_path, out_path, W, H, kind):
     canvas = paper(W, H)
     # 글 영역(가운데 정렬 꼬리표 + 큰 글 두 줄 + 작은 글) — 03~07번 장과 같은 함수
     txt = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    tall = W != 1080
+    tall = H / W > 1.9  # 아이폰 캔버스(Play 9:16 은 1080·1350 폭 모두 아님)
     ts = s * (0.82 if tablet else 1.0)  # 아이패드 글자 배율 — 03~07번 장(store-shot.py make)과 같게
     y0 = 96 + (60 if tall and not tablet else 0)
     tb = ss.draw_text_block(txt, W, ts, c, y0=y0)
