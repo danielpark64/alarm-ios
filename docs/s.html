@@ -6,12 +6,23 @@
 <meta name="robots" content="noindex">
 <meta name="referrer" content="no-referrer">
 <title>교대알람 · 근무표 받기</title>
+<meta property="og:title" content="교대알람 근무표가 도착했어요 · RotaWake">
+<meta property="og:description" content="눌러서 교대알람에서 보기 · Tap to view in RotaWake">
+<meta property="og:site_name" content="RotaWake 교대알람">
+<meta property="og:image" content="https://danielpark64.github.io/alarm-ios/s/icon.png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="교대알람 근무표가 도착했어요 · RotaWake">
+<meta name="twitter:description" content="눌러서 교대알람에서 보기 · Tap to view in RotaWake">
+<meta name="twitter:image" content="https://danielpark64.github.io/alarm-ios/s/icon.png">
+<meta name="description" content="눌러서 교대알람에서 보기 · Tap to view in RotaWake">
 <!--
-  교대알람 근무표 공유 안내 페이지(1.6.0~). 앱의 [보내기]가 만드는 링크:
-    https://danielpark64.github.io/alarm-ios/s.html#v=1&i=<보낸 사람>&p=<근무표>
-  데이터는 # 뒤에만 있다 — 브라우저는 # 뒤를 서버로 보내지 않는다. 이 페이지는 외부 파일·분석 도구를 전혀 불러오지 않고,
+  옛 주소(v1 링크) — 빌드 10부터 앱은 짧은 링크 https://danielpark64.github.io/alarm-ios/s/#v2.… 를 보낸다(docs/s/index.html).
+  이미 보낸 v1 링크(s.html#v=1&i=…&p=…)도 계속 열리게 이 페이지를 남겨 둔다. 내용은 s/index.html과 같다(고칠 때 함께).
+  데이터는 # 뒤에만 있다 — 브라우저는 # 뒤를 서버로 보내지 않는다. 외부 파일·분석 도구를 불러오지 않고,
   # 뒤를 그대로 붙여 1.6.0에서 새로 등록한 앱 주소(alarmappshare://)로 연다(앱 쪽 규칙: src/utils/shiftShareLink.ts appLinkFromPage).
-  옛 버전(1.5.x 이하)은 이 주소를 몰라 앱이 열리지 않으므로 1.5초 안에 화면이 가려지지 않으면 "최신 버전이 필요해요"와 스토어 버튼을 보인다.
 -->
 <style>
   :root { color-scheme: light dark; --bg:#f5f6fa; --card:#fff; --ink:#16162a; --mute:#5a5a78; --line:#dcdcea; --acc:#6c5ce7; }
@@ -80,7 +91,7 @@
   var isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in document);
   // 기기에 맞는 스토어를 먼저
   if (isAndroid) document.getElementById('stores').insertBefore(document.getElementById('android'), document.getElementById('ios'));
-  if (!/(^|&)p=/.test(frag)) { document.getElementById('broken').style.display = 'block'; document.getElementById('open').disabled = true; }
+  if (!/(^|&)p=/.test(frag) && !/^v2\.[A-Za-z0-9_-]{8,}$/.test(frag)) { document.getElementById('broken').style.display = 'block'; document.getElementById('open').disabled = true; }
 
   var appUrl = 'alarmappshare://?' + frag;
   function showNeed() { document.getElementById('need').className = 'card need show'; }

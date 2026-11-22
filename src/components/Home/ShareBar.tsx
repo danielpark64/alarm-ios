@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, ScrollView, TouchableOpacity, Modal, TextInput, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '../common/AppText';
 import { useColors } from '../../hooks/useTheme';
 import { useT } from '../../i18n';
 import { MONTH_KEYS, DAYS } from '../../constants';
 import { Palette } from '../../constants/colors';
-import { personName, type SharedPersonView } from '../../hooks/useShiftShare';
+import { personName, useShiftShare, type SharedPersonView } from '../../hooks/useShiftShare';
 import { MY_COLOR, shiftOn } from '../../utils/shiftShareLink';
 import { ColorPicker } from './ShareReceiveModal';
 
@@ -27,6 +27,21 @@ export function ShareBar({ win, onWin, people, onEdit, onRemove }: {
   const [name, setName] = useState('');
   const [color, setColor] = useState('');
   const openEdit = (p: SharedPersonView) => { setEditing(p); setName(p.name); setColor(p.color); };
+  // 링크가 오면 편집 창을 먼저 닫는다 — 떠 있으면 iOS가 받기 팝업을 못 띄운다(정적 체크 ⑥).
+  // 단 [지우기] 확인 Alert가 떠 있으면 Alert는 코드로 못 닫으니(창만 닫으면 Alert가 받기 팝업 위에 홀로 남는다)
+  // 답을 고른 뒤에 닫는다. 받기 팝업은 그동안 뜰 때까지 다시 시도한다(ShareReceiveModal).
+  const { incomingSeq } = useShiftShare();
+  const confirmingRef = useRef(false);
+  const closeAfterConfirmRef = useRef(false);
+  useEffect(() => {
+    if (!incomingSeq) return;
+    if (confirmingRef.current) closeAfterConfirmRef.current = true;
+    else setEditing(null);
+  }, [incomingSeq]);
+  const endConfirm = () => {
+    confirmingRef.current = false;
+    if (closeAfterConfirmRef.current) { closeAfterConfirmRef.current = false; setEditing(null); }
+  };
   const chip = (key: ShareWin, label: string, dot?: string, onLong?: () => void) => {
     const on = win === key;
     return (
@@ -67,10 +82,11 @@ export function ShareBar({ win, onWin, people, onEdit, onRemove }: {
               </View>
               <TouchableOpacity style={s.del} onPress={() => {
                 const p = editing; if (!p) return;
+                confirmingRef.current = true;
                 Alert.alert(t('지우기'), t('{name}의 근무표를 지울까요?', { name: personName(p, t) }), [
-                  { text: t('취소'), style: 'cancel' },
-                  { text: t('지우기'), style: 'destructive', onPress: () => { setEditing(null); if (win === p.id) onWin('all'); onRemove(p.id); } },
-                ]);
+                  { text: t('취소'), style: 'cancel', onPress: endConfirm },
+                  { text: t('지우기'), style: 'destructive', onPress: () => { endConfirm(); setEditing(null); if (win === p.id) onWin('all'); onRemove(p.id); } },
+                ], { cancelable: true, onDismiss: endConfirm });
               }}>
                 <Text style={s.delText}>{t('이 근무표 지우기')}</Text>
               </TouchableOpacity>

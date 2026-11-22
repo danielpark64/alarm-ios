@@ -320,7 +320,7 @@
   "key": "{month} {d}일",
   "files": [
    "src/components/Home/ShareBar.tsx",
-   "src/components/Home/ShareReceiveModal.tsx"
+   "src/utils/shiftShareLink.ts"
   ]
  },
  {
@@ -466,9 +466,9 @@
   "key": "{year}년",
   "files": [
    "src/components/Home/CalendarView.tsx",
-   "src/components/Home/ShareReceiveModal.tsx",
    "src/components/Home/ShareTab.tsx",
-   "src/components/common/CalendarPicker.tsx"
+   "src/components/common/CalendarPicker.tsx",
+   "src/utils/shiftShareLink.ts"
   ]
  },
  {
@@ -816,6 +816,12 @@
   ]
  },
  {
+  "key": "근무표를 보냈어요 ({range})",
+  "files": [
+   "src/utils/shiftShareLink.ts"
+  ]
+ },
+ {
   "key": "글씨가 작으면 달력 위에서 두 손가락으로 벌려 화면을 확대하세요(최대 3배). 확대한 채로 한 손가락으로 밀어 여기저기 볼 수 있고, 위의 \"원래 크기\"를 누르면 돌아와요.\n요일 줄(일·월·화…)을 두 번 눌러도 커져요. 확대한 동안에는 옆으로 밀어도 달이 넘어가지 않으니, 달을 넘길 땐 ‹ › 버튼을 누르세요.",
   "files": [
    "src/content/help.ko.ts"
@@ -917,6 +923,12 @@
    "src/components/AlarmForm/RotationWizard.tsx",
    "src/components/AlarmForm/WorkPatternBuilder.tsx",
    "app/index.tsx"
+  ]
+ },
+ {
+  "key": "눌러서 교대알람에서 보기 ▶",
+  "files": [
+   "src/utils/shiftShareLink.ts"
   ]
  },
  {
@@ -2079,6 +2091,12 @@
   ]
  },
  {
+  "key": "이번 주: {list}",
+  "files": [
+   "src/utils/shiftShareLink.ts"
+  ]
+ },
+ {
   "key": "이번엔 \"말번\"을 선택해보세요.",
   "files": [
    "src/content/tutorialSteps.ko.ts"
@@ -2188,12 +2206,6 @@
   "key": "정보",
   "files": [
    "src/components/Home/SettingsView.tsx"
-  ]
- },
- {
-  "key": "제 근무표예요. 링크를 누르면 교대알람 공유 탭에서 볼 수 있어요(보기만 하고 알람은 울리지 않아요).",
-  "files": [
-   "src/hooks/useShiftShare.tsx"
   ]
  },
  {

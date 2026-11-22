@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Modal, View, TouchableOpacity, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '../common/AppText';
 import { useColors } from '../../hooks/useTheme';
 import { useT } from '../../i18n';
 import { MONTH_KEYS } from '../../constants';
 import { Palette } from '../../constants/colors';
-import { AUTO_COLORS, type SharedPerson, type ShiftData } from '../../utils/shiftShareLink';
+import { AUTO_COLORS, dateRangeText, type SharedPerson, type ShiftData } from '../../utils/shiftShareLink';
 
 // 근무표 받기 팝업(시안 ④) — 기간 · 이름(비우면 공유n) · 색(겹치지 않게 미리 골라 둠, 눌러서 바꾸기).
 // 같은 사람이 더 새것을 보내면 "○○의 근무표를 새것으로 바꿀까요?"(이름·색은 그대로).
@@ -14,14 +14,7 @@ export type ReceiveDraft = {
   update: SharedPerson | null; seq: number; color: string;
 };
 
-export function dateRangeText(data: ShiftData, t: (k: string, p?: any) => string): string {
-  const [y, m, d] = data.from.split('-').map(Number);
-  const a = new Date(y, m - 1, d);
-  const b = new Date(y, m - 1, d + data.days.length - 1);
-  const md = (x: Date) => t('{month} {d}일', { month: t(MONTH_KEYS[x.getMonth()]), d: x.getDate() });
-  const right = b.getFullYear() !== a.getFullYear() ? `${t('{year}년', { year: b.getFullYear() })} ${md(b)}` : md(b);
-  return `${md(a)} ~ ${right}`;
-}
+export { dateRangeText }; // 기간 글은 utils/shiftShareLink(보내기 글과 공용)
 
 export function ColorPicker({ value, onChange, C }: { value: string; onChange: (c: string) => void; C: Palette }) {
   const { t } = useT();
@@ -45,11 +38,35 @@ export function ShareReceiveModal({ draft, onCancel, onAccept }: {
   const [name, setName] = useState('');
   const [color, setColor] = useState('#F0A35E');
   useEffect(() => { if (draft) { setName(''); setColor(draft.color); } }, [draft]);
+  // ⚠️ iOS는 이미 떠 있는 창(공유 탭 편집 창·지우기 확인 Alert·저장할지 묻는 Alert 등) 위로 두 번째 Modal을 조용히 무시한다.
+  //    visible을 true로 고정하면 그 뒤로 다시 띄울 기회가 없어 앱을 다시 켤 때까지 안 뜬다(2026-11-22 시뮬 재현).
+  //    그래서 잠깐 기다렸다 열고(앞 창이 닫히는 시간), onShow가 안 오면 닫았다 다시 연다 — 실제로 뜰 때까지.
+  const [open, setOpen] = useState(false);
+  const shownRef = useRef(false);
+  useEffect(() => {
+    shownRef.current = false;
+    setOpen(false);
+    if (!draft) return;
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const tryOpen = () => {
+      if (!alive || shownRef.current) return;
+      setOpen(true);
+      if (Platform.OS !== 'ios') return; // Android는 Dialog로 쌓여 항상 뜬다
+      timer = setTimeout(() => {
+        if (!alive || shownRef.current) return;
+        setOpen(false);                       // 못 떴다 — 닫고 다시
+        timer = setTimeout(tryOpen, 300);
+      }, 1200);
+    };
+    timer = setTimeout(tryOpen, 450);
+    return () => { alive = false; clearTimeout(timer); };
+  }, [draft]);
   if (!draft) return null;
   const old = draft.update;
   const oldName = old ? (old.name || t('공유{n}', { n: old.seq })) : '';
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
+    <Modal visible={open} transparent animationType="fade" onRequestClose={onCancel} onShow={() => { shownRef.current = true; }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={s.back}>
           <View style={s.card}>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { View, Pressable, TouchableOpacity, StyleSheet, useWindowDimensions, ScrollView, Platform } from 'react-native';
 import { Text } from '../common/AppText';
 import { Alarm, DAYS_DISPLAY, MONTH_KEYS, DayOverrides } from '../../constants';
@@ -133,6 +133,8 @@ export function ShareTab({ alarms, overrides }: { alarms: Alarm[]; overrides: Da
   const people = share.people;
   const curWin: ShareWin = win === 'me' || win === 'all' || people.some(p => p.id === win) ? win : 'all';
   const setWin = useCallback((w: ShareWin) => { setWinState(w); setSheetDate(null); }, []);
+  // 링크가 오면 날짜 시트를 먼저 닫는다 — 떠 있으면 iOS가 받기 팝업을 못 띄운다(정적 체크 ⑥)
+  useEffect(() => { if (share.incomingSeq) setSheetDate(null); }, [share.incomingSeq]);
   const view: GridView = useMemo(() => {
     if (curWin === 'me') return { kind: 'me' };
     if (curWin === 'all') return { kind: 'all', together: share.together, others: people.filter(p => p.visible).map(p => ({ color: p.color, data: p.data })) };

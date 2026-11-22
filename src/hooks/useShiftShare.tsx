@@ -5,7 +5,7 @@ import * as Linking from 'expo-linking';
 import { useT } from '../i18n';
 import { Alarm, DayOverrides } from '../constants';
 import {
-  buildShareBody, buildShareLink, parseShareLink, decideIncoming, pickAutoColor, nextSeq, newSenderId, dataOf,
+  buildShareBody, buildShareLink, buildShareMessage, parseShareLink, decideIncoming, pickAutoColor, nextSeq, newSenderId, dataOf,
   type SharedPerson, type ShiftData,
 } from '../utils/shiftShareLink';
 import { ShareReceiveModal, type ReceiveDraft } from '../components/Home/ShareReceiveModal';
@@ -127,12 +127,13 @@ export function ShiftShareProvider({ children }: { children: React.ReactNode }) 
       senderRef.current = sid;
       AsyncStorage.setItem(K_SENDER, sid).catch(() => {});
     }
-    const link = buildShareLink(buildShareBody(alarms, overrides, new Date()), sid);
+    const body = buildShareBody(alarms, overrides, new Date());
+    const link = buildShareLink(body, sid);
     try {
-      // 안내 글 + 링크 한 줄. 데이터는 링크 # 뒤 — 서버로 가지 않는다
-      await Share.share({ message: `${t('제 근무표예요. 링크를 누르면 교대알람 공유 탭에서 볼 수 있어요(보기만 하고 알람은 울리지 않아요).')}\n${link}` });
+      // 요약 줄 + 빈 줄 + '눌러서 교대알람에서 보기 ▶ 링크'(세이람 보내기 글과 같은 모양). 데이터는 링크 # 뒤 — 서버로 가지 않는다
+      await Share.share({ message: buildShareMessage(body, link) });
     } catch {}
-  }, [t]);
+  }, [t]); // t가 바뀌면(언어 변경) 새로 — 글은 utils의 t(현재 언어)로 만든다
 
   // 근무표는 원문으로만 저장하고 읽을 때 한 번 편다(사람이 바뀔 때만)
   const views = useMemo(() => people.map(p => ({ ...p, data: dataOf(p) })), [people]);

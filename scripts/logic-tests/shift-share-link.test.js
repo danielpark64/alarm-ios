@@ -115,4 +115,51 @@ module.exports = (U, M) => {
   // ── 보낸 사람 id ──
   const id = L.newSenderId(() => 0.5);
   check('보낸 사람 id는 8자 소문자·숫자', /^[0-9a-z]{8}$/.test(id), id);
+
+  // ── v2 짧은 링크(빌드 10~): #v2.<base64url> · 미리보기 카드 페이지 /s/ ──
+  check('v2 링크 모양: …/alarm-ios/s/#v2.<base64url>', /^https:\/\/danielpark64\.github\.io\/alarm-ios\/s\/#v2\.[A-Za-z0-9_-]+$/.test(link), link.slice(0, 70));
+  const v1 = L.buildShareLinkV1(body, 'ab12cd34');
+  check('v1(옛 링크) 모양 그대로', v1.startsWith(L.SHARE_PAGE_V1 + '#v=1&i=ab12cd34&p='));
+  console.log(`    링크 길이(215일 초번2·말번2·비번1): v1 ${v1.length}자 → v2 ${link.length}자`);
+  check('v2가 v1보다 확실히 짧다(절반 이하)', link.length * 2 <= v1.length, `${v1.length} → ${link.length}`);
+  check('v2는 200자 이하', link.length <= 200, String(link.length));
+  // v2 왕복 — 근무표 원문(body)이 v1과 같은 내용으로 복원된다
+  const r1 = L.parseShareLink(v1, today);
+  check('v1 옛 링크도 계속 받는다(하위호환)', r1.ok === true && r1.sender === 'ab12cd34');
+  check('v1 앱 주소도 받는다', L.parseShareLink(L.appLinkFromPage(v1), today).ok === true);
+  check('v2 왕복: 날짜 칸 215개 그대로', r.ok && r1.ok && JSON.stringify(r.data.days) === JSON.stringify(r1.data.days));
+  check('v2 왕복: 라벨·색·쉬는 날·시작일·보낸 시각 그대로', r.ok && JSON.stringify([r.data.labels, r.data.colors, r.data.off, r.data.from, r.data.sentAt]) === JSON.stringify([r1.data.labels, r1.data.colors, r1.data.off, r1.data.from, r1.data.sentAt]));
+  check('v2 앱 주소: alarmappshare://?v2.…', L.appLinkFromPage(link).startsWith('alarmappshare://?v2.'));
+  // 하루 근무 변경으로 주기가 어긋난 날도 예외(x)로 보존
+  const odd = JSON.parse(body); const dd = odd.d.split(''); dd[3] = '2'; dd[100] = '0'; dd[214] = '-'; odd.d = dd.join('');
+  const oddLink = L.buildShareLink(JSON.stringify(odd), 'ab12cd34');
+  const ro = L.parseShareLink(oddLink, today);
+  check('어긋난 날(예외) 왕복', ro.ok && ro.data.days.map(i => i < 0 ? '-' : i.toString(36)).join('') === odd.d);
+  // 주기가 없는 근무표는 칸 그대로(d)
+  let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  const rand = Array.from({ length: 215 }, () => '012'[Math.floor(rnd() * 3)]).join('');
+  check('주기 없음 → 칸 그대로(d)', typeof L.packDays(rand).d === 'string' && L.unpackDays(L.packDays(rand)) === rand);
+  check('packDays 왕복(같은 순서 되풀이)', L.unpackDays(L.packDays('0011200112001120')) === '0011200112001120');
+  // 한글 라벨(UTF-8) 왕복
+  check('base64url UTF-8 왕복(한글·일본어·이모지)', L.fromBase64Url(L.toBase64Url('초번 夜勤 🌙')) === '초번 夜勤 🌙');
+  // 틀린 v2
+  check('v2 깨진 base64 → format', bad(L.SHARE_PAGE + '#v2.%%%').reason === 'format');
+  check('v2 JSON 아님 → format', bad(L.SHARE_PAGE + '#v2.' + L.toBase64Url('xx')).reason === 'format');
+  check('v2 보낸 사람 없음 → format', bad(L.SHARE_PAGE + '#v2.' + L.toBase64Url(JSON.stringify(['', '20261122', ['a'], 'ffffff', '0', 'a', '0']))).reason === 'format');
+  check('v2 칸 그대로(d) 형식도 받는다', L.parseShareLink(L.SHARE_PAGE + '#v2.' + L.toBase64Url(JSON.stringify(['ab12cd34', '20261122', ['a', 'b'], 'ffffff000000', '01', 'zzzzzzz', '0101'])), today).ok === true);
+  check('v2 예외 날짜 범위 밖 → format', L.unpackDays({ q: '01', n: 10, x: 'zz0' }) === null);
+  check('다음 판(v3.) → version(앱 업데이트 안내)', bad(L.SHARE_PAGE + '#v3.abc').reason === 'version');
+  check('v2 너무 긴 링크 → tooLong', bad(L.SHARE_PAGE + '#v2.' + 'A'.repeat(L.MAX_LINK)).reason === 'tooLong');
+
+  // ── 보내기 글(세이람과 같은 모양): 요약 줄 · 이번 주 → 빈 줄 → '눌러서 교대알람에서 보기 ▶ 링크' ──
+  const msg = L.buildShareMessage(body, link);
+  const ml = msg.split('\n');
+  check('첫 줄: 📅 근무표를 보냈어요 (기간)', ml[0] === '📅 근무표를 보냈어요 (11월 22일 ~ 2027년 6월 24일)', ml[0]);
+  check('둘째 줄: 이번 주 근무', ml[1] === '이번 주: 일 초번 · 월 초번 · 화 말번 · 수 말번 · 목 비번 · 금 초번 · 토 초번', ml[1]);
+  check('빈 줄 뒤 마지막 줄에 링크(글 끝)', ml[2] === '' && ml[3] === '눌러서 교대알람에서 보기 ▶ ' + link && msg.endsWith(link));
+  setLang('en');
+  const men = L.buildShareMessage(body, link);
+  // (근무 라벨 '초번'은 보낸 사람이 만든 데이터라 그대로 — 고정 문구만 본다)
+  check('영어 글의 고정 문구에 한국어 없음', !/[가-힣]/.test(men.replace(/초번|말번|비번/g, '')), men.slice(0, 160));
+  setLang('ko');
 };

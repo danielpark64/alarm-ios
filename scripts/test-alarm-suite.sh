@@ -714,6 +714,7 @@ if ! grep -q '"alarmappshare"' "$ROOT/app.json"; then fail "app.json scheme에 a
 elif ! grep -q "<string>alarmappshare</string>" "$ROOT/ios/app/Info.plist" 2>/dev/null; then fail "ios/app/Info.plist CFBundleURLSchemes에 alarmappshare 없음"
 elif ! grep -q 'android:scheme="alarmappshare"' "$_MF" 2>/dev/null; then fail "AndroidManifest에 alarmappshare intent-filter 없음"
 elif [ ! -f "$ROOT/docs/s.html" ] || ! grep -q "alarmappshare://" "$ROOT/docs/s.html" || grep -q "alarmapp://" "$ROOT/docs/s.html"; then fail "docs/s.html이 없거나 alarmappshare://로 열지 않음(또는 옛 alarmapp://를 씀)"
+elif [ ! -f "$ROOT/docs/s/index.html" ] || ! grep -q "alarmappshare://" "$ROOT/docs/s/index.html" || ! grep -q 'og:image" content="https://' "$ROOT/docs/s/index.html" || [ ! -f "$ROOT/docs/s/icon.png" ]; then fail "docs/s/index.html(짧은 v2 링크 안내 페이지)·og 미리보기 카드·icon.png 중 빠진 것"
 elif ! grep -q "<ShiftShareProvider>" "$ROOT/app/_layout.tsx"; then fail "app/_layout.tsx에 ShiftShareProvider 없음 — 받기 팝업이 안 뜸"
 else ok ""; fi
 
@@ -732,6 +733,17 @@ if ! grep -q "'share'" "$ROOT/src/components/Home/BottomNav.tsx"; then fail "Bot
 elif [ ! -f "$ROOT/src/components/Home/ShareTab.tsx" ]; then fail "ShareTab.tsx 없음"
 elif ! grep -q "BackHandler" "$_IX" || ! awk '/hardwareBackPress/,/\}\);/' "$_IX" | grep -q "setTab('calendar')"; then fail "공유 탭에서 Android 뒤로가기가 달력 탭으로 가지 않음"
 elif ! grep -q "incomingSeq" "$_IX"; then fail "링크로 받을 때 공유 탭으로 이동하지 않음(incomingSeq 구독 없음)"
+else ok ""; fi
+
+# ⑥ 받기 팝업이 다른 창에 막혀 사라지지 않게(2026-11-22 시뮬 재현 — 받은 근무표 편집 창의 [지우기] 확인이 떠 있을 때
+#    링크가 오면, iOS는 이미 떠 있는 창 위로 두 번째 Modal을 조용히 무시하고 visible이 계속 true라 앱을 다시 켤 때까지 안 뜸).
+#    받기 팝업은 onShow로 실제로 떴는지 확인해 못 떴으면 다시 띄우고, 공유 탭의 편집 창·날짜 시트는 링크가 오면 먼저 닫는다.
+printf "  받기 팝업 재시도(onShow) + 링크 오면 공유 탭 창 닫기 ... "
+_RM="$ROOT/src/components/Home/ShareReceiveModal.tsx"
+if grep -qE '<Modal[[:space:]]+visible[[:space:]]' "$_RM"; then fail "ShareReceiveModal이 visible 고정 — iOS에서 다른 창에 막히면 다시 띄우지 못함"
+elif ! grep -q "onShow" "$_RM"; then fail "ShareReceiveModal에 onShow 확인 없음 — 못 뜬 걸 알 수 없음"
+elif ! grep -q "incomingSeq" "$ROOT/src/components/Home/ShareBar.tsx"; then fail "ShareBar 편집 창이 링크가 와도 닫히지 않음(incomingSeq)"
+elif ! grep -q "incomingSeq" "$ROOT/src/components/Home/ShareTab.tsx"; then fail "ShareTab 날짜 시트가 링크가 와도 닫히지 않음(incomingSeq)"
 else ok ""; fi
 
 if $STATIC_ONLY; then
