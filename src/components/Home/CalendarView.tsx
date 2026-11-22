@@ -17,10 +17,12 @@ import { useT, N } from '../../i18n';
 import { useSayramShare } from '../../hooks/useSayramShare';
 import type { SiblingEvents } from '../../utils/sayramShare';
 import { doubleTapZoom, panZoom, pinchZoom, type Zoom } from '../../utils/calendarZoom';
+import { buildMonthLayout, monthAt, indexOf as monthIndexOf, monthIndexAt } from '../../utils/monthScroll';
 
 // 달력 화면 — 근무 알람(주기+출근/퇴근)은 배경색으로 근무조를 표시하고,
 // 그 외 알람만 칩으로 보여준다. 날짜를 누르면 하루 상세 팝업이 뜬다.
-// 좌우로 스와이프하면 한 달씩(무한) 이동, 상단 연도 숫자를 누르면 연도 선택 팝업이 뜬다.
+// 위아래로 이어서 스크롤한다(2026-11-22, 세이람 MonthScroll 방식) — 위 제목은 화면 위쪽에 걸린 달을 따라간다.
+// 상단 연도 숫자를 누르면 연도 선택 팝업, ‹ ›는 한 달씩 스크롤.
 interface Props {
   alarms: Alarm[];
   overrides: DayOverrides;
@@ -29,15 +31,18 @@ interface Props {
   onUpdateAlarm?: (id: number, data: Partial<Alarm>) => void;
 }
 
-// 항상 6주(42칸)로 맞춰서 매달 페이지 폭이 동일하게 — 가로 페이징에 필수
+// 칸 높이는 "6주가 한 화면"에 맞춘다(예전 한 달 넘김 화면과 같은 칸 크기). 달은 실제 주 수(4~6주)만 그린다.
 const ROWS = 6;
-const TOTAL_CELLS = ROWS * 7;
 const CELL_MB = 2;
+// 달 사이 작은 제목 줄 높이(그 달이 시작되는 곳 표시)
+const TITLE_H = 26;
 // 칸 높이는 고정값이 아니라 실제 할당된 화면 공간을 측정해서 계산한다(폰/태블릿 화면비가 달라도 한 달이 항상 한 화면에 들어오도록).
 // 측정 전 첫 렌더용 대체값.
 const FALLBACK_CELL_H = 58;
-// 앞뒤 20년치 — 실사용상 끝에 닿을 일이 없어 사실상 무한 스크롤처럼 느껴진다
-const RANGE = 240;
+// 앞뒤 10년치 — 연도 선택으로 멀리 뛰어도 끝에 잘 안 닿는다. 높이표는 계산만이라 가볍다(그리는 건 보이는 달뿐)
+const BEFORE = 120;
+const AFTER = 120;
+const MONTH_COUNT = BEFORE + AFTER + 1;
 // 연도 선택 팝업 — 2열 세로 배치. 현재 연도가 1열 가운데(위에서 3번째)에 오도록 페이지를 잡아서
 // 바로 앞뒤 연도가 같은 열 안에서 위/아래로 붙게 한다(다른 열로 떨어지면 "앞뒤"라는 인접감이 안 느껴짐).
 const YEAR_ROWS = 4;
@@ -68,7 +73,7 @@ function buildCells(year: number, month: number, ws: number = 0): (number|null)[
   const cells: (number|null)[] = [];
   for (let i=0; i<offset; i++) cells.push(null);
   for (let d=1; d<=daysInMonth; d++) cells.push(d);
-  while (cells.length < TOTAL_CELLS) cells.push(null);
+  while (cells.length % 7) cells.push(null); // 실제 주 수만(monthScroll.monthWeeksCount와 같은 계산)
   return cells;
 }
 
@@ -79,7 +84,8 @@ interface MonthGridProps {
   C: Palette; toneIdxOf: Record<number, number>; density: number; cellScale: number;
   today: string; showLunar: boolean; width: number;
   cv: ReturnType<typeof makeStyles>;
-  cellH: number; itemHeight: number;
+  cellH: number;
+  title: string; // 달 위 작은 제목("2026년 11월")
   overrides: DayOverrides;
   weekStart: number; // 0=일요일 시작, 1=월요일 시작
   // 셀 안의 getHoliday(ds) 표기는 모듈 변수를 직접 읽어 memo가 변화를 모른다 — 공휴일 데이터
@@ -90,7 +96,7 @@ interface MonthGridProps {
   onSelectDate: (ds: string) => void;
 }
 
-const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneIdxOf, density, cellScale, today, showLunar, width, cv, cellH, itemHeight, overrides, weekStart, sibling, onSelectDate }: MonthGridProps) {
+const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneIdxOf, density, cellScale, today, showLunar, width, cv, cellH, title, overrides, weekStart, sibling, onSelectDate }: MonthGridProps) {
   // memo 컴포넌트라 부모가 다시 그려져도 건너뛴다 — 언어 변경은 이 컨텍스트 구독으로 직접 받는다.
   const { t } = useT();
   const cells = useMemo(() => buildCells(year, month, weekStart), [year, month, weekStart]);
@@ -98,7 +104,11 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
   const offset = cells.findIndex(c => c !== null);
 
   return (
-    <View style={[cv.grid, { height: itemHeight, width, paddingHorizontal: 14 }]}>
+    <View style={{ width }}>
+    <View style={[cv.monthTitleRow, { height: TITLE_H }]}>
+      <Text style={cv.monthTitle} numberOfLines={1}>{title}</Text>
+    </View>
+    <View style={[cv.grid, { width, paddingHorizontal: 14 }]}>
       {cells.map((d, i) => {
         if (!d) return <View key={`e${i}`} style={[cv.cell, { height: cellH }]}/>;
         const ds = `${year}-${pad(month+1)}-${pad(d)}`;
@@ -238,6 +248,7 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, alarms, C, toneId
         );
       })}
     </View>
+    </View>
   );
 });
 
@@ -253,7 +264,10 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
   const anchorYear  = todayDate.getFullYear();
   const anchorMonth = todayDate.getMonth();
 
-  const [pageIndex, setPageIndex] = useState(RANGE);
+  // 화면 위쪽(1/4 지점)에 걸린 달 — 위 제목·집계 줄이 이 달을 따른다
+  const [visibleIdx, setVisibleIdx] = useState(BEFORE);
+  const visibleIdxRef = useRef(BEFORE);
+  visibleIdxRef.current = visibleIdx;
   const [selDate, setSelDate] = useState<string|null>(null);
   // 하루 근무 변경 팝업 안 로컬 상태 — 종류 선택 그리드 → (대근/특근이면 근무조 선택 →) 시각
   // 편집 모달의 단계를 오간다. selDate가 바뀔 때마다 전부 초기화한다.
@@ -268,13 +282,14 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
   const isKR = lang === 'ko';
   const showLunar = showLunarRaw && isKR; // 음력 표기는 한국어일 때만
   const [showYearPicker, setShowYearPicker] = useState(false);
-  const listRef = useRef<FlatList>(null);
+  const listRef = useRef<FlatList<number>>(null);
   // AppText와 같은 배율표 — 칸 높이를 글자 배율에 맞춰 키우기 위해 읽는다
   const { fontScale } = useFontScale();
   const cellScale = fontScale === 'large' ? 1.30 : fontScale === 'small' ? 0.9 : 1;
 
-  // 달력 칸 영역에 실제로 할당된 높이를 측정해서 칸 크기를 역산 — 폰/태블릿 등 화면비가 달라도
-  // 한 달(6주)이 항상 한 화면 안에 들어오게 한다. 측정 전에는 대체값으로 렌더링.
+  // 달력 영역(그리드+집계 줄)에 실제로 할당된 높이를 측정해서 칸 크기를 역산 — 폰/태블릿 등 화면비가 달라도
+  // 6주가 한 화면 크기가 되게 한다. 집계 줄은 연도가 바뀔 때 생겼다 없어지므로 그것까지 합친 높이를 잰다 —
+  // 그리드만 재면 스크롤 도중 칸 높이가 바뀌어 목록을 다시 만들게 된다. 측정 전에는 목록을 그리지 않는다.
   const [gridAreaH, setGridAreaH] = useState(0);
   const onGridAreaLayout = useCallback((e: LayoutChangeEvent) => {
     const h = e.nativeEvent.layout.height;
@@ -287,7 +302,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
   // 상한 90은 폰 기준이다 — 아이패드·태블릿처럼 칸이 넓으면 칸 폭에 맞춰 상한도 키워 화면 아래가 비지 않게 한다
   const cellCap = Math.max(90, Math.round(winWidth / 7 * 1.5));
   const cellH = gridAreaH > 0
-    ? Math.max(40, Math.min(Math.round(cellCap * cellScale), Math.floor(gridAreaH / ROWS) - CELL_MB))
+    ? Math.max(40, Math.min(Math.round(cellCap * cellScale), Math.floor((gridAreaH - TITLE_H) / ROWS) - CELL_MB))
     : FALLBACK_CELL_H;
   // 칸에 실제로 들어가야 하는 높이를 추정해 넘치면 그 비율만큼 글자를 줄인다.
   // 음력을 켜면 줄이 하나 더 늘어 바로 넘치는데, 스크롤도 정보 삭제도 못 하므로
@@ -297,14 +312,16 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
     const need = (15.5 + 14 + (showLunar ? 9.5 : 0)) * lineH * cellScale + 8; // +패딩
     return Math.max(0.62, Math.min(1, cellH / need));
   }, [cellH, showLunar, cellScale]);
-  const itemHeight = gridAreaH > 0 ? gridAreaH : ROWS * (FALLBACK_CELL_H + CELL_MB);
+  const weekH = cellH + CELL_MB;
+  const indexToYearMonth = useMemo(() => monthAt(anchorYear, anchorMonth, BEFORE), [anchorYear, anchorMonth]);
+  // 달마다 높이(4~6주)가 달라 누적 위치표를 미리 만든다 — getItemLayout으로 측정 없이 그 달로 바로 뛴다
+  const layout = useMemo(
+    () => buildMonthLayout(anchorYear, anchorMonth, BEFORE, MONTH_COUNT, weekStart, weekH, TITLE_H),
+    [anchorYear, anchorMonth, weekStart, weekH],
+  );
 
-  const indexToYearMonth = useCallback((idx: number) => {
-    const total = anchorYear * 12 + anchorMonth + (idx - RANGE);
-    return { year: Math.floor(total / 12), month: ((total % 12) + 12) % 12 };
-  }, [anchorYear, anchorMonth]);
-
-  const { year, month } = indexToYearMonth(pageIndex);
+  const { year, month } = indexToYearMonth(visibleIdx);
+  const monthTitle = useCallback((y: number, m: number) => `${t('{year}년', { year: y })} ${t(MONTH_KEYS[m])}`, [t]);
 
   // ── 화면 확대(사진처럼): 두 손가락 벌리기·오므리기, 확대 중 한 손가락으로 상하좌우 밀기, 요일 줄 두 번 탭 2배 ──
   // 2026-10-20 사용자: "세이람처럼 달력을 확대해서 보는 기능". 칸이 넓어지는 게 아니라 화면 자체를 키운다(작은 글씨 보기).
@@ -392,16 +409,18 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
   useEffect(() => { resetZoom(); }, [zoomW, zoomH]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const goToIndex = (idx: number, animated = true) => {
-    resetZoom(); // 확대한 채 달을 넘기면 새 달이 엉뚱한 곳을 확대한 채로 나온다
-    const clamped = Math.max(0, Math.min(RANGE * 2, idx));
-    setPageIndex(clamped);
-    listRef.current?.scrollToIndex({ index: clamped, animated });
+    resetZoom(); // 확대한 채 달을 옮기면 새 달이 엉뚱한 곳을 확대한 채로 나온다
+    const clamped = Math.max(0, Math.min(MONTH_COUNT - 1, idx));
+    setVisibleIdx(clamped);
+    // 확대를 풀면 목록이 새로 만들어지므로(initialScrollIndex=visibleIdx) 다음 프레임에 스크롤한다
+    requestAnimationFrame(() => { try { listRef.current?.scrollToIndex({ index: clamped, animated }); } catch {} });
   };
-  const prevMonth = () => goToIndex(pageIndex - 1);
-  const nextMonth = () => goToIndex(pageIndex + 1);
+  const prevMonth = () => goToIndex(visibleIdx - 1);
+  const nextMonth = () => goToIndex(visibleIdx + 1);
+  const todayIdx = BEFORE;
   // 연도 선택 팝업에서 고른 연도로 이동 — 같은 달을 유지한 채 해당 연도로 즉시 이동
   const selectYear = (newYear: number) => {
-    goToIndex(RANGE + (newYear - anchorYear) * 12 + (month - anchorMonth), false);
+    goToIndex(monthIndexOf(anchorYear, anchorMonth, BEFORE, newYear, month), false);
   };
   // 현재 페이지 시작 연도 — 팝업을 열 때마다 현재 연도가 1열 가운데 자리에 오도록 재설정
   const [yearPageStart, setYearPageStart] = useState(anchorYear - YEAR_CENTER_OFFSET);
@@ -418,16 +437,21 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
   const prevYearPage = () => setYearPageStart(v => v - YEARS_PER_PAGE);
   const nextYearPage = () => setYearPageStart(v => v + YEARS_PER_PAGE);
 
-  const onMomentumScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const idx = Math.round(e.nativeEvent.contentOffset.x / winWidth);
-    if (idx !== pageIndex) setPageIndex(idx);
+  // 위 제목의 달: 화면 위에서 1/4 지점에 걸린 달. 같은 달이면 상태를 바꾸지 않는다(스크롤 중 다시 그리기 최소 — 32)
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+    const atEnd = contentOffset.y + layoutMeasurement.height >= contentSize.height - 1;
+    const y = atEnd ? layout.total : contentOffset.y + layoutMeasurement.height / 4;
+    const idx = monthIndexAt(layout.offsets, y);
+    if (idx !== visibleIdxRef.current) setVisibleIdx(idx);
   };
-
-  const dayMap = useMemo(() => buildDayMap(alarms, year, month), [alarms, year, month]);
   // 자동 배색은 색이 아니라 인덱스로 받아, 셀에서 테마별 배지 톤(C.shiftAuto)을 꺼내 쓴다
   const toneIdxOf = useMemo(() => shiftToneIndexMap(alarms), [alarms]);
 
-  const selInfo = selDate ? dayMap[selDate] : null;
+  // 연속 스크롤이라 누른 날짜가 위 제목의 달과 다를 수 있다 — 그날만 따로 계산한다
+  const selInfo: DayInfo | null = useMemo(() => selDate ? {
+    alarms: alarmsForDate(alarms, selDate, true), shift: shiftForDate(alarms, selDate), off: isOffDay(alarms, selDate),
+  } : null, [alarms, selDate]);
   const selDateObj = selDate ? new Date(selDate) : null;
   // 로테이션 알람은 selInfo.shift.label(정적 문구, 패턴 알람은 빈 문자열)이 아니라 그날의
   // 세그먼트를 다시 조회해야 정확한 시간대 이름/색이 나온다 — 셀 렌더링과 동일한 방식 재사용.
@@ -578,7 +602,12 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
       .sort((a, b) => order.indexOf(a.label) - order.indexOf(b.label));
   }, [overrides, alarms, year, month, today, holidayVersion, lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const pages = useMemo(() => Array.from({ length: RANGE * 2 + 1 }, (_, i) => i), []);
+  const pages = useMemo(() => Array.from({ length: MONTH_COUNT }, (_, i) => i), []);
+  const renderMonth = useCallback(({ item }: { item: number }) => {
+    const { year: y, month: m } = indexToYearMonth(item);
+    return <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} title={monthTitle(y, m)} overrides={overrides} weekStart={weekStart} holidayVersion={holidayVersion} sibling={siblingEvents} onSelectDate={setSelDate} />;
+  }, [indexToYearMonth, alarms, C, toneIdxOf, density, cellScale, today, showLunar, winWidth, cv, cellH, monthTitle, overrides, weekStart, holidayVersion, siblingEvents]);
+  const getItemLayout = useCallback((_: unknown, index: number) => ({ length: layout.heights[index], offset: layout.offsets[index], index }), [layout]);
 
   return (
     <View style={{flex:1, backgroundColor:C.bg}}>
@@ -608,6 +637,11 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
                 <Text style={cv.lunarToggleText}>{t('원래 크기')}</Text>
               </TouchableOpacity>
             )}
+            {visibleIdx !== todayIdx && (
+              <TouchableOpacity style={cv.lunarToggle} onPress={() => goToIndex(todayIdx)} accessibilityRole="button">
+                <Text style={cv.lunarToggleText}>{t('오늘')}</Text>
+              </TouchableOpacity>
+            )}
           </View>
           <TouchableOpacity onPress={nextMonth} style={cv.navBtn}>
             <Text style={cv.navArrow}>›</Text>
@@ -629,59 +663,52 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
         </TouchableOpacity>
       </View>
 
-      {/* 날짜 그리드 — 좌우로 계속 스와이프해서 달 이동 (무한) */}
-      {/* flex:1로 남는 공간을 다 차지하게 하고 그 실측 높이로 칸 크기를 역산 (폰/태블릿 화면비 대응) */}
+      {/* 날짜 그리드 + 집계 줄 — 이 상자의 실측 높이로 칸 크기를 역산한다(폰/태블릿 화면비 대응) */}
+      <View style={{ flex: 1 }} onLayout={onGridAreaLayout}>
       {/* 확대 제스처(두 손가락 벌리기·확대 중 한 손가락 밀기)를 받는 상자 */}
       <GestureDetector gesture={zoomGesture}>
-      <View collapsable={false} style={{ flex: 1, position: 'relative', overflow: 'hidden' }} onLayout={onGridAreaLayout}>
+      <View collapsable={false} style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
         <View style={{ flex: 1, transformOrigin: 'left top', transform: [{ translateX: zoomState.tx }, { translateY: zoomState.ty }, { scale: zoomState.s }] }}>
-        {/* 확대 중에는 가로 넘기기 목록(네이티브 스크롤뷰) 대신 지금 달 한 장만 그린다 — Android에서 스크롤뷰가
-            scrollEnabled=false여도 한 손가락 밀기를 첫 움직임에서 가로채(32 실측) 확대 화면을 옮길 수 없었다.
-            확대 중엔 목록을 아예 빼고, 원래 크기로 돌아오면 보던 달(pageIndex)에서 다시 만든다. */}
+        {/* 확대 중에는 스크롤 목록(네이티브 스크롤뷰) 대신 지금 달 한 장만 그린다 — Android에서 스크롤뷰가
+            한 손가락 밀기를 첫 움직임에서 가로채(32 실측) 확대 화면을 옮길 수 없었다.
+            원래 크기로 돌아오면 보던 달(visibleIdx)에서 목록을 다시 만든다. */}
         {zoomed && (() => {
-          const { year: y, month: m } = indexToYearMonth(pageIndex);
+          const { year: y, month: m } = indexToYearMonth(visibleIdx);
           return (
             <View style={{ position: 'absolute', top: 0, left: 0, zIndex: 1 }}>
-              <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} itemHeight={itemHeight} overrides={overrides} weekStart={weekStart} holidayVersion={holidayVersion} sibling={siblingEvents} onSelectDate={setSelDate} />
+              <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} title={monthTitle(y, m)} overrides={overrides} weekStart={weekStart} holidayVersion={holidayVersion} sibling={siblingEvents} onSelectDate={setSelDate} />
             </View>
           );
         })()}
-        {!zoomed && (
-        <View style={{ flex: 1 }}>
+        {!zoomed && gridAreaH > 0 && (
         <FlatList
-          // 화면을 돌리면(아이패드·태블릿 가로/세로) 한 장 폭이 바뀌어 예전 스크롤 위치로는 엉뚱한 달이 보인다 —
-          // 폭이 바뀔 때 새로 만들어 보던 달(initialScrollIndex)에서 다시 시작한다
-          key={winWidth}
+          // 칸 높이·폭·주 시작이 바뀌면 높이표가 달라져 같은 스크롤 위치가 엉뚱한 달이 된다 —
+          // 새로 만들어 보던 달(initialScrollIndex)에서 다시 시작한다
+          key={`${winWidth}-${weekH}-${weekStart}`}
           ref={listRef}
           data={pages}
-          horizontal
           keyExtractor={(i) => String(i)}
-          renderItem={({ item }) => {
-            const { year: y, month: m } = indexToYearMonth(item);
-            return <MonthGrid year={y} month={m} alarms={alarms} C={C} toneIdxOf={toneIdxOf} density={density} cellScale={cellScale} today={today} showLunar={showLunar} width={winWidth} cv={cv} cellH={cellH} itemHeight={itemHeight} overrides={overrides} weekStart={weekStart} holidayVersion={holidayVersion} sibling={siblingEvents} onSelectDate={setSelDate} />;
-          }}
-          getItemLayout={(_, index) => ({ length: winWidth, offset: winWidth * index, index })}
-          initialScrollIndex={pageIndex} // 확대했다 돌아오면 다시 만들어지므로 보던 달에서 시작
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={onMomentumScrollEnd}
-          style={{ height: itemHeight }}
+          renderItem={renderMonth}
+          getItemLayout={getItemLayout}
+          initialScrollIndex={visibleIdxRef.current}
+          onScroll={onScroll}
+          onMomentumScrollEnd={onScroll}
+          scrollEventThrottle={100}
+          showsVerticalScrollIndicator={false}
+          // 32(저사양) 기준 — 한 달이 거의 한 화면이라 앞뒤 한 화면씩만 그려 둔다
           windowSize={3}
-          maxToRenderPerBatch={2}
-          initialNumToRender={1}
-          updateCellsBatchingPeriod={30}
-          removeClippedSubviews
+          maxToRenderPerBatch={1}
+          initialNumToRender={2}
+          updateCellsBatchingPeriod={50}
+          removeClippedSubviews={Platform.OS === 'android'}
           scrollEnabled={!pinching}
         />
-        </View>
         )}
         </View>
       </View>
       </GestureDetector>
 
-      {/* 하루 근무 변경 집계 — 이번 달/올해 종류별 개수. 이 줄이 생긴 만큼 위 그리드가
-          flex:1로 자동으로 줄어들어(onGridAreaLayout이 그 남은 공간을 다시 측정) 칸 높이가
-          알아서 반영된다. 0개인 종류는 애초에 tally에 안 들어간다. */}
+      {/* 하루 근무 변경 집계 — 위 제목 달의 이번 달/올해 종류별 개수. 0개인 종류는 애초에 tally에 안 들어간다. */}
       {tally.length > 0 && (
         <View style={cv.tallyWrap}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={cv.tallyRow}>
@@ -691,6 +718,7 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
           </ScrollView>
         </View>
       )}
+      </View>
 
       {/* 연도 선택 팝업 */}
       <Modal visible={showYearPicker} transparent animationType="fade" onRequestClose={() => setShowYearPicker(false)}>
@@ -1072,6 +1100,9 @@ function makeStyles(C: Palette) {
     yearBtnText: { fontSize:19, fontWeight:'800', color:C.txt3 },
     yearBtnTextActive:{ color:'#fff', fontWeight:'900' },
     grid:        { flexDirection:'row', flexWrap:'wrap' },
+    // 달 사이 작은 제목 — 그 달이 시작되는 곳을 알린다(지금 보는 달은 위 큰 제목에)
+    monthTitleRow:{ justifyContent:'flex-end', paddingHorizontal:18, paddingBottom:3 },
+    monthTitle:  { fontSize:13, fontWeight:'800', color:C.txt3 },
     headCell:    { width:'14.28%', alignItems:'center', paddingVertical:3 },
     headText:    { fontSize:12.5, fontWeight:'800', color:C.txt2 },
     // overflow:hidden이 없으면 칸 내용이 아래 행 날짜 위로 올라탄다(음력 켜면 바로 재현됨).

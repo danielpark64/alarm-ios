@@ -1639,6 +1639,7 @@
  {
   "key": "오늘",
   "files": [
+   "src/components/Home/CalendarView.tsx",
    "src/components/Home/TodayShiftRow.tsx"
   ]
  },
