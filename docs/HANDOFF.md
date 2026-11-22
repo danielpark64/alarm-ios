@@ -1,4 +1,4 @@
-# 교대알람(AlarmApp) 인수인계 — 2026-11-21
+# 교대알람(AlarmApp) 인수인계 — 2026-11-22
 
 새 대화에서 이 파일을 먼저 읽고 이어서 작업한다. 프로젝트 규칙은 `CLAUDE.md`, 버그 이력은 `.claude/bugs.md`, 여러 앱 현황은 `~/Desktop/daniel-project/본부/현황판.md`.
 **사용자에게 보이는 모든 글은 한국어로 쓴다**(전역 규칙).
@@ -6,7 +6,16 @@
 ## 지금 상태 한 줄
 **두 스토어 모두 심사·검토 중(2026-11-21 제출).** 결과가 나오기 전에는 어느 쪽도 다시 제출하지 않는다. 코드는 main에 커밋·푸시됨.
 
-## 진행 중 — 1.5.4 iOS 26 AlarmKit 알람 (2026-11-21 구현·커밋 fcc8938, Fable 점검 통과)
+## 다음 판 1.6.0 = AlarmKit 알람 + 근무표 공유 (2026-11-22 사용자 지시, 총괄 창 전달)
+- 사용자 원문: "교대알람 ios26 알람 잘되 새이람도 같이 적용해줘 이 내용하고 데이타 공유 도 다음 버전에 같이 적용해줘 지금 이미지 올린것 통과되면 바로 올리게 작업해줘 이 버전 까지 올리면 일단 걔획한건 다 올리는거야"
+- **AlarmKit 알람은 사용자가 폰에서 잘 울린다고 확인(2026-11-22).** 1.5.4는 따로 내지 않고 1.6.0에 근무표 공유와 함께 넣는다. 전 세계 출시도 같은 판(`본부/가족공유-준비.md`).
+- 근무표 공유 시안: `docs/시안/근무표공유-시안.html`(11-22, 승낙 기다림 — 화면 4장과 정할 것 6가지).
+- 순서: 근무표 공유 시안 → 사용자 승낙 → 개발(Opus) → 점검 → TestFlight·내부 테스트까지 미리. 1.5.3·Play 스크린샷 결과 전에는 재제출 금지, 심사 제출은 사용자에게 한 번 확인.
+- **세이람이 가져갈 AlarmKit 파일:** `modules/alarmapp-alarmkit/`(Swift 모듈·podspec·expo-module.config.json), `src/utils/alarmkitRoute.ts`(분기 한 곳), `src/utils/notifications/alarmkit.ts`(직렬 큐), core.ts의 `viaAK` 세 갈래, `targets/widget/AlarmLiveActivity.swift`(+`AlarmWidget.swift`·`expo-target.config.js` 등록), 권한 문구 `NSAlarmKitUsageDescription`(`app.json` + `locales/*.json` 9개), Swift가 부르는 소리 `alarm_long.wav`·`silent_short.wav`, 테스트 `scripts/logic-tests/alarmkit.test.js`·정적 체크. 전체 목록은 `git show --stat fcc8938`.
+  - 주의: ① 진동만 알람은 AlarmKit에 못 넣음(기존 방식 유지) ② AlarmKit 알람엔 보조(rep) 알림을 걸지 않음 ③ 재예약 때 AlarmKit 전체 정리는 원장(UserDefaults UUID→id) 기준, 울리는 중인 켜진 알람만 보존 ④ AlarmKit은 약한 링크 — iOS 26 미만에서 죽지 않게 ⑤ 모듈 이름·App Group은 세이람 것으로 바꿀 것 ⑥ Android는 무관.
+- 알람 소리 고르기(앱에 넣은 소리 여러 개 중 선택)는 사용자에게 제안만 함, 아직 미정.
+
+## 끝남 — iOS 26 AlarmKit 알람 (2026-11-21 구현·커밋 fcc8938, 11-22 폰에서 사용자 확인)
 - **Fable 직접 점검(11-21):** 정적 76/0, logic-tests 248/0, i18n 누락 없음, tsc 새 오류 0(기존 Reactotron 1건). 코드: 분기는 `usesAlarmKit` 한 곳, 세 예약 지점 모두 AlarmKit이면 Expo 미예약, 요일 weekly는 이날끄기·근무변경·공휴일 없을 때만. 시뮬 스샷은 다이내믹 아일랜드뿐 — **전체 화면 울림·끄기 버튼은 실기기 미확인.**
 - ⚠️ 사용자 폰(iOS 27)의 실제 소리 알람 110·111·112가 이미 AlarmKit으로 옮겨져 있음(27건). 첫 실제 울림 때 끄기 확인 필요.
 - 남은 일: 폰 수동 확인(3환경·무음/집중·끈/삭제 알람 안 울림·이날끄기·권한 끄면 기존 방식·워치), 8은 프로파일에 UDID 없어 미설치(iOS 16 미확인). 다시 울림 버튼은 `SNOOZE_ENABLED=false`라 숨김. 1.5.3 심사 결과 뒤 1.5.4로 번호 올려 제출.
