@@ -26,7 +26,7 @@ export const SILENT_IOS_SOUND = 'silent_short.wav';
 // 이 값은 예전 그대로 둔다(고른 소리는 네이티브 예약 데이터로 따로 간다).
 const ANDROID_EXPO_SOUND = 'alarm_long.wav';
 
-// 점점 크게 울리기(Android 전용) — 켜면 네이티브가 아주 작게 시작해 이 시간 동안 설정 음량까지 키운다.
+// 점점 크게 울리기(Android 전용) — 11-23 UI 토글은 뺐다(항상 꺼짐). 네이티브 경로는 남겨 둠. 켜면 네이티브가 아주 작게 시작해 이 시간 동안 설정 음량까지 키운다.
 export const CRESCENDO_MS = 20000;
 // 미리듣기 길이
 export const TONE_PREVIEW_MS = 3000;

@@ -213,6 +213,5 @@ return StyleSheet.create({
   tonePlay:         { fontSize: 12, color: C.txt3 },
   toneCheck:        { fontSize: 15, fontWeight: '900', color: C.accent },
   toneHint:         { fontSize: 12, color: C.txt3, marginTop: 4 },
-  toneCresRow:      { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.border2 },
 });
 }

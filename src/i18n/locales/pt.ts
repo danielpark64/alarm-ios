@@ -440,6 +440,4 @@ export const PT: Record<string, string> = {
   "오르골 왈츠": "Valsa de caixinha de música",
   "알람 소리": "Som do alarme",
   "줄을 누르면 고르면서 3초 들려줘요.": "Toque numa linha para escolher e ouvir 3 segundos.",
-  "점점 크게 울리기": "Aumentar aos poucos",
-  "작게 시작해 20초 동안 커져요.": "Começa baixo e aumenta durante 20 segundos.",
 };

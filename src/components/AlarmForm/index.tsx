@@ -234,7 +234,7 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
                 />
                 <Text style={s.sLabel}>{t('소리/진동')}</Text>
                 <SndVibSelector layout="row" sndVibMode={form.sndVibMode} setSndVibMode={form.setSndVibMode} />
-                <ToneSelector tone={form.tone} setTone={form.setTone} crescendo={form.crescendo} setCrescendo={form.setCrescendo} disabled={form.sndVibMode === 'vib'} />
+                <ToneSelector tone={form.tone} setTone={form.setTone} disabled={form.sndVibMode === 'vib'} />
               </>
             ) : (
               <>
@@ -261,7 +261,7 @@ export const AlarmForm = forwardRef<AlarmFormHandle, Props>(
                   setSndVibMode={form.setSndVibMode}
                   pickerRef={timeRef}
                 />
-                <ToneSelector tone={form.tone} setTone={form.setTone} crescendo={form.crescendo} setCrescendo={form.setCrescendo} disabled={form.sndVibMode === 'vib'} />
+                <ToneSelector tone={form.tone} setTone={form.setTone} disabled={form.sndVibMode === 'vib'} />
 
                 <RepeatModeSelector
                   rm={form.rm}

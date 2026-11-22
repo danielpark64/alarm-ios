@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, View, TouchableOpacity, ScrollView, Switch, Platform } from 'react-native';
+import { Modal, View, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '../common/AppText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '../../hooks/useTheme';
@@ -11,15 +11,13 @@ import { previewTone, stopTonePreview } from '../../utils/tonePreview';
 interface Props {
   tone: ToneId;
   setTone: (t: ToneId) => void;
-  crescendo: boolean;
-  setCrescendo: (v: boolean) => void;
   disabled: boolean; // '진동만'이면 흐리게(누를 수 없게)
 }
 
 // 알람 소리 고르기(2026-11-23, 시안 docs/시안/알람소리-시안.html) — 폼에는 "🎵 알람 소리 · 이름 ›" 한 줄,
 // 누르면 아래에서 올라오는 시트. 줄을 누르면 고르면서 3초 미리듣기(시트를 닫거나 다른 줄을 누르면 멈춘다).
-// '점점 크게 울리기'는 Android만 — iOS는 시스템이 알람 음량을 정해서 앱이 조절할 수 없다.
-export function ToneSelector({ tone, setTone, crescendo, setCrescendo, disabled }: Props) {
+// '점점 크게 울리기' 토글은 11-23 사용자 결정으로 뺐다(Android 기본이 이미 15초 동안 커져서 차이가 거의 없음).
+export function ToneSelector({ tone, setTone, disabled }: Props) {
   const C = useColors();
   const s = makeStyles(C);
   const { t } = useT();
@@ -66,19 +64,6 @@ export function ToneSelector({ tone, setTone, crescendo, setCrescendo, disabled 
               })}
             </ScrollView>
             <Text style={s.toneHint}>{t('줄을 누르면 고르면서 3초 들려줘요.')}</Text>
-            {Platform.OS === 'android' && (
-              <View style={s.toneCresRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.toneItemText}>{t('점점 크게 울리기')}</Text>
-                  <Text style={s.toneHint}>{t('작게 시작해 20초 동안 커져요.')}</Text>
-                </View>
-                <Switch
-                  value={crescendo}
-                  onValueChange={setCrescendo}
-                  trackColor={{ false: C.border2, true: C.accent2 }}
-                />
-              </View>
-            )}
             <TouchableOpacity style={s.wpMenuCancelBtn} onPress={close}>
               <Text style={s.wpMenuCancelText}>{t('닫기')}</Text>
             </TouchableOpacity>

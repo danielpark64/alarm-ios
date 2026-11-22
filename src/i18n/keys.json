@@ -2200,12 +2200,6 @@
   ]
  },
  {
-  "key": "작게 시작해 20초 동안 커져요.",
-  "files": [
-   "src/components/AlarmForm/ToneSelector.tsx"
-  ]
- },
- {
   "key": "작은 후원으로 응원해주세요",
   "files": [
    "src/components/Home/PromoBanner.tsx"
@@ -2243,12 +2237,6 @@
   "files": [
    "src/components/Home/AlarmsTab.tsx",
    "src/components/Home/ShareBar.tsx"
-  ]
- },
- {
-  "key": "점점 크게 울리기",
-  "files": [
-   "src/components/AlarmForm/ToneSelector.tsx"
   ]
  },
  {
