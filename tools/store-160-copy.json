@@ -118,14 +118,31 @@
       "kind": "note",
       "text": "약속 잡기"
      }
-    ]
+    ],
+    "ipad13": {
+     "props": [
+      {
+       "kind": "note",
+       "text": "모두 휴무"
+      },
+      {
+       "kind": "calendar",
+       "text": "29일"
+      },
+      {
+       "kind": "note",
+       "text": "약속 잡기"
+      }
+     ]
+    }
    },
    {
     "slug": "widget",
     "widget": true,
     "src": {
      "play": "android-home.png",
-     "iphone63": "ios-home.png"
+     "iphone63": "ios-home.png",
+     "ipad13": "ipad-home.png"
     },
     "tag": "홈 화면 위젯",
     "title": "앱을 안 열어도\n[오늘 근무]가 한눈에",
@@ -185,7 +202,23 @@
       "kind": "note",
       "text": "대근"
      }
-    ]
+    ],
+    "ipad13": {
+     "props": [
+      {
+       "kind": "note",
+       "text": "연차"
+      },
+      {
+       "kind": "calendar",
+       "text": "27일"
+      },
+      {
+       "kind": "note",
+       "text": "대근"
+      }
+     ]
+    }
    }
   ]
  },
@@ -247,6 +280,25 @@
        "text": "Clock out 15:00"
       }
      ]
+    },
+    "iphone63": {
+     "tag": "Like the Clock app",
+     "title": "Even in Silent mode,\nlike a [Clock alarm]",
+     "sub": "iOS 26 or later · alerts you even in a Focus",
+     "props": [
+      {
+       "kind": "note",
+       "text": "Silent mode"
+      },
+      {
+       "kind": "calendar",
+       "text": "Alarm"
+      },
+      {
+       "kind": "note",
+       "text": "Focus"
+      }
+     ]
     }
    },
    {
@@ -296,7 +348,8 @@
     "widget": true,
     "src": {
      "play": "android-home.png",
-     "iphone63": "ios-home.png"
+     "iphone63": "ios-home.png",
+     "ipad13": "ipad-home.png"
     },
     "tag": "Home screen widget",
     "title": "Without opening the app,\nsee [today's shift]",
@@ -418,6 +471,25 @@
        "text": "退勤 15:00"
       }
      ]
+    },
+    "iphone63": {
+     "tag": "時計のアラームのように",
+     "title": "消音モードでも\n[時計のアラーム]のように",
+     "sub": "iOS 26以降・集中モードでもお知らせ",
+     "props": [
+      {
+       "kind": "note",
+       "text": "消音モード"
+      },
+      {
+       "kind": "calendar",
+       "text": "アラーム"
+      },
+      {
+       "kind": "note",
+       "text": "集中モード"
+      }
+     ]
     }
    },
    {
@@ -467,7 +539,8 @@
     "widget": true,
     "src": {
      "play": "android-home.png",
-     "iphone63": "ios-home.png"
+     "iphone63": "ios-home.png",
+     "ipad13": "ipad-home.png"
     },
     "tag": "ホーム画面ウィジェット",
     "title": "アプリを開かなくても\n[今日の勤務]がひと目で",
@@ -589,6 +662,25 @@
        "text": "下班 15:00"
       }
      ]
+    },
+    "iphone63": {
+     "tag": "像时钟闹钟一样",
+     "title": "静音模式下\n也像[时钟闹钟]一样",
+     "sub": "iOS 26 及以上 · 专注模式下也会提醒",
+     "props": [
+      {
+       "kind": "note",
+       "text": "静音模式"
+      },
+      {
+       "kind": "calendar",
+       "text": "闹钟"
+      },
+      {
+       "kind": "note",
+       "text": "专注模式"
+      }
+     ]
     }
    },
    {
@@ -638,7 +730,8 @@
     "widget": true,
     "src": {
      "play": "android-home.png",
-     "iphone63": "ios-home.png"
+     "iphone63": "ios-home.png",
+     "ipad13": "ipad-home.png"
     },
     "tag": "主屏幕小组件",
     "title": "不用打开应用\n[今天的班]一目了然",
@@ -760,6 +853,25 @@
        "text": "下班 15:00"
       }
      ]
+    },
+    "iphone63": {
+     "tag": "像時鐘鬧鐘一樣",
+     "title": "靜音模式下\n也像[時鐘鬧鐘]一樣",
+     "sub": "iOS 26 以上 · 專注模式下也會提醒",
+     "props": [
+      {
+       "kind": "note",
+       "text": "靜音模式"
+      },
+      {
+       "kind": "calendar",
+       "text": "鬧鐘"
+      },
+      {
+       "kind": "note",
+       "text": "專注模式"
+      }
+     ]
     }
    },
    {
@@ -809,7 +921,8 @@
     "widget": true,
     "src": {
      "play": "android-home.png",
-     "iphone63": "ios-home.png"
+     "iphone63": "ios-home.png",
+     "ipad13": "ipad-home.png"
     },
     "tag": "主畫面小工具",
     "title": "不用打開 App\n[今天的班]一目瞭然",
@@ -931,6 +1044,25 @@
        "text": "Salida 15:00"
       }
      ]
+    },
+    "iphone63": {
+     "tag": "Como el Reloj",
+     "title": "Incluso en silencio,\ncomo una [alarma del Reloj]",
+     "sub": "iOS 26 o posterior · también con un modo de concentración",
+     "props": [
+      {
+       "kind": "note",
+       "text": "Modo silencio"
+      },
+      {
+       "kind": "calendar",
+       "text": "Alarma"
+      },
+      {
+       "kind": "note",
+       "text": "Concentración"
+      }
+     ]
     }
    },
    {
@@ -980,7 +1112,8 @@
     "widget": true,
     "src": {
      "play": "android-home.png",
-     "iphone63": "ios-home.png"
+     "iphone63": "ios-home.png",
+     "ipad13": "ipad-home.png"
     },
     "tag": "Widget de inicio",
     "title": "Sin abrir la app,\n[tu turno de hoy] a la vista",
@@ -1102,6 +1235,25 @@
        "text": "Fin 15:00"
       }
      ]
+    },
+    "iphone63": {
+     "tag": "Comme l'Horloge",
+     "title": "Même en mode silencieux,\ncomme une [alarme Horloge]",
+     "sub": "iOS 26 ou ultérieur · même en mode Concentration",
+     "props": [
+      {
+       "kind": "note",
+       "text": "Silencieux"
+      },
+      {
+       "kind": "calendar",
+       "text": "Alarme"
+      },
+      {
+       "kind": "note",
+       "text": "Concentration"
+      }
+     ]
     }
    },
    {
@@ -1151,7 +1303,8 @@
     "widget": true,
     "src": {
      "play": "android-home.png",
-     "iphone63": "ios-home.png"
+     "iphone63": "ios-home.png",
+     "ipad13": "ipad-home.png"
     },
     "tag": "Widget d'accueil",
     "title": "Sans ouvrir l'app,\n[le poste du jour] en vue",
@@ -1273,6 +1426,25 @@
        "text": "Ende 15:00"
       }
      ]
+    },
+    "iphone63": {
+     "tag": "Wie der Wecker",
+     "title": "Auch im Stumm-Modus\nwie ein [Uhr-Wecker]",
+     "sub": "Ab iOS 26 · erinnert auch in einem Fokus",
+     "props": [
+      {
+       "kind": "note",
+       "text": "Stumm-Modus"
+      },
+      {
+       "kind": "calendar",
+       "text": "Wecker"
+      },
+      {
+       "kind": "note",
+       "text": "Fokus"
+      }
+     ]
     }
    },
    {
@@ -1322,7 +1494,8 @@
     "widget": true,
     "src": {
      "play": "android-home.png",
-     "iphone63": "ios-home.png"
+     "iphone63": "ios-home.png",
+     "ipad13": "ipad-home.png"
     },
     "tag": "Startbildschirm-Widget",
     "title": "Ohne die App zu öffnen:\n[Dienst heute] im Blick",
@@ -1444,6 +1617,25 @@
        "text": "Saída 15:00"
       }
      ]
+    },
+    "iphone63": {
+     "tag": "Como o Relógio",
+     "title": "Mesmo no modo silencioso,\ncomo um [alarme do Relógio]",
+     "sub": "iOS 26 ou posterior · avisa até em um Foco",
+     "props": [
+      {
+       "kind": "note",
+       "text": "Silencioso"
+      },
+      {
+       "kind": "calendar",
+       "text": "Alarme"
+      },
+      {
+       "kind": "note",
+       "text": "Foco"
+      }
+     ]
     }
    },
    {
@@ -1493,7 +1685,8 @@
     "widget": true,
     "src": {
      "play": "android-home.png",
-     "iphone63": "ios-home.png"
+     "iphone63": "ios-home.png",
+     "ipad13": "ipad-home.png"
     },
     "tag": "Widget da tela inicial",
     "title": "Sem abrir o app,\n[o turno de hoje] à vista",

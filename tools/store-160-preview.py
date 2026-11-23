@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""1.6.0 시안 모아 보기: 종류(Play·아이폰)마다 8장을 한 줄로(1·2번 장은 붙여서 이음매 확인), 두 줄을 한 장에.
+"""1.6.0 시안 모아 보기: 종류(Play·아이폰·아이패드)마다 8장을 한 줄로(1·2번 장은 붙여서 이음매 확인), 두 줄을 한 장에.
 사용: python3 tools/store-160-preview.py <시안 폴더> [언어]  → <시안 폴더>/미리보기-<언어>.jpg
 """
 import os, sys
@@ -8,7 +8,7 @@ base, lang = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else "ko")
 H, gap, pad = 900, 14, 30
 f = ImageFont.truetype("/System/Library/Fonts/AppleSDGothicNeo.ttc", 34, index=6)
 rows = []
-for kind, label in (("play", "Play 1350×2400"), ("iphone63", "아이폰 6.3 1206×2622")):
+for kind, label in (("play", "Play 1350×2400"), ("iphone63", "아이폰 6.3 1206×2622"), ("ipad13", "아이패드 13 2064×2752")):
     d = os.path.join(base, kind, lang)
     if not os.path.isdir(d):  # 이번에 만들지 않은 종류(예: 아이폰)는 건너뛴다
         continue

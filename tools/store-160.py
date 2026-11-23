@@ -11,6 +11,8 @@
 사용 예:
   python3 tools/store-160.py --lang ko --size 1350x2400 --in <원본>/play/ko --out <시안>/play/ko
   python3 tools/store-160.py --lang ko --size 1206x2622 --in <원본>/iphone63/ko --out <시안>/iphone63/ko
+  python3 tools/store-160.py --lang ko --size 2064x2752 --in <원본>/ipad13/ko --out <결과>/ipad13/ko
+  (아이패드 = App Store, 장마다 ipad13 문구가 없으면 iphone63 문구. 위젯 원본은 ipad-home.png)
 """
 import argparse, importlib.util, json, os
 
@@ -20,7 +22,7 @@ sp = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(sp)
 ss = sp.ss
 
-KINDS = {"1080x1920": "play", "1350x2400": "play", "1206x2622": "iphone63"}
+KINDS = {"1080x1920": "play", "1350x2400": "play", "1206x2622": "iphone63", "2064x2752": "ipad13"}
 
 
 def main():
@@ -39,7 +41,9 @@ def main():
     print("%s %s → %s" % (kind, a.lang, a.out))
     warns = sp.make_pano(copy, a.inp, a.out, W, H)
     for n, sl in enumerate(copy["slides"], 3):
-        c = dict(sl, **sl.get(kind, {}))  # 스토어별 문구가 있으면 덮어쓴다
+        # 스토어별 문구가 있으면 덮어쓴다. 아이패드는 App Store 라 따로 없으면 아이폰(iphone63) 문구를 쓴다
+        ov = sl.get(kind) or (sl.get("iphone63", {}) if kind == "ipad13" else {})
+        c = dict(sl, **ov)
         out = os.path.join(a.out, "%02d-%s.png" % (n, sl["slug"]))
         if sl.get("widget"):
             hit = sp.make_widget(c, os.path.join(a.inp, sl["src"][kind]), out, W, H, kind)
