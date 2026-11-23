@@ -109,7 +109,7 @@
     // Android는 intent:// 주소로 연다 — LINE·카톡·페이스북 같은 메신저 안 브라우저(WebView)는 alarmappshare://를
     // 막거나 무시하는 경우가 많지만 intent://는 대부분 앱으로 넘긴다. 앱이 없거나 옛 버전이면 Play 스토어로 간다.
     location.href = isAndroid
-      ? 'intent://open?' + frag + '#Intent;scheme=alarmappshare;package=com.danielpark.alarmapp;S.browser_fallback_url=' +
+      ? 'intent://?' + frag + '#Intent;scheme=alarmappshare;package=com.danielpark.alarmapp;S.browser_fallback_url=' +
         encodeURIComponent('https://play.google.com/store/apps/details?id=com.danielpark.alarmapp') + ';end'
       : appUrl;
   }
