@@ -10,6 +10,8 @@ f = ImageFont.truetype("/System/Library/Fonts/AppleSDGothicNeo.ttc", 34, index=6
 rows = []
 for kind, label in (("play", "Play 1350×2400"), ("iphone63", "아이폰 6.3 1206×2622")):
     d = os.path.join(base, kind, lang)
+    if not os.path.isdir(d):  # 이번에 만들지 않은 종류(예: 아이폰)는 건너뛴다
+        continue
     fs = sorted(x for x in os.listdir(d) if x.endswith(".png"))
     ims = [Image.open(os.path.join(d, x)).convert("RGB") for x in fs]
     ims = [im.resize((round(im.width * H / im.height), H), Image.LANCZOS) for im in ims]
