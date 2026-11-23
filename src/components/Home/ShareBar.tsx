@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, ScrollView, TouchableOpacity, Modal, TextInput, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, TouchableOpacity, Modal, TextInput, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '../common/AppText';
 import { useColors } from '../../hooks/useTheme';
 import { useT } from '../../i18n';
@@ -54,7 +54,8 @@ export function ShareBar({ win, onWin, people, onEdit, onRemove }: {
   };
   return (
     <View style={s.row}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabs} style={{ flexGrow: 0 }}>
+      {/* 이름 칸은 옆으로 밀지 않고 줄바꿈 — 화면 끝에서 이름이 잘려 보이지 않게(2026-11-24) */}
+      <View style={s.tabs}>
         {people.length > 0 && chip('all', t('전체'))}
         {chip('me', t('나'), MY_COLOR)}
         {people.map(p => chip(p.id, personName(p, t), p.color, () => openEdit(p)))}
@@ -62,7 +63,7 @@ export function ShareBar({ win, onWin, people, onEdit, onRemove }: {
           t('가족·친구가 교대알람에서 [보내기]로 보낸 링크를 누르면 여기에 그 사람 창이 생겨요. 받은 근무표는 보기만 하고 알람은 울리지 않아요.\n\n창을 길게 누르면 이름·색을 바꾸거나 지울 수 있어요.'))}>
           <Text style={s.howText}>{t('+ 받는 법')}</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
 
       <Modal visible={editing != null} transparent animationType="fade" onRequestClose={() => setEditing(null)}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -176,7 +177,7 @@ export function rowFor(p: SharedPersonView, ds: string, t: (k: string, v?: any) 
 function makeStyles(C: Palette) {
   return StyleSheet.create({
     row: { marginBottom: 8 },
-    tabs: { flexDirection: 'row', gap: 6, alignItems: 'center', paddingHorizontal: 14 },
+    tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center', paddingHorizontal: 14 },
     tab: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: C.bg3, borderWidth: 1, borderColor: C.border2, maxWidth: 140, flexShrink: 0 },
     tabOn: { backgroundColor: C.txt, borderColor: C.txt },
     tabText: { fontSize: 13, fontWeight: '700', color: C.txt2 },

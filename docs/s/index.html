@@ -88,6 +88,12 @@
   ['title', 'lead', 'open', 'hint', 'needTitle', 'needText', 'privacy', 'broken'].forEach(function (id, i) { document.getElementById(id).textContent = L[i]; });
 
   var frag = location.hash.slice(1);
+  // LINE 안 브라우저는 앱 주소(alarmappshare://)를 막는 경우가 있다 — LINE 공식 기능 openExternalBrowser=1로
+  // 기본 브라우저(Safari·Chrome)에서 다시 연다. 근무표는 # 뒤에 그대로 붙어 간다.
+  if (/\bLine\//i.test(navigator.userAgent || '') && !/[?&]openExternalBrowser=1/.test(location.search)) {
+    location.replace(location.pathname + (location.search ? location.search + '&' : '?') + 'openExternalBrowser=1' + location.hash);
+    return;
+  }
   var ua = navigator.userAgent || '';
   var isAndroid = /Android/i.test(ua);
   var isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in document);

@@ -45,6 +45,9 @@
   ④ 재알림(rep 묶음)·스누즈·워치 끄기도 같은 소리로 울리는지 확인. 소리 이름 9개 언어 번역.
 - 교대알람 현재 소리 파일: `assets/alarm_long.wav`(기본), `assets/silent_short.wav`, android `res/raw/` 같은 이름.
 
+- **1.6.0 출시 뒤 고쳐 둔 것(다음 판에 포함, 기기 미확인 — 2026-11-24):** 공유 탭 이름 칸을 옆 스크롤 → 줄바꿈(`ShareBar.tsx`, 화면 끝 잘림 해결).
+  안내 페이지(`docs/s/index.html`, 이미 배포됨): Android는 intent:// 로 열기(32 크롬 확인), LINE 안 브라우저면 `openExternalBrowser=1`로 Safari/Chrome에서 다시 열기(미확인).
+
 ## 끝남 — iOS 26 AlarmKit 알람 (2026-11-21 구현·커밋 fcc8938, 11-22 폰에서 사용자 확인)
 - **Fable 직접 점검(11-21):** 정적 76/0, logic-tests 248/0, i18n 누락 없음, tsc 새 오류 0(기존 Reactotron 1건). 코드: 분기는 `usesAlarmKit` 한 곳, 세 예약 지점 모두 AlarmKit이면 Expo 미예약, 요일 weekly는 이날끄기·근무변경·공휴일 없을 때만. 시뮬 스샷은 다이내믹 아일랜드뿐 — **전체 화면 울림·끄기 버튼은 실기기 미확인.**
 - ⚠️ 사용자 폰(iOS 27)의 실제 소리 알람 110·111·112가 이미 AlarmKit으로 옮겨져 있음(27건). 첫 실제 울림 때 끄기 확인 필요.
