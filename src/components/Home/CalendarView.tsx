@@ -582,11 +582,11 @@ export function CalendarView({ alarms, overrides, onSetOverride, onEditAlarm, on
                 <Text style={cv.lunarToggleText}>{t('원래 크기')}</Text>
               </TouchableOpacity>
             )}
-            {visibleIdx !== todayIdx && (
-              <TouchableOpacity style={cv.lunarToggle} onPress={() => goToIndex(todayIdx)} accessibilityRole="button">
-                <Text style={cv.lunarToggleText}>{t('오늘')}</Text>
-              </TouchableOpacity>
-            )}
+            {/* '오늘'은 항상 보인다(세이람과 같게, 2026-11-24) — 이번 달에서 숨기면 기능이 없는 줄 안다.
+                goToIndex가 확대도 풀어 준다 */}
+            <TouchableOpacity style={cv.lunarToggle} onPress={() => goToIndex(todayIdx)} accessibilityRole="button">
+              <Text style={cv.lunarToggleText}>{t('오늘')}</Text>
+            </TouchableOpacity>
           </View>
           <TouchableOpacity onPress={nextMonth} style={cv.navBtn}>
             <Text style={cv.navArrow}>›</Text>

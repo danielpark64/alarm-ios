@@ -46,6 +46,7 @@
 - 교대알람 현재 소리 파일: `assets/alarm_long.wav`(기본), `assets/silent_short.wav`, android `res/raw/` 같은 이름.
 
 - **1.6.0 출시 뒤 고쳐 둔 것(다음 판에 포함, 기기 미확인 — 2026-11-24):** 공유 탭 이름 칸을 옆 스크롤 → 줄바꿈(`ShareBar.tsx`, 화면 끝 잘림 해결).
+- 달력 '오늘' 버튼을 항상 보이게(세이람과 같게, 11-24, 32 확인). 달력 머리 줄이 바뀌어 다음 판 스토어 스크린샷 재촬영 대상.
   안내 페이지(`docs/s/index.html`, 이미 배포됨): Android는 intent:// 로 열기(32 크롬 확인), LINE 안 브라우저면 `openExternalBrowser=1`로 Safari/Chrome에서 다시 열기(미확인).
 
 ## 끝남 — iOS 26 AlarmKit 알람 (2026-11-21 구현·커밋 fcc8938, 11-22 폰에서 사용자 확인)
