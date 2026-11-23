@@ -1,4 +1,4 @@
-# 교대알람(AlarmApp) 인수인계 — 2026-11-23
+# 교대알람(AlarmApp) 인수인계 — 2026-11-24
 
 새 대화에서 이 파일을 먼저 읽고 이어서 작업한다. 프로젝트 규칙은 `CLAUDE.md`, 버그 이력은 `.claude/bugs.md`, 여러 앱 현황은 `~/Desktop/daniel-project/본부/현황판.md`.
 **사용자에게 보이는 모든 글은 한국어로 쓴다**(전역 규칙).
@@ -119,7 +119,7 @@ adb -s RF9R3049REV shell am start -a android.intent.action.VIEW -d "alarmapp://?
 - TDD: 정적 체크·로직 테스트 먼저 → FAIL 확인 → 수정 → PASS.
 - 변경마다 에이전트로 검증: verify-fix(커밋 전), alarm-logic(알람 로직), bug-tracker(이력), android-build / ios-build.
 - Android 알람은 Expo 알림 + 네이티브 AlarmManager **둘 다** 예약·취소.
-- 작업이 끝나면 **커밋·푸시 여부를 사용자에게 묻는다.** "마무리"라고 하면 커밋 → 현황판·이 파일 갱신 → 짧은 보고 → 대화 비우기까지 한 번에(`~/.claude/CLAUDE.md` 본부 절).
+- 작업이 끝나면 **커밋·푸시 여부를 사용자에게 묻는다.** "마무리"라고 하면 커밋 → 푸시 → 현황판·이 파일 갱신 → 짧은 보고까지 한 번에(대화 비우기·리모트는 건드리지 않음)(`~/.claude/CLAUDE.md` 본부 절).
 - 배터리를 더 쓰는 방식(iOS 백그라운드 오디오 등)은 하지 않는다.
 - 자격증명 입력·결제·법적 선언은 사용자가 직접. Play Console 스토어 등록정보(스크린샷)는 사용자가 시키면 크롬(u/2 프로필, Susu Development)으로 Claude가 올린다. AAB 업로드는 사용자가 직접.
 - 계획은 Fable, 실행은 Opus 에이전트(`model: "opus"`), 결과 점검은 Fable이 직접.
