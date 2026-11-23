@@ -106,7 +106,12 @@
     cancel();
     // 1.5초 안에 앱으로 넘어가 이 화면이 가려지지 않으면 = 앱이 없거나 옛 버전(새 주소를 모름)
     timer = setTimeout(function () { timer = null; if (!document.hidden) showNeed(); }, 1500);
-    location.href = appUrl;
+    // Android는 intent:// 주소로 연다 — LINE·카톡·페이스북 같은 메신저 안 브라우저(WebView)는 alarmappshare://를
+    // 막거나 무시하는 경우가 많지만 intent://는 대부분 앱으로 넘긴다. 앱이 없거나 옛 버전이면 Play 스토어로 간다.
+    location.href = isAndroid
+      ? 'intent://open?' + frag + '#Intent;scheme=alarmappshare;package=com.danielpark.alarmapp;S.browser_fallback_url=' +
+        encodeURIComponent('https://play.google.com/store/apps/details?id=com.danielpark.alarmapp') + ';end'
+      : appUrl;
   }
   document.getElementById('open').addEventListener('click', openApp);
   // 들어오자마자 자동으로 열지 않는다 — Android Chrome은 사용자 탭 없이 앱을 못 열어(자동 시도는 조용히 실패 → '최신 버전 필요'가 잘못 뜸),
