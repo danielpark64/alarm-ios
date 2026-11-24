@@ -4,7 +4,15 @@
 **사용자에게 보이는 모든 글은 한국어로 쓴다**(전역 규칙).
 
 ## 지금 상태 한 줄
-**1.6.1 제출(11-24) — Play vc13 검토 중(서비스 계정 키 `~/.playconsole/play-upload.mjs`), iOS 빌드 12 심사 대기 — 재제출 금지.** 1.6.1 = 근무표 링크 바로 열기(유니버설 링크/App Links)·보낸 사람 이름, 새 형식 [업데이트] 안내, 알람 화면 맨 앞(Android)·시간 민감 알림(iOS), 달력 '오늘' 버튼 항상, 공유 탭 이름 줄바꿈. 출시 노트 `store-assets/listings/release-1.6.1.json`. App ID에 Associated Domains를 ASC API로 켬. 1.6.0은 두 스토어 공개 중.
+**1.6.1 — Play vc13 공개(11-24 확인), iOS 빌드 12 심사 대기 — 재제출 금지.** (업로드는 서비스 계정 키 `~/.playconsole/play-upload.mjs`) 1.6.1 = 근무표 링크 바로 열기(유니버설 링크/App Links)·보낸 사람 이름, 새 형식 [업데이트] 안내, 알람 화면 맨 앞(Android)·시간 민감 알림(iOS), 달력 '오늘' 버튼 항상, 공유 탭 이름 줄바꿈. 출시 노트 `store-assets/listings/release-1.6.1.json`. App ID에 Associated Domains를 ASC API로 켬. 1.6.0은 두 스토어 공개 중.
+
+**1.6.2에 고칠 것 — 알람 맨 앞 실기기 점검(11-25, 1.6.1 vc13, 32·노트, 스크린샷 `~/Desktop/스크린샷/맨앞161-*`):**
+1. 울리는 중 Expo 알림 본문을 누르면 울림 화면 대신 알람이 꺼짐 — `src/hooks/useAlarmNotifications.ts` 응답 리스너가 액션/본문 탭을 구분 안 함. `DEFAULT_ACTION_IDENTIFIER`는 끄지 말고 울림 화면 열기(워치·잠금 '알람 끄기'는 그대로).
+2. 끈 뒤에도 MainActivity가 보안 잠금 위에 남음(잠금 해제 없이 앱 사용 가능) — `MainActivity.kt` `applyRingingWindowFlags`의 showWhenLocked를 끈 시점에 해제.
+3. 지난 알림이 알림 줄에 쌓임 / 표시 권한 안내 문구 '"알람"을 찾아주세요' → '교대알람'.
+통과: 잠금 위·뒤로·홈·다른 앱·전체 화면 영상 위·완전 종료 뒤·재부팅 직후·아이콘 누름·권한 끔 안내. 한계: 표시 권한 끔+화면 켜짐이면 알림 줄만(안내로 대응), iOS 진동만 알람·iOS 26 미만은 시간 민감 알림. 확인 못 함: 32의 2·4·6(PIN 잠금), Android 14+ 전체 화면 알림 안내, 안드로이드 카톡 공유.
+32에 꺼진 '테스트 알람' 3개 남음(예약 0건) — 잠금 풀면 `clearTestAlarms=1` 딥링크로 지우기.
+11-25 아이폰 카톡 글 공유 실패는 카카오톡 쪽 문제였고 저절로 풀림(메모 앱도 같이 실패) — 코드 수정 없음.
 
 ### iOS 1.6.0 제출 내용 (2026-11-23)
 - 15개 로캘: 새 기능 = `store-assets/listings/release-1.6.0.md`의 App Store 글. 설명 = 1.5.3 설명 + "하루 근무 변경" 다음에 공유 단락 + 아이폰 안내 단락에 AlarmKit 한 줄(iOS 26 이상 무음·집중 모드에서도). fr·de는 4000자 때문에 무음 안내 문장을 AlarmKit 문장으로 바꾸고 위젯 단락을 줄임. 키워드는 기존 + 공유 낱말(공유/share/共有/共享/分享/compartir/partage/teilen/compartilhar).
