@@ -217,7 +217,7 @@ export default function App() {
 
   const showOverlayPrompt = () => Alert.alert(
     t('표시 권한 설정 방법'),
-    t('알람이 울릴 때 화면에 바로 떠서 끄기 버튼을 누를 수 있게 하려면 권한이 필요해요.\n\n"설정으로 이동"을 누르면 "다른 앱 위에 표시"라는 제목의 화면이 열려요.\n\n1. 그 목록에서 "알람"을 찾아주세요\n2. "알람" 옆에 있는 스위치를 켜주세요\n3. 켠 다음에는 화면 왼쪽 위 ← 버튼을 눌러 앱으로 돌아와주세요'),
+    t('알람이 울릴 때 화면에 바로 떠서 끄기 버튼을 누를 수 있게 하려면 권한이 필요해요.\n\n"설정으로 이동"을 누르면 "다른 앱 위에 표시"라는 제목의 화면이 열려요.\n\n1. 그 목록에서 "교대알람"을 찾아주세요\n2. "교대알람" 옆에 있는 스위치를 켜주세요\n3. 켠 다음에는 화면 왼쪽 위 ← 버튼을 눌러 앱으로 돌아와주세요'),
     [
       { text: t('취소'), style: 'cancel' },
       { text: t('설정으로 이동'), onPress: requestOverlayPermission },
@@ -341,6 +341,27 @@ export default function App() {
     if (typeof q.tab === 'string' && ['calendar', 'alarms', 'share', 'settings', 'add'].includes(q.tab)) { setTab(q.tab as any); return; }
     // alarmapp://?k=…&testPattern=night — 오늘 시작 "야간 2일(22:00~다음날 06:00) → 비번 2일" 근무표(진동만)를 만든다.
     // 자정 넘는 근무의 퇴근이 근무일 다음 날로 예약되는지 dumpsys alarm으로 확인하는 용도.
+    // alarmapp://?k=…&testShift=<분>[&night=1] — N분 뒤 울리는 근무표 알람(진동만, 1.6.2 근무 이름 확인용).
+    //   기본: 오늘 시작 "초번 1일(출근 N분 뒤) → 비번 1일" → 울림 제목 "초번 출근".
+    //   night=1: 어제 시작 "야간 1일(22:00 출근, 퇴근 N분 뒤 = 자정 넘어 오늘) → 비번 1일" → 근무일(어제) 기준 "야간 퇴근".
+    //   blockId 'tn1'이라 clearTestAlarms가 지운다.
+    if (q.testShift != null) {
+      const mins = Math.max(1, parseInt(String(q.testShift), 10) || 3);
+      const t = new Date(Date.now() + mins * 60_000);
+      const night = q.night != null;
+      const d = new Date(); if (night) d.setDate(d.getDate() - 1);
+      const p2 = (n: number) => String(n).padStart(2, '0');
+      const sd = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+      const at = { hour: t.getHours(), min: t.getMinutes() };
+      submitWorkPattern(undefined, [
+        night
+          ? { blockId: 'tn1', shift: 'night', days: 1, commuteTime: { hour: 22, min: 0 }, hasOffwork: true, offworkTime: at }
+          : { blockId: 'tn1', shift: 'early', days: 1, commuteTime: at, hasOffwork: false },
+        { blockId: 'tn2', shift: 'none', days: 1, isRest: true, hasOffwork: false },
+      ], sd, 'none', 'pulse');
+      setTab('alarms');
+      return;
+    }
     if (q.testPattern === 'night') {
       const d = new Date(); const p2 = (n: number) => String(n).padStart(2, '0');
       const sd = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;

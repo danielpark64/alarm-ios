@@ -11,7 +11,6 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
-import android.view.WindowManager
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -166,16 +165,11 @@ class AlarmModule(private val reactContext: ReactApplicationContext) :
         clearRingingWindowFlags()
     }
 
-    // 끄기/스누즈 후 잠금화면 위에 떠 있던 플래그 정리
+    // 끄기/스누즈 후 잠금화면 위에 떠 있던 표시 정리 — 창 플래그만 지우면 setShowWhenLocked(true)가 남아
+    // 끈 뒤에도 보안 잠금 위에 앱이 떠 있었다(1.6.2). MainActivity가 플래그·액티비티 속성을 함께 푼다.
+    // (AlarmService의 ACTION_STOP/SNOOZE도 같은 함수를 부른다 — 두 번 불려도 무해)
     private fun clearRingingWindowFlags() {
-        val activity = reactContext.currentActivity ?: return
-        activity.runOnUiThread {
-            activity.window.clearFlags(
-                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-            )
-        }
+        MainActivity.onRingingEnded()
     }
 
     // 현재 AlarmService가 울리고 있는 알람 정보 (앱 재시작/포그라운드 복귀 시 인앱 끄기 팝업 복구용)

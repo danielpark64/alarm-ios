@@ -3,7 +3,8 @@ import { Platform, AppState, NativeModules, DeviceEventEmitter } from 'react-nat
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
 import { Alarm, notifSoundFor } from '../constants';
-import { requestNotificationPermission, registerNotificationCategories, rescheduleAll, refreshRepsOnly, cancelExpoGroupReps, cancelRepSeries } from '../utils/notifications';
+import { requestNotificationPermission, registerNotificationCategories, rescheduleAll, refreshRepsOnly, cancelExpoGroupReps, cancelRepSeries, dismissPresentedAlarm } from '../utils/notifications';
+import { responseAction, groupKeyFromBody } from '../utils/alarmResponse';
 import { getAlarmDefaults } from './useAlarmDefaults';
 import { getDayOverridesCache } from '../utils/dayOverrideStore';
 import { todayStr } from '../utils';
@@ -19,6 +20,14 @@ const { AlarmModule } = NativeModules;
 // alarmId: Expo 경로면 알람 원본 id, 네이티브 경로면 합성 requestCode. baseAlarmId: 네이티브 경로에서
 // 함께 오는 알람 원본 id(구버전 예약분은 없음) — '한 번' 알람 자동 비활성화 등 알람 목록 조회에 쓴다.
 export type RingingState = { title: string; body: string; alarmId?: number; baseAlarmId?: number; groupKey?: string; source?: 'native' | 'expo'; tone?: string };
+
+// AlarmModule.getCurrentRinging() 결과 → 울림 화면 상태(포그라운드 복구·알림 본문 탭 공용)
+const nativeRingingState = (info: any): RingingState => ({
+  title: info.title ?? tr('⏰ 알람'), body: info.body ?? '',
+  alarmId: info.alarmId >= 0 ? info.alarmId : undefined,
+  baseAlarmId: (info.baseAlarmId ?? -1) >= 0 ? info.baseAlarmId : undefined,
+  source: 'native',
+});
 
 // 알림 권한/리스너/포그라운드 재스케줄/네이티브 울림 이벤트를 한곳에서 관리
 // loaded: useAlarms의 로드 완료 여부 — 로드 전엔 alarms가 []라 포그라운드 재스케줄을 돌리면 안 된다.
@@ -49,6 +58,8 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
   // 어느 경로로 꺼도 같은 뒷정리를 거치게 한곳에 모은다.
   const afterNativeStop = async (body: string | undefined, baseAlarmId: number | undefined) => {
     if (body) await cancelExpoGroupReps(body);
+    // 끈 알람의 지난 알림이 알림 줄에 쌓이지 않게(1.6.2) — 같은 시각 묶음·이 알람의 표시된 알림만 지운다
+    await dismissPresentedAlarm({ groupKey: groupKeyFromBody(body), alarmIds: baseAlarmId != null && baseAlarmId >= 0 ? [baseAlarmId] : [] });
     if (baseAlarmId != null && baseAlarmId >= 0) {
       const a = alarmsRef.current.find(x => x.id === baseAlarmId);
       if (a?.rm === 'once' && a.active) await updateAlarmRef.current(a.id, { active: false });
@@ -162,6 +173,18 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       const groupKey = data?.groupKey as string | undefined;
       const rm       = data?.rm       as string | undefined;
 
+      // 본문 탭인지 액션(알람 끄기·5분 후·닫기)인지 먼저 가른다(1.6.2) — 판정은 src/utils/alarmResponse.ts responseAction 한 곳.
+      // Android: 네이티브가 울리는 중에 본문을 누르면 끄지 않고 울림 화면을 연다(알림을 누르면 앱이 열리고, 이 상태로 끄기 모달이 뜬다).
+      //   예전엔 본문 탭도 아래 끄기 뒷정리를 그대로 타서, 울림 화면 대신 알람이 그냥 꺼졌다(11-25 32·노트에서 확인).
+      // iOS: 앱 안 울림 화면이 없어 본문 탭이 곧 끄기다(안 끄면 30초 간격 보조 알림이 계속 울린다) — 예전 그대로.
+      const nativeInfo = Platform.OS === 'android' && r.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER && AlarmModule?.getCurrentRinging
+        ? await AlarmModule.getCurrentRinging().catch(() => null) : null;
+      const action = responseAction(Platform.OS, r.actionIdentifier, !!nativeInfo, Notifications.DEFAULT_ACTION_IDENTIFIER);
+      if (action === 'openRinging') {
+        setRinging(nativeRingingState(nativeInfo));
+        return;
+      }
+
       // 그룹 또는 개별 보조 알림 전부 취소 (Expo 쪽) — 워치/잠금화면의 "알람 끄기"·닫기가 여기로 온다
       if (groupKey) await cancelRepSeries(`grp_${groupKey}`);
       else if (alarmId != null) await cancelRepSeries(`alarm_${alarmId}`);
@@ -176,7 +199,10 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
         }
       }
 
-      if (r.actionIdentifier === 'snooze') {
+      // 이 알람의 표시된 알림도 지운다(1.6.2) — 액션 버튼은 Android에서 알림을 자동으로 안 지운다
+      await dismissPresentedAlarm({ groupKey, alarmIds: alarmIds ?? (alarmId != null ? [alarmId] : []) });
+
+      if (action === 'snooze') {
         // Android 전용 — iOS는 스누즈 버튼 없음
         Notifications.scheduleNotificationAsync({
           content: { title: tr('⏰ 스누즈'), body: r.notification.request.content.body ?? undefined, sound: notifSoundFor(Platform.OS, true, data?.tone, __DEV__), categoryIdentifier: 'alarm', data: { tone: data?.tone } },
@@ -231,12 +257,7 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
     const restore = async () => {
       const info = await AlarmModule.getCurrentRinging();
       if (info) {
-        setRinging({
-          title: info.title ?? tr('⏰ 알람'), body: info.body ?? '',
-          alarmId: info.alarmId >= 0 ? info.alarmId : undefined,
-          baseAlarmId: (info.baseAlarmId ?? -1) >= 0 ? info.baseAlarmId : undefined,
-          source: 'native',
-        });
+        setRinging(nativeRingingState(info));
       } else {
         // 폴더블 커버 화면 등 앱 UI 바깥에서 이미 알람이 꺼진 경우, JS 쪽 끄기 팝업도 같이 닫음
         setRinging(prev => (prev?.source === 'native' ? null : prev));
@@ -275,6 +296,10 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       await cancelRepSeries(`grp_${ringing.groupKey}`);
     } else if (ringing?.alarmId != null) {
       await cancelRepSeries(`alarm_${ringing.alarmId}`);
+    }
+    // 끈 알람의 표시된 알림 지우기(1.6.2) — 네이티브 갈래는 afterNativeStop이 이미 했다(멱등)
+    if (ringing && ringing.source !== 'native') {
+      await dismissPresentedAlarm({ groupKey: ringing.groupKey, alarmIds: ringing.alarmId != null ? [ringing.alarmId] : [] });
     }
     setRinging(null);
   };

@@ -6,6 +6,7 @@ import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
+import java.lang.ref.WeakReference
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
@@ -21,6 +22,7 @@ class MainActivity : ReactActivity() {
     // This is required for expo-splash-screen.
     setTheme(R.style.AppTheme);
     super.onCreate(null)
+    instance = WeakReference(this)
     lockPortraitOnPhones()
     applyRingingWindowFlags(intent)
   }
@@ -48,6 +50,17 @@ class MainActivity : ReactActivity() {
   override fun onResume() {
     super.onResume()
     inFront = true
+    // 안전망: 울림이 이미 끝났는데 잠금 위 표시가 남아 있으면 푼다(onRingingEnded를 놓친 경우 — 프로세스가 다시 뜬 뒤 낡은 인텐트 등).
+    // 방금 건 플래그는 건드리지 않는다 — 전체 화면 인텐트가 AlarmService의 currentRinging 기록보다 먼저 올 수 있다.
+    if (ringingFlagsAt > 0 && AlarmService.currentRinging == null &&
+        System.currentTimeMillis() - ringingFlagsAt > STALE_FLAGS_MS) {
+      clearRingingWindowFlags()
+    }
+  }
+
+  override fun onDestroy() {
+    if (instance?.get() === this) instance = null
+    super.onDestroy()
   }
 
   override fun onPause() {
@@ -58,6 +71,39 @@ class MainActivity : ReactActivity() {
   companion object {
     @Volatile var inFront = false
       private set
+
+    // 지금 떠 있는 MainActivity — 울림이 끝났을 때 AlarmService가 잠금 위 표시를 풀 대상
+    @Volatile private var instance: WeakReference<MainActivity>? = null
+    private const val STALE_FLAGS_MS = 5_000L
+
+    /**
+     * 울림이 끝났다(끄기·스누즈·서비스 종료 — AlarmService의 모든 끝 경로와 AlarmModule.stopAlarm/snoozeAlarm이 부른다).
+     * 잠금 화면 위 표시·화면 켜기를 풀어, 보안 잠금이면 끈 뒤 잠금 화면으로 돌아가게 한다(1.6.2).
+     * 예전엔 끈 뒤에도 MainActivity가 PIN 잠금 위에 남아 잠금 해제 없이 앱을 쓸 수 있었다.
+     */
+    fun onRingingEnded() {
+      val a = instance?.get() ?: return
+      a.runOnUiThread { a.clearRingingWindowFlags() }
+    }
+  }
+
+  // 잠금 위 표시를 건 시각(0 = 안 걸림)
+  private var ringingFlagsAt = 0L
+
+  /** applyRingingWindowFlags를 되돌린다. setShowWhenLocked(true)는 액티비티 속성이라 창 플래그(clearFlags)만으로는 안 풀린다 */
+  fun clearRingingWindowFlags() {
+    window.clearFlags(
+      WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+      WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+      WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+    )
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+      setShowWhenLocked(false)
+      setTurnScreenOn(false)
+    }
+    // 낡은 울림 인텐트로 다시 만들어질 때(구성 변경 등) 또 걸지 않게
+    intent?.removeExtra("alarmRinging")
+    ringingFlagsAt = 0L
   }
 
   // configChanges에 smallestScreenSize가 있어 폴더블을 접고 펼쳐도 액티비티가 재생성되지 않는다.
@@ -82,6 +128,7 @@ class MainActivity : ReactActivity() {
       setShowWhenLocked(true)
       setTurnScreenOn(true)
     }
+    ringingFlagsAt = System.currentTimeMillis()
     // requestDismissKeyguard()는 호출하지 않음 — 보안 잠금(패턴/지문)이 걸려 있으면
     // 끄기 화면 대신 인증 화면(바운서)을 강제로 띄워버려서 오히려 알람을 끌 수 없게 됨.
     // setShowWhenLocked만으로 잠금화면 위에 그대로 떠야 함 (언락 불필요).

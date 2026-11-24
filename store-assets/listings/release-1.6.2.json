@@ -1,0 +1,39 @@
+{
+  "_note": "1.6.2 새로운 기능 (2026-11-25). play = Google Play, ios = App Store. 알림 본문 누름·잠금 화면 보호·앱 이름 표시는 Android 전용이라 iOS는 지난 알림 정리만. 앱 밖 결제·후원 안내 없음, 이모지 없음.",
+  "ko": {
+    "play": "• 알람이 울릴 때 알림을 눌러도 알람이 꺼지지 않고 알람 화면이 열려요.\n• 알람을 끈 뒤에는 잠금 화면으로 돌아가 휴대폰이 보호돼요.\n• 끈 알람의 지난 알림이 알림 창에 쌓이지 않아요.\n• 알람 화면과 알림에 앱 이름이 함께 보여 어느 앱 알람인지 바로 알 수 있어요.",
+    "ios": "• 끈 알람의 지난 알림이 알림 센터에 쌓이지 않아요.\n• 안정성을 개선했어요."
+  },
+  "en": {
+    "play": "• Tapping the notification while an alarm is ringing now opens the alarm screen instead of turning the alarm off.\n• After you turn off an alarm, your phone goes back to the lock screen and stays protected.\n• Old notifications from alarms you've turned off no longer pile up.\n• The alarm screen and notification now show the app name, so you can tell right away which app's alarm it is.",
+    "ios": "• Old notifications from alarms you've turned off no longer pile up in Notification Center.\n• Stability improvements."
+  },
+  "ja": {
+    "play": "• アラームが鳴っているときに通知を押しても、アラームは止まらずアラーム画面が開きます。\n• アラームを止めた後はロック画面に戻り、スマホが守られます。\n• 止めたアラームの古い通知がたまらなくなりました。\n• アラーム画面と通知にアプリ名が表示され、どのアプリのアラームかすぐにわかります。",
+    "ios": "• 止めたアラームの古い通知が通知センターにたまらなくなりました。\n• 安定性を向上しました。"
+  },
+  "zh-Hans": {
+    "play": "• 闹钟响铃时点按通知,不会关闭闹钟,而是打开闹钟画面。\n• 关闭闹钟后会回到锁定屏幕,手机保持受保护。\n• 已关闭闹钟的旧通知不会再堆积。\n• 闹钟画面和通知会显示应用名称,一眼就知道是哪个应用的闹钟。",
+    "ios": "• 已关闭闹钟的旧通知不会再堆积在通知中心。\n• 提升了稳定性。"
+  },
+  "zh-Hant": {
+    "play": "• 鬧鐘響鈴時點按通知,不會關閉鬧鐘,而是開啟鬧鐘畫面。\n• 關閉鬧鐘後會回到鎖定畫面,手機維持受保護。\n• 已關閉鬧鐘的舊通知不會再堆積。\n• 鬧鐘畫面和通知會顯示 App 名稱,一眼就知道是哪個 App 的鬧鐘。",
+    "ios": "• 已關閉鬧鐘的舊通知不會再堆積在通知中心。\n• 提升了穩定性。"
+  },
+  "es": {
+    "play": "• Si tocas la notificación mientras suena una alarma, se abre la pantalla de la alarma en lugar de apagarla.\n• Después de apagar una alarma, el teléfono vuelve a la pantalla de bloqueo y queda protegido.\n• Las notificaciones antiguas de alarmas apagadas ya no se acumulan.\n• La pantalla de alarma y la notificación muestran el nombre de la app, para que sepas al instante de qué app es la alarma.",
+    "ios": "• Las notificaciones antiguas de alarmas apagadas ya no se acumulan en el Centro de notificaciones.\n• Mejoras de estabilidad."
+  },
+  "fr": {
+    "play": "• Toucher la notification pendant qu'une alarme sonne ouvre désormais l'écran d'alarme au lieu de l'arrêter.\n• Après l'arrêt d'une alarme, le téléphone revient à l'écran de verrouillage et reste protégé.\n• Les anciennes notifications des alarmes arrêtées ne s'accumulent plus.\n• L'écran d'alarme et la notification affichent le nom de l'app : vous savez tout de suite de quelle app vient l'alarme.",
+    "ios": "• Les anciennes notifications des alarmes arrêtées ne s'accumulent plus dans le centre de notifications.\n• Améliorations de la stabilité."
+  },
+  "de": {
+    "play": "• Ein Tipp auf die Mitteilung während ein Alarm klingelt öffnet jetzt den Alarmbildschirm, statt den Alarm auszuschalten.\n• Nach dem Ausschalten eines Alarms kehrt das Handy zum Sperrbildschirm zurück und bleibt geschützt.\n• Alte Mitteilungen ausgeschalteter Alarme sammeln sich nicht mehr an.\n• Alarmbildschirm und Mitteilung zeigen jetzt den App-Namen, damit sofort klar ist, von welcher App der Alarm kommt.",
+    "ios": "• Alte Mitteilungen ausgeschalteter Alarme sammeln sich nicht mehr in der Mitteilungszentrale an.\n• Verbesserte Stabilität."
+  },
+  "pt": {
+    "play": "• Tocar na notificação enquanto um alarme toca agora abre a tela do alarme em vez de desligá-lo.\n• Depois de desligar um alarme, o celular volta para a tela de bloqueio e fica protegido.\n• Notificações antigas de alarmes desligados não se acumulam mais.\n• A tela do alarme e a notificação mostram o nome do app, para você saber na hora de qual app é o alarme.",
+    "ios": "• Notificações antigas de alarmes desligados não se acumulam mais na Central de Notificações.\n• Melhorias de estabilidade."
+  }
+}

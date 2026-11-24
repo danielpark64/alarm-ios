@@ -1,5 +1,6 @@
 // de 사전 (키 = 한국어 원문). 없는 키는 영어 → 한국어 순으로 폴백.
 export const DE: Record<string, string> = {
+  "교대알람": "RotaWake",
   "\"4일 알람 울리고 2일 쉬기\"처럼 알람과 휴식이 번갈아 도는 경우예요. 반복 방식에서 🌙 N일 후 휴식 카드를 누르면 팝업이 떠요.\n알람일수 4일, 휴식 일수 2일로 각각 정하고 알람시작일을 잡으면 그 패턴이 계속 반복돼요.": "Für Rhythmen wie „4 Tage Wecker, 2 Tage Pause“, bei denen sich Wecker und Pause abwechseln. Unter „Wiederholung“ auf die Karte 🌙 N Tage, dann Pause tippen – ein Fenster öffnet sich.\nWecker-Tage auf 4 und Pausentage auf 2 stellen, Startdatum wählen – das Muster wiederholt sich dann fortlaufend.",
   "\"격일 알람\"이나 \"3일마다\"처럼 일정한 간격으로만 울리면 되는 알람이에요. 반복 방식에서 🔁 N일 주기 카드를 누르면 팝업이 떠요.\n며칠 간격인지와 시작일만 정하면 그 간격으로 계속 반복되고, 다음에 울릴 날짜들을 팝업에서 미리 확인할 수 있어요.": "Für Wecker, die nur in festen Abständen klingeln sollen, etwa „jeden zweiten Tag“ oder „alle 3 Tage“. Unter „Wiederholung“ auf die Karte 🔁 Alle N Tage tippen – ein Fenster öffnet sich.\nNur Abstand und Startdatum festlegen, dann wiederholt sich der Wecker in diesem Rhythmus. Die nächsten Termine sind direkt im Fenster zu sehen.",
   "\"비번\"을 선택해보세요 — 시각 입력 없이 바로 추가돼요.": "„Frei“ auswählen – wird ohne Uhrzeit sofort hinzugefügt.",
@@ -225,7 +226,7 @@ export const DE: Record<string, string> = {
   "알람을 손가락으로 잠깐 길게 누르고 있으면 여러 개를 한 번에 골라서 지울 수 있어요.": "Einen Wecker kurz gedrückt halten, um mehrere auf einmal auszuwählen und zu löschen.",
   "알람을 손가락으로 한 번 누르면 시간이나 반복 방식을 바꿀 수 있어요.": "Ein Tipp auf einen Wecker genügt, um Uhrzeit oder Wiederholung zu ändern.",
   "알람이 없습니다": "Keine Wecker",
-  "알람이 울릴 때 화면에 바로 떠서 끄기 버튼을 누를 수 있게 하려면 권한이 필요해요.\n\n\"설정으로 이동\"을 누르면 \"다른 앱 위에 표시\"라는 제목의 화면이 열려요.\n\n1. 그 목록에서 \"알람\"을 찾아주세요\n2. \"알람\" 옆에 있는 스위치를 켜주세요\n3. 켠 다음에는 화면 왼쪽 위 ← 버튼을 눌러 앱으로 돌아와주세요": "Damit ein klingelnder Wecker sofort auf dem Bildschirm erscheint und die Stopp-Taste erreichbar ist, wird eine Berechtigung benötigt.\n\nEin Tipp auf „Zu den Einstellungen“ öffnet den Bildschirm „Über anderen Apps einblenden“.\n\n1. In der Liste „RotaWake“ suchen\n2. Den Schalter neben „RotaWake“ einschalten\n3. Danach oben links auf ← tippen, um zur App zurückzukehren",
+  "알람이 울릴 때 화면에 바로 떠서 끄기 버튼을 누를 수 있게 하려면 권한이 필요해요.\n\n\"설정으로 이동\"을 누르면 \"다른 앱 위에 표시\"라는 제목의 화면이 열려요.\n\n1. 그 목록에서 \"교대알람\"을 찾아주세요\n2. \"교대알람\" 옆에 있는 스위치를 켜주세요\n3. 켠 다음에는 화면 왼쪽 위 ← 버튼을 눌러 앱으로 돌아와주세요": "Damit ein klingelnder Wecker sofort auf dem Bildschirm erscheint und die Stopp-Taste erreichbar ist, wird eine Berechtigung benötigt.\n\nEin Tipp auf „Zu den Einstellungen“ öffnet den Bildschirm „Über anderen Apps einblenden“.\n\n1. In der Liste „RotaWake“ suchen\n2. Den Schalter neben „RotaWake“ einschalten\n3. Danach oben links auf ← tippen, um zur App zurückzukehren",
   "알람일수": "Wecker-Tage",
   "앱 버전": "App-Version",
   "앱을 열면 바로 달력이 보여요. \"출근\" 알람을 만들어두면 그 알람이 울리는 날이 색칠되고, 알람이 안 울리는 날은 \"비번\"이라는 테두리 박스로 표시돼요.\n근무표를 따로 적을 필요 없이, 알람만 만들면 달력이 저절로 완성돼요.": "Beim Öffnen der App erscheint sofort der Kalender. Sobald ein Wecker „Dienstbeginn“ angelegt ist, werden die Tage, an denen er klingelt, farbig markiert; Tage ohne Wecker erscheinen als umrandetes Feld „Frei“.\nEin separater Schichtplan ist nicht nötig – Wecker anlegen genügt, und der Kalender füllt sich von selbst.",

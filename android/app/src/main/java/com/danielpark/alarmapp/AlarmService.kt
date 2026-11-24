@@ -45,6 +45,7 @@ class AlarmService : Service() {
                 cancelKeepFront()
                 notifyStopped(currentRinging)
                 currentRinging = null
+                onRingingEnded()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 return START_NOT_STICKY
@@ -66,6 +67,7 @@ class AlarmService : Service() {
                 // 그쪽이 Expo rep 취소를 이미 직접 한다. 여기서 alarmStopped를 보내면 '한 번' 알람이
                 // 비활성화되어 rescheduleAll → cancelNativeAlarms가 방금 건 SNOOZE_REQUEST_CODE까지 지운다.
                 currentRinging = null
+                onRingingEnded()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 scheduleSnooze(title, body, soundOn, vibOn, volume, tone, crescendo)
                 stopSelf()
@@ -459,10 +461,21 @@ class AlarmService : Service() {
         cancelCoverRelaunch()
         cancelKeepFront()
         currentRinging = null
+        onRingingEnded()
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
     override fun onBind(intent: Intent?): IBinder? = null
+
+    /**
+     * 울림이 끝났을 때 화면 뒷정리(1.6.2) — 끄기·스누즈·서비스 종료 세 곳 모두에서 부른다.
+     * MainActivity: 잠금 위 표시(setShowWhenLocked)를 풀어 보안 잠금이면 잠금 화면으로 돌아가게.
+     * CoverAlarmActivity: 떠 있으면 닫는다(알림 "끄기"·워치로 끄면 onResume을 다시 안 거쳐 남았다).
+     */
+    private fun onRingingEnded() {
+        try { MainActivity.onRingingEnded() } catch (e: Exception) { e.printStackTrace() }
+        try { CoverAlarmActivity.onRingingEnded() } catch (e: Exception) { e.printStackTrace() }
+    }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -508,7 +521,10 @@ class AlarmService : Service() {
         )
 
         val b = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(title)
+            // 어느 앱 알람인지(1.6.2, 세이람 1.2.3과 같은 "앱 이름 · …" 형식). 이 알림은 아이콘이 시스템 알람 아이콘이고
+            // 접힌 상태에선 앱 이름이 안 보여(32 캡처) 제목에 넣는다. 교대알람은 알람 이름(근무 이름)이 가장 중요해
+            // 세이람의 "알람이 울리는 중" 대신 알람 제목을 그대로 둔다. 본문(HH:MM …)은 끄기 경로가 읽으므로 건드리지 않는다.
+            .setContentTitle("${NativeStrings.get(this, "appName", "교대알람")} · $title")
             .setContentText(body)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentIntent(openPi)

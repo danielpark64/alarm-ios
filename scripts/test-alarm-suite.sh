@@ -862,6 +862,66 @@ if grep -q "timeSensitive" "$ROOT/src/utils/notifications/core.ts" && ! grep -q 
   fail "core.ts는 timeSensitive를 쓰는데 app.json ios.entitlements에 time-sensitive 없음 — 조용히 보통 알림으로 낮아짐"
 else ok ""; fi
 
+# ── 1.6.2(2026-11-25 실기기 점검) ──
+# ⑥ 울리는 중 Expo 알림 '본문'을 누르면 알람이 꺼져 버렸다 — 응답 리스너가 액션 버튼과 본문 탭을 구분해야 한다.
+#    판정은 순수 함수(src/utils/alarmResponse.ts responseAction, logic-tests) 한 곳. 울림 화면 열기 갈래가 있어야 한다.
+printf "  1.6.2: 알림 본문 탭은 끄지 않고 울림 화면 ... "
+_UAN="$ROOT/src/hooks/useAlarmNotifications.ts"
+_RB=$(awk '/addNotificationResponseReceivedListener/,/^    }\);$/' "$_UAN")
+if [ ! -f "$ROOT/src/utils/alarmResponse.ts" ]; then fail "src/utils/alarmResponse.ts 없음"
+elif ! echo "$_RB" | grep -q "responseAction("; then fail "응답 리스너가 responseAction으로 판정 안 함 — 본문 탭도 끔"
+elif ! echo "$_RB" | grep -q "DEFAULT_ACTION_IDENTIFIER"; then fail "응답 리스너가 DEFAULT_ACTION_IDENTIFIER를 넘기지 않음"
+elif ! echo "$_RB" | grep -q "'openRinging'"; then fail "울림 화면 열기 갈래 없음"
+else ok ""; fi
+# ⑦ 끈 뒤에도 MainActivity가 보안 잠금 위에 남았다 — setShowWhenLocked(true)는 창 플래그(clearFlags)로 안 풀린다.
+#    울림이 끝나는 모든 길(끄기·스누즈·서비스 종료)에서 AlarmService가 MainActivity.onRingingEnded()를 불러 잠금 위 표시를 풀고,
+#    커버 울림 화면(CoverAlarmActivity)도 닫는다. AlarmModule(JS 끄기·스누즈)도 같은 함수를 쓴다.
+printf "  1.6.2: 끈 뒤 잠금 위 표시 해제 ... "
+_MA="$NATIVE_DIR/MainActivity.kt"; _LK=""
+grep -q "setShowWhenLocked(false)" "$_MA" || _LK="$_LK MainActivity.setShowWhenLocked(false)"
+grep -q "setTurnScreenOn(false)" "$_MA" || _LK="$_LK MainActivity.setTurnScreenOn(false)"
+grep -q "fun onRingingEnded" "$_MA" || _LK="$_LK MainActivity.onRingingEnded"
+# AlarmService는 한 함수(onRingingEnded)로 모아 끄기·스누즈·onDestroy 세 곳에서 부른다
+[ "$(grep -cE '^ +onRingingEnded\(\)$' "$_AS")" -ge 3 ] || _LK="$_LK AlarmService호출(끄기·스누즈·onDestroy)부족"
+_RE_BODY=$(awk '/private fun onRingingEnded/,/^    }$/' "$_AS")
+echo "$_RE_BODY" | grep -q "MainActivity.onRingingEnded()" || _LK="$_LK AlarmService→MainActivity"
+echo "$_RE_BODY" | grep -q "CoverAlarmActivity.onRingingEnded()" || _LK="$_LK AlarmService→커버화면닫기"
+awk '/ACTION_STOP -> \{/,/return START_NOT_STICKY/' "$_AS" | grep -qE '^ +onRingingEnded\(\)$' || _LK="$_LK 끄기경로"
+awk '/ACTION_SNOOZE -> \{/,/return START_NOT_STICKY/' "$_AS" | grep -qE '^ +onRingingEnded\(\)$' || _LK="$_LK 스누즈경로"
+awk '/override fun onDestroy/,/^    }$/' "$_AS" | grep -qE '^ +onRingingEnded\(\)$' || _LK="$_LK onDestroy"
+grep -q "fun onRingingEnded" "$_CA" || _LK="$_LK CoverAlarmActivity.onRingingEnded"
+grep -q "MainActivity.onRingingEnded()" "$NATIVE_DIR/AlarmModule.kt" || _LK="$_LK AlarmModule호출"
+[ -z "$_LK" ] && ok "" || fail "잠금 위에 남음 —$_LK"
+# ⑧ 끈 알람의 표시된 알림이 알림 줄에 쌓였다 — 끄는 길(afterNativeStop·인앱 끄기·응답 리스너)이 dismissPresentedAlarm을 부른다.
+printf "  1.6.2: 끈 알람의 지난 알림 지우기 ... "
+_NI="$ROOT/src/utils/notifications/index.ts"; _DS=""
+grep -q "export async function dismissPresentedAlarm" "$_NI" || _DS="$_DS 함수없음"
+grep -A8 "export async function dismissPresentedAlarm" "$_NI" | grep -q "getPresentedNotificationsAsync" || _DS="$_DS 표시목록조회없음"
+grep -A8 "export async function dismissPresentedAlarm" "$_NI" | grep -q "dismissNotificationAsync" || _DS="$_DS 지우기없음"
+awk '/const afterNativeStop/,/^  };$/' "$_UAN" | grep -q "dismissPresentedAlarm(" || _DS="$_DS afterNativeStop"
+awk '/const stopRinging = /,/^  };$/' "$_UAN" | grep -q "dismissPresentedAlarm(" || _DS="$_DS stopRinging"
+echo "$_RB" | grep -q "dismissPresentedAlarm(" || _DS="$_DS 응답리스너"
+[ -z "$_DS" ] && ok "" || fail "지난 알림 남음 —$_DS"
+# ⑨ '다른 앱 위에 표시' 안내는 설정 목록에 실제로 보이는 앱 이름으로 — 한국어 "교대알람", 다른 언어는 RotaWake(android app_name).
+printf "  1.6.2: 표시 권한 안내에 실제 앱 이름 ... "
+_OV=""
+grep -q '1. 그 목록에서 "교대알람"을 찾아주세요' "$ROOT/app/index.tsx" || _OV="$_OV 한국어"
+for _l in en ja zh-Hans zh-Hant es fr de pt; do
+  grep '그 목록에서 \\"교대알람\\"' "$ROOT/src/i18n/locales/$_l.ts" | grep -q "RotaWake" || _OV="$_OV $_l"
+done
+[ -z "$_OV" ] && ok "" || fail "앱 이름이 아님 —$_OV"
+
+# ⑩ 어느 앱 알람인지(1.6.2, 세이람 1.2.3과 같은 모양) — 울림 화면(JS·커버)에 앱 아이콘+이름, 울리는 중 상시 알림 제목에 앱 이름.
+#    앱 이름은 NativeStrings(appName) ← widgetSync.saveNativeStrings 경로. 알림 본문은 {time}으로 시작해야 하므로 제목만 바꾼다.
+printf "  1.6.2: 울림 화면·상시 알림에 앱 이름 ... "
+_AN=""
+grep -q "t('교대알람')" "$ROOT/src/components/AlarmRinging.tsx" || _AN="$_AN JS울림화면"
+grep -q "appName: t('교대알람')" "$ROOT/src/utils/widgetSync.ts" || _AN="$_AN saveNativeStrings"
+grep -q 'NativeStrings.get(this, "appName"' "$_AS" || _AN="$_AN 상시알림제목"
+grep -q '\.setContentText(body)' "$_AS" || _AN="$_AN 상시알림본문바뀜"
+grep -q '"appName"' "$_CA" && grep -q "getApplicationIcon" "$_CA" || _AN="$_AN 커버화면"
+[ -z "$_AN" ] && ok "" || fail "앱 이름 없음 —$_AN"
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

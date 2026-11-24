@@ -70,6 +70,9 @@ function buttons() {
 }
 
 // 날짜 하나에 한 번 — key는 근무일(YYYY-MM-DD). 반환 false면 예약 실패(한도 초과 등).
+// title에 앱 이름("교대알람 · ")을 붙이지 않는다(1.6.2 결정) — AlarmKit 울림 화면은 시스템이 앱 이름을 함께 보여 준다
+// (WWDC25 "Wake up to the AlarmKit API": 알림에 "the custom alarm title, as well as the name of your app"이 나온다).
+// 붙이면 이름이 두 번 나오고 근무 이름(가장 중요한 글자)이 밀린다. title은 core.ts가 만든 근무 이름/알람 이름 그대로.
 export function scheduleAlarmKitDate(alarmId: number, key: string, fire: Date, title: string, tone?: unknown): Promise<boolean> {
   if (!native) return Promise.resolve(false);
   const o: ScheduleOptions = { id: alarmKitUuid(alarmId, key), alarmId, fireMs: fire.getTime(), hour: 0, minute: 0, weekdays: [], title, ...buttons(), silent: false, sound: toneIosFile(tone) };

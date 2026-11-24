@@ -1,5 +1,6 @@
 // es 사전 (키 = 한국어 원문). 없는 키는 영어 → 한국어 순으로 폴백.
 export const ES: Record<string, string> = {
+  "교대알람": "RotaWake",
   "\"4일 알람 울리고 2일 쉬기\"처럼 알람과 휴식이 번갈아 도는 경우예요. 반복 방식에서 🌙 N일 후 휴식 카드를 누르면 팝업이 떠요.\n알람일수 4일, 휴식 일수 2일로 각각 정하고 알람시작일을 잡으면 그 패턴이 계속 반복돼요.": "Para cuando la alarma y el descanso se alternan, como \"4 días con alarma y 2 de descanso\". En Repetición, toca la tarjeta 🌙 Descanso tras N días y se abrirá una ventana.\nPon Días de alarma en 4, Días de descanso en 2 y elige el Inicio de alarmas: el patrón se repetirá sin fin.",
   "\"격일 알람\"이나 \"3일마다\"처럼 일정한 간격으로만 울리면 되는 알람이에요. 반복 방식에서 🔁 N일 주기 카드를 누르면 팝업이 떠요.\n며칠 간격인지와 시작일만 정하면 그 간격으로 계속 반복되고, 다음에 울릴 날짜들을 팝업에서 미리 확인할 수 있어요.": "Para alarmas que solo deben sonar a intervalos fijos, como \"un día sí y otro no\" o \"cada 3 días\". En Repetición, toca la tarjeta 🔁 Cada N días y se abrirá una ventana.\nSolo tienes que elegir el intervalo y la fecha de inicio: se repetirá con ese intervalo y en la ventana verás las próximas fechas en que sonará.",
   "\"비번\"을 선택해보세요 — 시각 입력 없이 바로 추가돼요.": "Elige \"Libre\": se añade al momento, sin poner hora.",
@@ -225,7 +226,7 @@ export const ES: Record<string, string> = {
   "알람을 손가락으로 잠깐 길게 누르고 있으면 여러 개를 한 번에 골라서 지울 수 있어요.": "Mantén pulsada una alarma un momento y podrás seleccionar varias para borrarlas de una vez.",
   "알람을 손가락으로 한 번 누르면 시간이나 반복 방식을 바꿀 수 있어요.": "Toca una alarma una vez para cambiar la hora o la repetición.",
   "알람이 없습니다": "No hay alarmas",
-  "알람이 울릴 때 화면에 바로 떠서 끄기 버튼을 누를 수 있게 하려면 권한이 필요해요.\n\n\"설정으로 이동\"을 누르면 \"다른 앱 위에 표시\"라는 제목의 화면이 열려요.\n\n1. 그 목록에서 \"알람\"을 찾아주세요\n2. \"알람\" 옆에 있는 스위치를 켜주세요\n3. 켠 다음에는 화면 왼쪽 위 ← 버튼을 눌러 앱으로 돌아와주세요": "Para que la alarma aparezca en pantalla al sonar y puedas tocar el botón de apagar, hace falta un permiso.\n\nAl tocar \"Ir a Ajustes\" se abre una pantalla titulada \"Mostrar sobre otras apps\".\n\n1. Busca esta app de alarma en la lista\n2. Activa el interruptor que tiene al lado\n3. Después, toca el botón ← de arriba a la izquierda para volver a la app",
+  "알람이 울릴 때 화면에 바로 떠서 끄기 버튼을 누를 수 있게 하려면 권한이 필요해요.\n\n\"설정으로 이동\"을 누르면 \"다른 앱 위에 표시\"라는 제목의 화면이 열려요.\n\n1. 그 목록에서 \"교대알람\"을 찾아주세요\n2. \"교대알람\" 옆에 있는 스위치를 켜주세요\n3. 켠 다음에는 화면 왼쪽 위 ← 버튼을 눌러 앱으로 돌아와주세요": "Para que la alarma aparezca en pantalla al sonar y puedas tocar el botón de apagar, hace falta un permiso.\n\nAl tocar \"Ir a Ajustes\" se abre una pantalla titulada \"Mostrar sobre otras apps\".\n\n1. Busca \"RotaWake\" en la lista\n2. Activa el interruptor junto a \"RotaWake\"\n3. Después, toca el botón ← de arriba a la izquierda para volver a la app",
   "알람일수": "Días de alarma",
   "앱 버전": "Versión de la app",
   "앱을 열면 바로 달력이 보여요. \"출근\" 알람을 만들어두면 그 알람이 울리는 날이 색칠되고, 알람이 안 울리는 날은 \"비번\"이라는 테두리 박스로 표시돼요.\n근무표를 따로 적을 필요 없이, 알람만 만들면 달력이 저절로 완성돼요.": "Al abrir la app verás el calendario. Si creas una alarma de \"Entrada\", los días en que suena se colorean y los días sin alarma se marcan con un recuadro \"Libre\".\nNo necesitas apuntar tus turnos aparte: crea las alarmas y el calendario se completa solo.",

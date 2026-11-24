@@ -6,6 +6,7 @@ import { cancelNativeAlarms, syncActiveNativeAlarms } from './android';
 import { scheduleAlarmTriggers, scheduleGroupReps, schedulePatternAlarmReps } from './core';
 import { nextGen, isStaleGen } from './rescheduleGen';
 import { usesAlarmKit } from '../alarmkitRoute';
+import { groupKeyFromBody, presentedToDismiss, DismissTarget } from '../alarmResponse';
 import { isAlarmKitMode, refreshAlarmKitMode, cancelAlarmKitFor, cancelAllAlarmKit } from './alarmkit';
 import { t } from '../../i18n/translate';
 
@@ -56,10 +57,20 @@ export async function cancelRepSeries(idBase: string) {
 
 // 네이티브 알람 울림(body="HH:MM 알람")에서 시간을 파싱해 expo 그룹 보조 알림 취소
 export async function cancelExpoGroupReps(body: string) {
-  const m = body.match(/^(\d{2}):(\d{2})/);
-  if (!m) return;
-  const gkey = `${parseInt(m[1], 10)}_${parseInt(m[2], 10)}`;
+  const gkey = groupKeyFromBody(body);
+  if (!gkey) return;
   await cancelRepSeries(`grp_${gkey}`);
+}
+
+// 끈 알람의 표시된(알림 줄에 떠 있는) Expo 알림 지우기 — 1.6.2, 울림 화면에서 끈 지난 알람 알림이 알림 줄에 계속 쌓였다.
+// 고르는 기준은 src/utils/alarmResponse.ts presentedToDismiss(알람 id·같은 시각 묶음만). 폰에서 지우면 워치에 브릿지된
+// 같은 알림도 함께 사라진다(끈 알람이라 워치에 남을 이유가 없다). 예약된 알림은 건드리지 않는다(취소는 cancelRepSeries 몫).
+export async function dismissPresentedAlarm(target: DismissTarget) {
+  try {
+    const presented = await Notifications.getPresentedNotificationsAsync();
+    const ids = presentedToDismiss(presented.map(n => ({ identifier: n.request.identifier, data: n.request.content.data })), target);
+    await Promise.all(ids.map(id => Notifications.dismissNotificationAsync(id).catch(() => {})));
+  } catch {}
 }
 
 // 보조 알림(반복 울림) 묶음 전체 예약 — rescheduleAll과 refreshRepsOnly가 공유.

@@ -113,6 +113,7 @@ export async function syncWidget(alarms: Alarm[], overrides: DayOverrides = {}) 
   // 위젯이 한 번에 새 문구로 그려지게 한다. offIn의 {n}은 네이티브가 숫자로 바꾼다.
   WidgetModule.saveNativeStrings?.(JSON.stringify({
     stop: t('끄기'),
+    appName: t('교대알람'), // 울리는 중 상시 알림 제목·커버 울림 화면의 앱 이름(1.6.2) — 설정 목록에 보이는 이름과 같게
     channel: t('알람 울림'),
     off: t('비번'),
     offToday: t('오늘 비번! 🎉'),

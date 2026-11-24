@@ -13,6 +13,7 @@ import android.view.WindowManager
 import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 
@@ -26,6 +27,7 @@ class CoverAlarmActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        instance = java.lang.ref.WeakReference(this)
         alarmId = intent?.getIntExtra("alarmId", -1) ?: -1
         val title = intent?.getStringExtra("title") ?: "⏰ 알람"
 
@@ -60,7 +62,11 @@ class CoverAlarmActivity : Activity() {
         val titleView = TextView(this).apply {
             text = title
             setTextColor(Color.WHITE)
-            textSize = 14f
+            // 알람 이름(근무 이름)이 가장 크게 — 커버(아주 작은 화면)는 예전 그대로 14sp, 잠금해제 전 기본 화면 등은 크게(1.6.2)
+            val dd = resources.displayMetrics.density
+            val hh = resources.displayMetrics.heightPixels / dd
+            val ww = resources.displayMetrics.widthPixels / dd
+            textSize = if (hh < 300 || ww < 200) 14f else if (hh < 480) 20f else 28f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
         }
@@ -69,6 +75,28 @@ class CoverAlarmActivity : Activity() {
             textSize = 16f
             setOnClickListener { stopAlarmAndFinish() }
         }
+        // 어느 앱 알람인지(1.6.2, 세이람 1.2.3 AlarmRingActivity와 같은 모양 — 커버는 아주 작은 화면이라 아이콘 14dp).
+        // 앱 이름은 작고 흐리게(#9aa0ff), 가장 큰 글자는 알람 이름(근무 이름) 그대로.
+        val d = resources.displayMetrics.density
+        val hDp = resources.displayMetrics.heightPixels / d
+        val wDp = resources.displayMetrics.widthPixels / d
+        val tiny = hDp < 300 || wDp < 200
+        val short = !tiny && hDp < 480
+        val appRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER
+            val sz = ((if (tiny) 14 else if (short) 18 else 22) * d).toInt()
+            try {
+                addView(ImageView(this@CoverAlarmActivity).apply { setImageDrawable(packageManager.getApplicationIcon(packageName)) },
+                    LinearLayout.LayoutParams(sz, sz).apply { rightMargin = (6 * d).toInt() })
+            } catch (_: Exception) {}
+            addView(TextView(this@CoverAlarmActivity).apply {
+                text = NativeStrings.get(this@CoverAlarmActivity, "appName", "교대알람")
+                setTextColor(Color.parseColor("#9aa0ff")); textSize = if (tiny) 11f else if (short) 14f else 18f
+            })
+        }
+        root.addView(appRow, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            bottomMargin = 4
+        })
         root.addView(titleView, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
             bottomMargin = 8
         })
@@ -118,6 +146,7 @@ class CoverAlarmActivity : Activity() {
             }
         }
         backBlocker = null
+        if (instance?.get() === this) instance = null
         super.onDestroy()
     }
 
@@ -125,6 +154,17 @@ class CoverAlarmActivity : Activity() {
         /** 지금 맨 앞(resumed)인지 — AlarmService.scheduleKeepFront가 가려졌는지 볼 때 쓴다 */
         @Volatile var inFront = false
             private set
+
+        @Volatile private var instance: java.lang.ref.WeakReference<CoverAlarmActivity>? = null
+
+        /**
+         * 울림이 끝났다(AlarmService 끄기·스누즈·서비스 종료) — 떠 있는 커버 울림 화면을 닫는다(1.6.2).
+         * 알림 줄 "끄기"·워치로 끄면 이 화면은 onResume을 다시 안 거쳐(가려지지 않았으므로) 잠금 위에 남을 수 있었다.
+         */
+        fun onRingingEnded() {
+            val a = instance?.get() ?: return
+            a.runOnUiThread { if (!a.isFinishing) a.finish() }
+        }
     }
 
     private fun stopAlarmAndFinish() {
