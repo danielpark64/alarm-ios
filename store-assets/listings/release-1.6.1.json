@@ -1,0 +1,39 @@
+{
+  "_note": "1.6.1 새로운 기능 (2026-11-24). play = Google Play, ios = App Store(3번째 줄만 다름 — 알람 화면 맨 앞은 Android 전용). 앱 밖 결제·후원 안내 없음, 이모지 없음.",
+  "ko": {
+    "play": "• 근무표 링크를 누르면 바로 교대알람에서 열려요. 보낸 사람 이름도 함께 와요.\n• 앱을 업데이트해야 열리는 링크는 [업데이트] 버튼으로 바로 안내해요.\n• 알람이 울리는 동안 알람 화면이 다른 앱에 가려지지 않아요.\n• 달력에 '오늘' 버튼이 항상 보여요.\n• 공유 탭에서 이름이 많아도 잘리지 않아요.",
+    "ios":  "• 근무표 링크를 누르면 바로 교대알람에서 열려요. 보낸 사람 이름도 함께 와요.\n• 앱을 업데이트해야 열리는 링크는 [업데이트] 버튼으로 바로 안내해요.\n• 알람 알림이 집중 모드에서도 더 잘 보여요.\n• 달력에 '오늘' 버튼이 항상 보여요.\n• 공유 탭에서 이름이 많아도 잘리지 않아요."
+  },
+  "en": {
+    "play": "• Tap a shared schedule link and it opens straight in the app, along with the sender's name.\n• Links that need a newer version now show an [Update] button that takes you right there.\n• While an alarm is ringing, the alarm screen stays on top of other apps.\n• The calendar's \"Today\" button is always visible.\n• Names in the Shared tab no longer get cut off, even when there are many.",
+    "ios":  "• Tap a shared schedule link and it opens straight in the app, along with the sender's name.\n• Links that need a newer version now show an [Update] button that takes you right there.\n• Alarm notifications stand out better, even in a Focus.\n• The calendar's \"Today\" button is always visible.\n• Names in the Shared tab no longer get cut off, even when there are many."
+  },
+  "ja": {
+    "play": "• シフト表のリンクを押すと、そのままアプリで開きます。送った人の名前も一緒に届きます。\n• アップデートが必要なリンクは、[アップデート]ボタンですぐにご案内します。\n• アラームが鳴っている間、アラーム画面がほかのアプリに隠れません。\n• カレンダーの「今日」ボタンがいつでも表示されます。\n• 「共有」タブで名前が多くても切れずに表示されます。",
+    "ios":  "• シフト表のリンクを押すと、そのままアプリで開きます。送った人の名前も一緒に届きます。\n• アップデートが必要なリンクは、[アップデート]ボタンですぐにご案内します。\n• アラームの通知が集中モード中でも目に留まりやすくなりました。\n• カレンダーの「今日」ボタンがいつでも表示されます。\n• 「共有」タブで名前が多くても切れずに表示されます。"
+  },
+  "zh-Hans": {
+    "play": "• 点按排班表链接即可直接在应用中打开,发送者的名字也会一起带过来。\n• 需要更新应用才能打开的链接,会显示[更新]按钮直接引导。\n• 闹钟响铃期间,闹钟画面不会被其他应用挡住。\n• 日历上的“今天”按钮始终显示。\n• “共享”标签页中名字再多也不会被截断。",
+    "ios":  "• 点按排班表链接即可直接在应用中打开,发送者的名字也会一起带过来。\n• 需要更新应用才能打开的链接,会显示[更新]按钮直接引导。\n• 闹钟通知在专注模式下也更醒目。\n• 日历上的“今天”按钮始终显示。\n• “共享”标签页中名字再多也不会被截断。"
+  },
+  "zh-Hant": {
+    "play": "• 點按班表連結即可直接在 App 中開啟,傳送者的名字也會一併帶入。\n• 需要更新 App 才能開啟的連結,會顯示[更新]按鈕直接引導。\n• 鬧鐘響鈴期間,鬧鐘畫面不會被其他 App 擋住。\n• 日曆上的「今天」按鈕會一直顯示。\n• 「共享」分頁中名字再多也不會被截斷。",
+    "ios":  "• 點按班表連結即可直接在 App 中開啟,傳送者的名字也會一併帶入。\n• 需要更新 App 才能開啟的連結,會顯示[更新]按鈕直接引導。\n• 鬧鐘通知在專注模式下也更醒目。\n• 日曆上的「今天」按鈕會一直顯示。\n• 「共享」分頁中名字再多也不會被截斷。"
+  },
+  "es": {
+    "play": "• Al tocar un enlace de horario compartido, se abre directamente en la app, junto con el nombre de quien lo envía.\n• Los enlaces que requieren una versión más reciente muestran un botón [Actualizar] que te lleva directo.\n• Mientras suena una alarma, su pantalla ya no queda oculta detrás de otras apps.\n• El botón «Hoy» del calendario siempre está visible.\n• En la pestaña Compartido, los nombres ya no se cortan aunque haya muchos.",
+    "ios":  "• Al tocar un enlace de horario compartido, se abre directamente en la app, junto con el nombre de quien lo envía.\n• Los enlaces que requieren una versión más reciente muestran un botón [Actualizar] que te lleva directo.\n• Las notificaciones de alarma se ven mejor, incluso con un modo de concentración activado.\n• El botón «Hoy» del calendario siempre está visible.\n• En la pestaña Compartido, los nombres ya no se cortan aunque haya muchos."
+  },
+  "fr": {
+    "play": "• Touchez un lien de planning partagé et il s'ouvre directement dans l'app, avec le nom de l'expéditeur.\n• Les liens qui demandent une version plus récente affichent un bouton [Mettre à jour] qui vous y mène directement.\n• Pendant qu'une alarme sonne, son écran n'est plus masqué par d'autres apps.\n• Le bouton « Aujourd'hui » du calendrier est toujours visible.\n• Dans l'onglet Partagé, les noms ne sont plus coupés, même s'ils sont nombreux.",
+    "ios":  "• Touchez un lien de planning partagé et il s'ouvre directement dans l'app, avec le nom de l'expéditeur.\n• Les liens qui demandent une version plus récente affichent un bouton [Mettre à jour] qui vous y mène directement.\n• Les notifications d'alarme ressortent mieux, même en mode Concentration.\n• Le bouton « Aujourd'hui » du calendrier est toujours visible.\n• Dans l'onglet Partagé, les noms ne sont plus coupés, même s'ils sont nombreux."
+  },
+  "de": {
+    "play": "• Ein geteilter Schichtplan-Link öffnet sich jetzt direkt in der App, zusammen mit dem Namen des Absenders.\n• Links, die eine neuere Version brauchen, zeigen die Schaltfläche [Aktualisieren], die direkt dorthin führt.\n• Während ein Alarm klingelt, wird der Alarmbildschirm nicht mehr von anderen Apps verdeckt.\n• Die Schaltfläche „Heute“ im Kalender ist jetzt immer sichtbar.\n• Im Tab „Geteilt“ werden Namen nicht mehr abgeschnitten, auch wenn es viele sind.",
+    "ios":  "• Ein geteilter Schichtplan-Link öffnet sich jetzt direkt in der App, zusammen mit dem Namen des Absenders.\n• Links, die eine neuere Version brauchen, zeigen die Schaltfläche [Aktualisieren], die direkt dorthin führt.\n• Alarmmitteilungen sind jetzt auch im Fokus-Modus besser sichtbar.\n• Die Schaltfläche „Heute“ im Kalender ist jetzt immer sichtbar.\n• Im Tab „Geteilt“ werden Namen nicht mehr abgeschnitten, auch wenn es viele sind."
+  },
+  "pt": {
+    "play": "• Toque em um link de escala compartilhada e ele abre direto no app, junto com o nome de quem enviou.\n• Links que precisam de uma versão mais nova mostram um botão [Atualizar] que leva você direto até lá.\n• Enquanto um alarme toca, a tela do alarme não fica mais escondida atrás de outros apps.\n• O botão \"Hoje\" do calendário fica sempre visível.\n• Na aba Compartilhado, os nomes não são mais cortados, mesmo quando são muitos.",
+    "ios":  "• Toque em um link de escala compartilhada e ele abre direto no app, junto com o nome de quem enviou.\n• Links que precisam de uma versão mais nova mostram um botão [Atualizar] que leva você direto até lá.\n• As notificações de alarme ficam mais visíveis, mesmo com um Foco ativado.\n• O botão \"Hoje\" do calendário fica sempre visível.\n• Na aba Compartilhado, os nomes não são mais cortados, mesmo quando são muitos."
+  }
+}
