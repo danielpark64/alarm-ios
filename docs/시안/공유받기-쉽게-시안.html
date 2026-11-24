@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>교대알람 · 근무표 받기 쉽게 — 시안</title>
+<style>
+body{margin:0;font-family:-apple-system,"Apple SD Gothic Neo",sans-serif;background:#f3f1ec;color:#222}
+h1{font-size:20px;margin:20px 20px 4px}.sub{margin:0 20px 16px;color:#666;font-size:14px}
+.row{display:flex;gap:22px;flex-wrap:wrap;padding:0 20px 24px}
+.cap{font-size:14px;font-weight:600;margin:0 0 8px;max-width:300px}
+.ph{width:300px;height:600px;border-radius:34px;background:#f5f6fa;border:8px solid #222;overflow:hidden;position:relative;box-shadow:0 6px 18px #0002;font-size:13px}
+.in{padding:30px 16px}
+.h{font-size:19px;font-weight:800;margin:0 0 4px;color:#16162a}
+.m{color:#5a5a78;margin:0 0 10px;line-height:1.5}
+.card{background:#fff;border:1px solid #dcdcea;border-radius:14px;padding:12px;margin-top:10px}
+.new{outline:3px solid #ff9f1c;outline-offset:2px}
+.btn{display:block;text-align:center;font-weight:800;border-radius:11px;padding:11px;font-size:14px}
+.open{background:#6c5ce7;color:#fff}
+.store{border:1.5px solid #dcdcea;color:#16162a;margin-top:8px}
+.per{font-weight:800;font-size:15px;color:#16162a}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.chip{border-radius:8px;padding:2px 8px;font-weight:700;font-size:12px;color:#222}
+.strip{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:6px}
+.d{border-radius:6px;text-align:center;font-size:10px;padding:3px 0;color:#222}
+.d b{display:block;font-size:11px}
+.wd{font-size:10px;color:#888;text-align:center}
+.small{font-size:11px;color:#888;margin-top:8px}
+.dim{position:absolute;inset:0;background:#0007}
+.alert{position:absolute;left:24px;right:24px;top:190px;background:#fff;border-radius:16px;padding:16px;text-align:center}
+.alert .t{font-weight:800;font-size:15px;margin-bottom:6px}
+.alert .bt{display:flex;border-top:1px solid #eee;margin:12px -16px -16px}
+.alert .bt span{flex:1;padding:11px;color:#2f6fde}.alert .bt span+span{border-left:1px solid #eee;font-weight:700}
+.dark{background:#0b0b1c}.dark .h{color:#f0f0ff}
+.flow{max-width:960px;margin:0 20px 16px;background:#fff;border-radius:12px;padding:14px 18px;font-size:14px;line-height:1.7}
+.flow b{color:#6c5ce7}
+.note{max-width:960px;margin:0 20px 30px;background:#fff;border-radius:12px;padding:14px 18px;font-size:14px;line-height:1.6}
+</style></head><body>
+<h1>근무표 받기 쉽게 — 시안</h1>
+<p class="sub">주황 테두리가 바뀌는 곳이에요. ①②는 웹 페이지라 승낙하면 바로 적용돼요. ③④는 앱을 고쳐야 해서 다음 판(1.6.1)에 들어가요.</p>
+
+<div class="row">
+ <div><p class="cap">① + ② 받은 링크 페이지 (아이폰에서 열었을 때)</p>
+  <div class="ph"><div class="in">
+   <p class="h">근무표가 도착했어요</p>
+   <div class="card new">
+    <div class="per">11월 24일 ~ 6월 26일</div>
+    <div class="chips"><span class="chip" style="background:#F0A35E">초번</span><span class="chip" style="background:#5EC8F0">말번</span><span class="chip" style="background:#ddd">비번</span></div>
+    <div class="strip">
+     <div class="wd">월</div><div class="wd">화</div><div class="wd">수</div><div class="wd">목</div><div class="wd">금</div><div class="wd">토</div><div class="wd">일</div>
+     <div class="d" style="background:#F0A35E55"><b>24</b>초</div><div class="d" style="background:#F0A35E55"><b>25</b>초</div><div class="d" style="background:#5EC8F055"><b>26</b>말</div><div class="d" style="background:#5EC8F055"><b>27</b>말</div><div class="d" style="background:#eee"><b>28</b>비</div><div class="d" style="background:#eee"><b>29</b>비</div><div class="d" style="background:#F0A35E55"><b>30</b>초</div>
+    </div>
+    <div class="small">앞의 1주만 미리 보여요. 전체는 앱 달력에서 봐요.</div>
+   </div>
+   <div class="card">
+    <span class="btn open">교대알람에서 열기</span>
+   </div>
+   <span class="btn store new">App Store에서 설치 / 업데이트</span>
+   <p class="small">안드로이드 폰에서는 이 버튼이 "Google Play에서 설치 / 업데이트" 하나만 보여요. 컴퓨터에서 열면 둘 다 보여요.</p>
+  </div></div></div>
+
+ <div><p class="cap">③ 앱이 모르는 새 형식을 받았을 때 (앱, 다음 판)</p>
+  <div class="ph"><div class="in">
+   <p class="h">교대알람</p><p class="m">(달력 화면)</p>
+  </div>
+   <div class="dim"></div>
+   <div class="alert new">
+    <div class="t">업데이트가 필요해요</div>
+    <div class="m">새 형식의 근무표예요. 업데이트한 뒤 링크를 다시 누르면 열려요.</div>
+    <div class="bt"><span>닫기</span><span>업데이트</span></div>
+   </div>
+  </div></div>
+
+ <div><p class="cap">참고 — 지금 페이지</p>
+  <div class="ph"><div class="in">
+   <p class="h">근무표가 도착했어요</p>
+   <p class="m">교대알람에서 열면 달력에 그 사람의 근무표 창이 생겨요. 보기만 하고 알람은 울리지 않아요.</p>
+   <div class="card"><span class="btn open">교대알람에서 열기</span><p class="small">앱이 열렸는데 아무 일도 없으면 최신 버전으로 업데이트한 뒤 이 링크를 다시 누르세요.</p></div>
+   <span class="btn store">App Store</span><span class="btn store">Google Play</span>
+   <p class="small">내용은 안 보이고, 스토어 버튼이 둘 다 보여요.</p>
+  </div></div></div>
+</div>
+
+<div class="flow"><b>④ 링크를 누르면 바로 앱으로 (다음 판)</b><br>
+최신 앱이 깔린 폰 → 링크를 누르면 페이지 없이 <b>바로 교대알람이 열려요</b>.<br>
+앱이 없거나 옛 버전인 폰 → 지금처럼 페이지가 열리고, ①②의 "설치 / 업데이트" 버튼 하나만 보면 돼요.<br>
+<span style="color:#888">카카오톡·LINE 안 브라우저에서는 바로 열리지 않을 수 있어요. 그때는 지금처럼 페이지의 "교대알람에서 열기"로 열려요. 실제 폰에서 확인할게요.</span></div>
+
+<div class="note"><b>정해 주실 것</b><ul>
+<li><b>"누구의" 근무표인지</b>: 지금 링크에는 보낸 사람 이름이 들어 있지 않아요. 그래서 ①②에서는 기간·근무 종류·앞 1주만 보여요. 이름까지 보이게 하려면 보낼 때 "내 이름" 칸을 하나 더 받아야 해요(앱, 다음 판). 넣을까요, 뺄까요?</li>
+<li>④를 하려면 GitHub에 주소 확인 파일만 담는 공개 저장소(<code>danielpark64.github.io</code>)를 하나 새로 만들어야 해요. 세이람 링크도 같은 주소를 쓰고 있어서 두 앱이 함께 써요. 만들어도 될까요?</li>
+<li>모든 문구는 9개 언어로 넣어요. 세이람 페이지와 모양·순서를 맞춰요.</li>
+</ul></div>
+</body></html>
