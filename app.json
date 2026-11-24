@@ -28,6 +28,23 @@
         "VIBRATE",
         "USE_EXACT_ALARM",
         "SCHEDULE_EXACT_ALARM"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "danielpark64.github.io",
+              "pathPrefix": "/alarm-ios/s"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
       ]
     },
     "ios": {
@@ -77,7 +94,10 @@
           "group.com.danielpark.shared"
         ]
       },
-      "buildNumber": "11"
+      "buildNumber": "11",
+      "associatedDomains": [
+        "applinks:danielpark64.github.io"
+      ]
     },
     "plugins": [
       "expo-router",

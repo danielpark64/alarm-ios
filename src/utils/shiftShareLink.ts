@@ -17,7 +17,12 @@ export const SHARE_PAGE_V1 = 'https://danielpark64.github.io/alarm-ios/s.html'; 
 export const SHARE_SCHEME = 'alarmappshare';
 export const SHARE_DAYS = 215;       // 오늘부터 약 7개월 — 세이람 d 상한 800자 안
 export const MAX_LINK = 4000;        // 이보다 긴 주소는 메신저가 자르거나 앱이 못 받는다 — 통째로 거부
-export const MY_COLOR = '#A29BFE';   // 나 창·전체 창의 내 점(앱 강조색)
+export const MY_COLOR = '#A29BFE';
+export const SENDER_NAME_MAX = 20;   // 보낸 사람 이름(v2 배열 8번째 칸, 1.6.1~) 최대 글자 수(코드 포인트)
+// 새 형식 안내 [업데이트] — 플랫폼별 스토어(Android는 market:// 실패 시 웹)
+export const STORE_IOS = 'https://apps.apple.com/app/id6825757463';
+export const STORE_ANDROID = 'market://details?id=com.danielpark.alarmapp';
+export const STORE_ANDROID_WEB = 'https://play.google.com/store/apps/details?id=com.danielpark.alarmapp';   // 나 창·전체 창의 내 점(앱 강조색)
 // 받은 사람 자동 색 — 내 색(보라)·비번 파랑·다 같이 쉬는 날 초록과 겹치지 않는 것들
 export const AUTO_COLORS = ['#F0A35E', '#5EC8F0', '#F06E9C', '#E6D36A', '#9BE07A', '#C792EA', '#FF8A65', '#4DD0C8', '#B0BEC5', '#FFB3C7'];
 
@@ -49,10 +54,21 @@ export function buildShareLinkV1(body: string, senderId: string): string {
   return `${SHARE_PAGE_V1}#v=1&i=${senderId}&p=${encodeURIComponent(body)}`;
 }
 
+/** 보낸 사람 이름 정리 — 보낼 때·받을 때 같은 규칙(안내 페이지 docs/s/index.html의 cleanName도 같게).
+ *  제어문자·줄바꿈 → 공백, 글자 방향을 뒤집는 문자·폭 없는 문자 제거, 공백 한 칸으로, 앞뒤 자르기, 최대 SENDER_NAME_MAX자. */
+export function cleanSenderName(v: unknown): string {
+  if (typeof v !== 'string') return '';
+  const s = v.replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, '')
+    .replace(/[\u0000-\u001F\u007F-\u009F\u2028\u2029]/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+  return [...s].slice(0, SENDER_NAME_MAX).join('').trim();
+}
+
 /** v2 링크 — #v2.<base64url(JSON 배열)>. 자리로 구분해 키 이름을 뺐다:
- *  [보낸 사람 id, 시작일 YYYYMMDD, 라벨[], 색(6자리 16진수 이어 붙임), 쉬는 날(0/1 이어 붙임), 보낸 시각(ms, 36진법), 칸]
- *  칸 = 그대로 문자열(d) 또는 [주기 q, 길이 n, 어긋난 날 x](packDays) */
-export function buildShareLink(body: string, senderId: string): string {
+ *  [보낸 사람 id, 시작일 YYYYMMDD, 라벨[], 색(6자리 16진수 이어 붙임), 쉬는 날(0/1 이어 붙임), 보낸 시각(ms, 36진법), 칸, (이름)]
+ *  칸 = 그대로 문자열(d) 또는 [주기 q, 길이 n, 어긋난 날 x](packDays)
+ *  이름(8번째, 1.6.1~)은 있을 때만 넣는다 — 1.6.0 앱은 앞 7칸만 읽으므로(length < 7만 거부) 그대로 받는다. */
+export function buildShareLink(body: string, senderId: string, name?: string): string {
   const b = JSON.parse(body);
   const pk = packDays(String(b.d));
   const arr = [
@@ -62,6 +78,8 @@ export function buildShareLink(body: string, senderId: string): string {
     Number(b.t).toString(36),
     'd' in pk ? pk.d : [pk.q, pk.n, pk.x ?? ''],
   ];
+  const nm = cleanSenderName(name);
+  if (nm) arr.push(nm);
   return `${SHARE_PAGE}#v2.${toBase64Url(JSON.stringify(arr))}`;
 }
 
@@ -190,7 +208,7 @@ export function appLinkFromPage(pageUrl: string): string {
 }
 
 export type ParseResult =
-  | { ok: true; sender: string; data: ShiftData; body: string }
+  | { ok: true; sender: string; data: ShiftData; body: string; name: string } // name: 보낸 사람 이름('' = 없음)
   | { ok: false; reason: 'notShare' | 'format' | 'version' | 'tooLong' | 'expired' };
 
 /** 받은 주소 읽기 — 안내 페이지(https …/s/#v2.… · …s.html#v=1…)와 앱 주소(alarmappshare://?…) 모두 */
@@ -220,7 +238,7 @@ export function parseShareLink(url: string, today: Date = new Date()): ParseResu
   if (!/^[0-9a-z]{6,16}$/.test(sender)) return { ok: false, reason: 'format' };
   let body: string; let raw: any;
   try { body = decodeURIComponent(q.get('p') ?? ''); raw = JSON.parse(body); } catch { return { ok: false, reason: 'format' }; }
-  return finish(sender, raw, body, today);
+  return finish(sender, raw, body, today, '');
 }
 
 function finishV2(b64: string, today: Date): ParseResult {
@@ -229,7 +247,7 @@ function finishV2(b64: string, today: Date): ParseResult {
   let a: any;
   try { a = JSON.parse(json); } catch { return { ok: false, reason: 'format' }; }
   if (!Array.isArray(a) || a.length < 7) return { ok: false, reason: 'format' };
-  const [sender, f8, l, c, o, t36, cells] = a;
+  const [sender, f8, l, c, o, t36, cells, nm] = a;
   if (typeof sender !== 'string' || !/^[0-9a-z]{6,16}$/.test(sender)) return { ok: false, reason: 'format' };
   if (typeof f8 !== 'string' || !/^\d{8}$/.test(f8) || typeof c !== 'string' || !/^([0-9a-fA-F]{6})*$/.test(c)
     || typeof o !== 'string' || !/^[01]*$/.test(o) || typeof t36 !== 'string' || !/^[0-9a-z]{1,12}$/.test(t36)) return { ok: false, reason: 'format' };
@@ -241,16 +259,16 @@ function finishV2(b64: string, today: Date): ParseResult {
     f: `${f8.slice(0, 4)}-${f8.slice(4, 6)}-${f8.slice(6)}`, l,
     c: (c.match(/.{6}/g) || []).map((x: string) => '#' + x), o: [...o].map(Number), d, t: parseInt(t36, 36),
   };
-  return finish(sender, raw, JSON.stringify(raw), today);
+  return finish(sender, raw, JSON.stringify(raw), today, cleanSenderName(nm));
 }
 
-function finish(sender: string, raw: any, body: string, today: Date): ParseResult {
+function finish(sender: string, raw: any, body: string, today: Date, name: string): ParseResult {
   const data = parseShiftBody(raw);
   if (!data || data.sentAt == null) return { ok: false, reason: 'format' };
   const [y, m, d] = data.from.split('-').map(Number);
   const last = new Date(y, m - 1, d + data.days.length - 1);
   if (last < new Date(today.getFullYear(), today.getMonth(), today.getDate())) return { ok: false, reason: 'expired' };
-  return { ok: true, sender, data, body };
+  return { ok: true, sender, data, body, name };
 }
 
 // ── 세이람 lib/shiftImport.ts에서 그대로 가져옴 ─────────────────────────────────

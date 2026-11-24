@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, ScrollView, TouchableOpacity, Platform, StyleSheet, Switch } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, ScrollView, TouchableOpacity, Platform, StyleSheet, Switch, TextInput } from 'react-native';
 import { Text } from '../common/AppText';
 import Slider from '@react-native-community/slider';
 import Constants from 'expo-constants';
@@ -10,6 +10,8 @@ import { useFontScale, FontScaleName } from '../../hooks/useFontScale';
 import { useT, N, LANGS, LANGUAGE_LABEL, type LanguageSetting } from '../../i18n';
 import { useWeekStart, type WeekStartSetting } from '../../hooks/useWeekStart';
 import { useSayramShare } from '../../hooks/useSayramShare';
+import { useShiftShare } from '../../hooks/useShiftShare';
+import { SENDER_NAME_MAX } from '../../utils/shiftShareLink';
 
 const FONT_SCALES: { id: FontScaleName; label: string }[] = [
   { id: 'small',  label: N('작게') },
@@ -38,6 +40,11 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp, onSendShifts
   const { t, setting: langSetting, setSetting: setLangSetting } = useT();
   const { setting: weekSetting, setSetting: setWeekSetting } = useWeekStart();
   const share = useSayramShare();
+  // 보낼 때 내 이름(1.6.1~) — 처음 보낼 때 한 번 묻고, 바꾸기는 여기 한 곳에서만
+  const shift = useShiftShare();
+  const [myName, setMyNameText] = useState(shift.myName ?? '');
+  useEffect(() => { setMyNameText(shift.myName ?? ''); }, [shift.myName]);
+  const commitName = () => { if (myName.trim() !== (shift.myName ?? '')) shift.setMyName(myName); };
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false}>
@@ -119,6 +126,17 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp, onSendShifts
               <Text style={s.rowValue}>›</Text>
             </View>
           </TouchableOpacity>
+          <View style={[s.card, { marginTop: 8 }]}>
+            <View style={s.row}>
+              <View style={{ flex: 1, minWidth: 0, marginRight: 12 }}>
+                <Text style={s.rowLabel}>{t('보낼 때 내 이름')}</Text>
+                <Text style={s.rowSub}>{t('받은 사람에게 "{name}님의 근무표"로 보여요. 비워 두면 이름 없이 보내요.', { name: myName.trim() || t('나') })}</Text>
+              </View>
+              <TextInput style={s.nameInput} value={myName} onChangeText={setMyNameText} onEndEditing={commitName} onBlur={commitName}
+                maxLength={SENDER_NAME_MAX} placeholder={t('예: 민수')} placeholderTextColor={C.txt3} returnKeyType="done"
+                accessibilityLabel={t('보낼 때 내 이름')} />
+            </View>
+          </View>
         </>
       )}
 
@@ -225,6 +243,7 @@ function makeStyles(C: Palette) {
     rowLabel: { fontSize: 14, fontWeight: '600', color: C.txt },
     rowValue: { fontSize: 13, color: C.txt3 },
     rowSub: { fontSize: 11, color: C.txt3, marginTop: 3, lineHeight: 15 },
+    nameInput: { width: 120, borderRadius: 10, borderWidth: 1, borderColor: C.border2, paddingHorizontal: 10, paddingVertical: 7, fontSize: 14, color: C.txt, backgroundColor: C.bg3 },
     divider: { height: 1, backgroundColor: C.border, marginHorizontal: 14 },
     segment: { flexDirection: 'row', gap: 4, backgroundColor: C.bg3, borderRadius: 10, padding: 3 },
     segBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },

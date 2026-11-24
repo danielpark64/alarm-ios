@@ -79,6 +79,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var launchOptions = appDelegate.launchOptions ?? [:]
     if let url = connectionOptions.urlContexts.first?.url {
       launchOptions[.url] = url
+    } else if let activity = connectionOptions.userActivities.first(where: { $0.activityType == NSUserActivityTypeBrowsingWeb }),
+      let webURL = activity.webpageURL {
+      // 유니버설 링크(https://danielpark64.github.io/alarm-ios/s/#…)로 앱이 처음 켜질 때도 같은 자리에 — getInitialURL이 읽는다
+      launchOptions[.url] = webURL
     }
     let window = UIWindow(windowScene: windowScene)
     factory.startReactNative(

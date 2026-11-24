@@ -746,6 +746,20 @@ elif ! grep -q "incomingSeq" "$ROOT/src/components/Home/ShareBar.tsx"; then fail
 elif ! grep -q "incomingSeq" "$ROOT/src/components/Home/ShareTab.tsx"; then fail "ShareTab 날짜 시트가 링크가 와도 닫히지 않음(incomingSeq)"
 else ok ""; fi
 
+# ⑦-1 받기 쉽게(1.6.1, 2026-11-24) — https 링크를 누르면 페이지 없이 바로 앱(iOS 유니버설 링크·Android App Links).
+#    app.json(prebuild용)과 손으로 관리하는 네이티브 프로젝트 둘 다 등록해야 하고, 그 주소로 열릴 때 expo-router가
+#    /alarm-ios/s 경로를 Unmatched Route로 띄우지 않게 app/+native-intent.tsx가 '/'로 돌린다(링크 내용은 useShiftShare가 읽는다).
+printf "  공유 링크 바로 열기(applinks·App Links autoVerify·+native-intent) ... "
+_ENT="$ROOT/ios/app/app.entitlements"
+_NI="$ROOT/app/+native-intent.tsx"
+if ! grep -q '"applinks:danielpark64.github.io"' "$ROOT/app.json"; then fail "app.json ios.associatedDomains에 applinks:danielpark64.github.io 없음"
+elif ! grep -q '"autoVerify": *true' "$ROOT/app.json" || ! grep -q '"pathPrefix": *"/alarm-ios/s"' "$ROOT/app.json"; then fail "app.json android.intentFilters(autoVerify·/alarm-ios/s) 없음"
+elif ! grep -q "<string>applinks:danielpark64.github.io</string>" "$_ENT" 2>/dev/null; then fail "ios/app/app.entitlements에 associated-domains 없음"
+elif ! grep -q 'android:autoVerify="true"' "$_MF" || ! grep -q 'android:host="danielpark64.github.io"' "$_MF" || ! grep -q 'android:pathPrefix="/alarm-ios/s"' "$_MF"; then fail "AndroidManifest에 App Links(autoVerify·host·pathPrefix) intent-filter 없음"
+elif [ ! -f "$_NI" ] || ! grep -q "redirectSystemPath" "$_NI" || ! grep -q "/alarm-ios/s" "$_NI"; then fail "app/+native-intent.tsx 없음 — https 공유 주소로 열리면 Unmatched Route"
+elif ! grep -q "STORE_ANDROID" "$ROOT/src/hooks/useShiftShare.tsx" || ! grep -q "STORE_IOS" "$ROOT/src/hooks/useShiftShare.tsx"; then fail "새 형식 안내에 [업데이트](플랫폼별 스토어) 버튼 없음"
+else ok ""; fi
+
 # ⑦ 알람 소리 고르기(2026-11-23) — 알람마다 소리 하나. 소리 파일 이름은 src/constants/alarmTones.ts(JS)와
 #    AlarmTones.kt(Android 네이티브) 한 곳에서만 정한다. 다른 곳에 'alarm_long.wav'·R.raw.alarm_long을 박아 두면
 #    그 경로만 고른 소리를 무시하고 기본음으로 울린다(스누즈·보조 알림·AlarmKit 등 경로가 여러 개라 빠뜨리기 쉽다).

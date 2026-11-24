@@ -1,14 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Alert, Share } from 'react-native';
+import { Alert, Share, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
 import { useT } from '../i18n';
 import { Alarm, DayOverrides } from '../constants';
 import {
   buildShareBody, buildShareLink, buildShareMessage, parseShareLink, decideIncoming, pickAutoColor, nextSeq, newSenderId, dataOf,
+  cleanSenderName, STORE_IOS, STORE_ANDROID, STORE_ANDROID_WEB,
   type SharedPerson, type ShiftData,
 } from '../utils/shiftShareLink';
-import { ShareReceiveModal, type ReceiveDraft } from '../components/Home/ShareReceiveModal';
+import { ShareReceiveModal, ShareNameModal, type ReceiveDraft } from '../components/Home/ShareReceiveModal';
 
 // 근무표 공유(1.6.0) — 받은 사람 목록(이름·색·근무표 원문만), 전체 창 설정, 보내기·받기.
 // ⚠️ 여기 데이터는 [공유] 탭(ShareTab) 표시에만 쓴다 — 내 달력(CalendarView)은 이 훅을 모른다(정적 체크 ④).
@@ -17,6 +18,15 @@ import { ShareReceiveModal, type ReceiveDraft } from '../components/Home/ShareRe
 const K_PEOPLE = 'shift_share_people_v1';
 const K_TOGETHER = 'shift_share_together_v1';
 const K_SENDER = 'shift_share_sender_v1';
+// 보낼 때 내 이름(1.6.1~) — 처음 보낼 때 한 번 묻고 저장(건너뛰면 '' 저장 = 다시 묻지 않음). 없음(null) = 아직 안 물음.
+// 바꾸기는 설정 [근무표 공유] 한 곳에서만.
+const K_MYNAME = 'shift_share_myname_v1';
+
+/** 새 형식 안내 [업데이트] — 플랫폼별 스토어(Android는 market:// 실패 시 웹 주소) */
+function openStore() {
+  if (Platform.OS === 'ios') { Linking.openURL(STORE_IOS).catch(() => {}); return; }
+  Linking.openURL(STORE_ANDROID).catch(() => Linking.openURL(STORE_ANDROID_WEB).catch(() => {}));
+}
 
 export type SharedPersonView = SharedPerson & { data: ShiftData | null };
 
@@ -28,11 +38,13 @@ interface Ctx {
   editPerson: (id: string, patch: { name?: string; color?: string }) => void;
   removePerson: (id: string) => void;
   sendShare: (alarms: Alarm[], overrides: DayOverrides) => Promise<void>;
+  myName: string | null;             // 보낼 때 내 이름(null = 아직 안 물음, '' = 이름 없이)
+  setMyName: (v: string) => void;
   incomingSeq: number;               // 공유 링크로 열릴 때마다 +1 — 메인 화면이 [공유] 탭으로 옮긴다
 }
 const Context = createContext<Ctx>({
   people: [], together: false, setTogether: () => {}, setVisible: () => {}, editPerson: () => {}, removePerson: () => {},
-  sendShare: async () => {}, incomingSeq: 0,
+  sendShare: async () => {}, myName: null, setMyName: () => {}, incomingSeq: 0,
 });
 
 export function ShiftShareProvider({ children }: { children: React.ReactNode }) {
@@ -44,15 +56,19 @@ export function ShiftShareProvider({ children }: { children: React.ReactNode }) 
   const [draft, setDraft] = useState<ReceiveDraft | null>(null);
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const [incomingSeq, setIncomingSeq] = useState(0);
+  const [myName, setMyNameState] = useState<string | null>(null);
+  const myNameRef = useRef<string | null>(null);
+  const [askName, setAskName] = useState<{ alarms: Alarm[]; overrides: DayOverrides } | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const [p, tg, sid] = await Promise.all([AsyncStorage.getItem(K_PEOPLE), AsyncStorage.getItem(K_TOGETHER), AsyncStorage.getItem(K_SENDER)]);
+        const [p, tg, sid, nm] = await Promise.all([AsyncStorage.getItem(K_PEOPLE), AsyncStorage.getItem(K_TOGETHER), AsyncStorage.getItem(K_SENDER), AsyncStorage.getItem(K_MYNAME)]);
         const list = p ? JSON.parse(p) : [];
         if (Array.isArray(list)) setPeople(list.filter((x: any) => x && typeof x.id === 'string' && typeof x.body === 'string'));
         setTogetherState(tg === '1');
         senderRef.current = sid;
+        if (nm != null) { myNameRef.current = cleanSenderName(nm); setMyNameState(myNameRef.current); }
       } catch {}
       setLoaded(true);
     })();
@@ -80,8 +96,15 @@ export function ShiftShareProvider({ children }: { children: React.ReactNode }) 
     if (!r.ok) {
       if (r.reason === 'notShare') return; // 개발 딥링크·위젯 등 다른 주소
       setIncomingSeq(n => n + 1);
-      const msg = r.reason === 'version' ? t('새 형식의 근무표예요. 앱을 최신 버전으로 업데이트한 뒤 링크를 다시 눌러 주세요.')
-        : r.reason === 'expired' ? t('기간이 다 지난 근무표예요. 새로 보내 달라고 해 주세요.')
+      if (r.reason === 'version') {
+        // 이 앱이 모르는 새 형식 — 스토어로 바로 보내는 [업데이트](시안 ③)
+        Alert.alert(t('업데이트가 필요해요'), t('새 형식의 근무표예요. 업데이트한 뒤 링크를 다시 누르면 열려요.'), [
+          { text: t('닫기'), style: 'cancel' },
+          { text: t('업데이트'), onPress: openStore },
+        ]);
+        return;
+      }
+      const msg = r.reason === 'expired' ? t('기간이 다 지난 근무표예요. 새로 보내 달라고 해 주세요.')
         : r.reason === 'tooLong' ? t('링크가 너무 길어서 읽을 수 없어요.')
         : t('근무표 링크를 읽을 수 없어요. 링크가 잘렸는지 확인해 주세요.');
       Alert.alert(t('근무표 받기'), msg);
@@ -92,7 +115,7 @@ export function ShiftShareProvider({ children }: { children: React.ReactNode }) 
     if (d.kind === 'self') { Alert.alert(t('근무표 받기'), t('내가 보낸 근무표예요.')); return; }
     if (d.kind === 'same') { Alert.alert(t('근무표 받기'), t('이미 받은 근무표예요.')); return; }
     setDraft({
-      sender: r.sender, body: r.body, data: r.data,
+      sender: r.sender, body: r.body, data: r.data, senderName: r.name,
       update: d.kind === 'update' ? d.person : null,
       seq: d.kind === 'update' ? d.person.seq : nextSeq(peopleRef.current),
       color: d.kind === 'update' ? d.person.color : pickAutoColor(peopleRef.current.map(p => p.color)),
@@ -104,7 +127,8 @@ export function ShiftShareProvider({ children }: { children: React.ReactNode }) 
     const cur = peopleRef.current;
     const now = Date.now();
     if (draft.update) {
-      save(cur.map(p => p.id === draft.sender ? { ...p, body: draft.body, receivedAt: now } : p));
+      // 지은 이름이 없던 사람이 이번엔 이름을 넣어 보냈으면 그 이름으로(사용자가 지은 이름은 그대로)
+      save(cur.map(p => p.id === draft.sender ? { ...p, body: draft.body, receivedAt: now, ...(!p.name && draft.senderName ? { name: draft.senderName } : {}) } : p));
     } else {
       save([...cur, { id: draft.sender, name: name.trim().slice(0, 20), seq: draft.seq, color, visible: true, receivedAt: now, body: draft.body }]);
     }
@@ -120,7 +144,14 @@ export function ShiftShareProvider({ children }: { children: React.ReactNode }) 
     save(peopleRef.current.map(p => p.id === id ? { ...p, ...(patch.name != null ? { name: patch.name.trim().slice(0, 20) } : {}), ...(patch.color ? { color: patch.color } : {}) } : p)), [save]);
   const removePerson = useCallback((id: string) => save(peopleRef.current.filter(p => p.id !== id)), [save]);
 
-  const sendShare = useCallback(async (alarms: Alarm[], overrides: DayOverrides) => {
+  const setMyName = useCallback((v: string) => {
+    const nm = cleanSenderName(v);
+    myNameRef.current = nm;
+    setMyNameState(nm);
+    AsyncStorage.setItem(K_MYNAME, nm).catch(() => {});
+  }, []);
+
+  const doSend = useCallback(async (alarms: Alarm[], overrides: DayOverrides) => {
     let sid = senderRef.current;
     if (!sid) {
       sid = newSenderId();
@@ -128,20 +159,34 @@ export function ShiftShareProvider({ children }: { children: React.ReactNode }) 
       AsyncStorage.setItem(K_SENDER, sid).catch(() => {});
     }
     const body = buildShareBody(alarms, overrides, new Date());
-    const link = buildShareLink(body, sid);
+    const link = buildShareLink(body, sid, myNameRef.current ?? '');
     try {
       // 요약 줄 + 빈 줄 + '눌러서 교대알람에서 보기 ▶ 링크'(세이람 보내기 글과 같은 모양). 데이터는 링크 # 뒤 — 서버로 가지 않는다
       await Share.share({ message: buildShareMessage(body, link) });
     } catch {}
   }, [t]); // t가 바뀌면(언어 변경) 새로 — 글은 utils의 t(현재 언어)로 만든다
 
+  // 처음 보낼 때만 이름을 한 번 묻는다(건너뛰기 가능). 그다음부터는 묻지 않고 저장한 이름으로 바로 보낸다
+  const sendShare = useCallback(async (alarms: Alarm[], overrides: DayOverrides) => {
+    if (myNameRef.current == null) { setAskName({ alarms, overrides }); return; }
+    await doSend(alarms, overrides);
+  }, [doSend]);
+  const onNameDone = useCallback((name: string) => {
+    const pending = askName;
+    setMyName(name);
+    setAskName(null);
+    // 이름 창이 닫힌 뒤에 공유 창을 연다(iOS는 닫히는 중인 Modal 위로 공유 창을 못 띄운다)
+    if (pending) setTimeout(() => { doSend(pending.alarms, pending.overrides); }, 450);
+  }, [askName, setMyName, doSend]);
+
   // 근무표는 원문으로만 저장하고 읽을 때 한 번 편다(사람이 바뀔 때만)
   const views = useMemo(() => people.map(p => ({ ...p, data: dataOf(p) })), [people]);
 
   return (
-    <Context.Provider value={{ people: views, together, setTogether, setVisible, editPerson, removePerson, sendShare, incomingSeq }}>
+    <Context.Provider value={{ people: views, together, setTogether, setVisible, editPerson, removePerson, sendShare, myName, setMyName, incomingSeq }}>
       {children}
       <ShareReceiveModal draft={draft} onCancel={() => setDraft(null)} onAccept={accept} />
+      <ShareNameModal visible={!!askName} onDone={onNameDone} onCancel={() => setAskName(null)} />
     </Context.Provider>
   );
 }

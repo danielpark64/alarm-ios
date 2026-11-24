@@ -101,6 +101,15 @@
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="alarmappshare"/>
       </intent-filter>
+      <!-- 근무표 공유 링크 바로 열기(1.6.1~, App Links) — https 안내 페이지 주소를 누르면 페이지 없이 바로 앱.
+           확인 파일: https://danielpark64.github.io/.well-known/assetlinks.json(Play 서명 키 + 로컬 release 키).
+           링크 내용(# 뒤)은 useShiftShare가 읽고, expo-router 경로는 app/+native-intent.tsx가 막는다. -->
+      <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="https" android:host="danielpark64.github.io" android:pathPrefix="/alarm-ios/s"/>
+      </intent-filter>
     </activity>
   </application>
 </manifest>

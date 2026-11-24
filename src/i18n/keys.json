@@ -571,6 +571,12 @@
   ]
  },
  {
+  "key": "건너뛰기",
+  "files": [
+   "src/components/Home/ShareReceiveModal.tsx"
+  ]
+ },
+ {
   "key": "결제 중 오류가 발생했습니다",
   "files": [
    "src/hooks/useCoffeeTip.ts"
@@ -894,7 +900,9 @@
  {
   "key": "나",
   "files": [
+   "src/components/Home/SettingsView.tsx",
    "src/components/Home/ShareBar.tsx",
+   "src/components/Home/ShareReceiveModal.tsx",
    "src/components/Home/ShareTab.tsx"
   ]
  },
@@ -1012,7 +1020,8 @@
    "src/components/Home/CalendarView.tsx",
    "src/components/Home/ShareBar.tsx",
    "src/components/Support/CoffeeTipScreen.tsx",
-   "src/components/common/CalendarPicker.tsx"
+   "src/components/common/CalendarPicker.tsx",
+   "src/hooks/useShiftShare.tsx"
   ]
  },
  {
@@ -1324,6 +1333,18 @@
   ]
  },
  {
+  "key": "받은 사람에게 \"{name}님의 근무표\"로 보여요. 비워 두면 이름 없이 보내요.",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "받은 사람에게 \"{name}님의 근무표\"로 보여요. 처음 한 번만 물어요 — 설정에서 바꿀 수 있어요.",
+  "files": [
+   "src/components/Home/ShareReceiveModal.tsx"
+  ]
+ },
+ {
   "key": "변경",
   "files": [
    "src/components/AlarmForm/WorkPatternBuilder.tsx"
@@ -1342,9 +1363,22 @@
   ]
  },
  {
+  "key": "보내기",
+  "files": [
+   "src/components/Home/ShareReceiveModal.tsx"
+  ]
+ },
+ {
   "key": "보내는 법",
   "files": [
    "src/components/Home/ShareTab.tsx"
+  ]
+ },
+ {
+  "key": "보낼 때 내 이름",
+  "files": [
+   "src/components/Home/SettingsView.tsx",
+   "src/components/Home/ShareReceiveModal.tsx"
   ]
  },
  {
@@ -1438,7 +1472,7 @@
   ]
  },
  {
-  "key": "새 형식의 근무표예요. 앱을 최신 버전으로 업데이트한 뒤 링크를 다시 눌러 주세요.",
+  "key": "새 형식의 근무표예요. 업데이트한 뒤 링크를 다시 누르면 열려요.",
   "files": [
    "src/hooks/useShiftShare.tsx"
   ]
@@ -1828,6 +1862,18 @@
   ]
  },
  {
+  "key": "업데이트",
+  "files": [
+   "src/hooks/useShiftShare.tsx"
+  ]
+ },
+ {
+  "key": "업데이트가 필요해요",
+  "files": [
+   "src/hooks/useShiftShare.tsx"
+  ]
+ },
+ {
   "key": "없음",
   "files": [
    "src/constants/index.ts"
@@ -1874,6 +1920,13 @@
   "key": "예: 3일마다",
   "files": [
    "src/components/AlarmForm/RepeatModeSelector.tsx"
+  ]
+ },
+ {
+  "key": "예: 민수",
+  "files": [
+   "src/components/Home/SettingsView.tsx",
+   "src/components/Home/ShareReceiveModal.tsx"
   ]
  },
  {
