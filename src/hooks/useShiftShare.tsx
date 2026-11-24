@@ -22,10 +22,12 @@ const K_SENDER = 'shift_share_sender_v1';
 // 바꾸기는 설정 [근무표 공유] 한 곳에서만.
 const K_MYNAME = 'shift_share_myname_v1';
 
-/** 새 형식 안내 [업데이트] — 플랫폼별 스토어(Android는 market:// 실패 시 웹 주소) */
+/** 새 형식 안내 [업데이트] — 플랫폼별 스토어.
+ *  Android는 Play 웹 주소를 먼저 연다 — Play 스토어 앱이 이 주소를 바로 받는다. market://는 삼성 폰에서
+ *  원스토어·갤럭시 스토어·Play를 고르는 창이 떠서(2026-11-24 32에서 확인, 이 앱은 Play에만 있음) 웹 주소가 안 열릴 때만 쓴다. */
 function openStore() {
   if (Platform.OS === 'ios') { Linking.openURL(STORE_IOS).catch(() => {}); return; }
-  Linking.openURL(STORE_ANDROID).catch(() => Linking.openURL(STORE_ANDROID_WEB).catch(() => {}));
+  Linking.openURL(STORE_ANDROID_WEB).catch(() => Linking.openURL(STORE_ANDROID).catch(() => {}));
 }
 
 export type SharedPersonView = SharedPerson & { data: ShiftData | null };

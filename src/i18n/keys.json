@@ -900,9 +900,7 @@
  {
   "key": "나",
   "files": [
-   "src/components/Home/SettingsView.tsx",
    "src/components/Home/ShareBar.tsx",
-   "src/components/Home/ShareReceiveModal.tsx",
    "src/components/Home/ShareTab.tsx"
   ]
  },

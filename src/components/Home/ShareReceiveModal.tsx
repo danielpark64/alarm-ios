@@ -124,7 +124,7 @@ export function ShareNameModal({ visible, onDone, onCancel }: { visible: boolean
         <View style={s.back}>
           <View style={s.card}>
             <Text style={s.title}>{t('보낼 때 내 이름')}</Text>
-            <Text style={s.sub}>{t('받은 사람에게 "{name}님의 근무표"로 보여요. 처음 한 번만 물어요 — 설정에서 바꿀 수 있어요.', { name: name.trim() || t('나') })}</Text>
+            <Text style={s.sub}>{t('받은 사람에게 "{name}님의 근무표"로 보여요. 처음 한 번만 물어요 — 설정에서 바꿀 수 있어요.', { name: name.trim() || '○○' })}</Text>
             <TextInput style={s.input} value={name} onChangeText={setName} maxLength={SENDER_NAME_MAX} autoFocus
               placeholder={t('예: 민수')} placeholderTextColor={C.txt3} returnKeyType="done"
               onSubmitEditing={() => onDone(name)} accessibilityLabel={t('보낼 때 내 이름')} />

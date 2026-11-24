@@ -130,7 +130,7 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp, onSendShifts
             <View style={s.row}>
               <View style={{ flex: 1, minWidth: 0, marginRight: 12 }}>
                 <Text style={s.rowLabel}>{t('보낼 때 내 이름')}</Text>
-                <Text style={s.rowSub}>{t('받은 사람에게 "{name}님의 근무표"로 보여요. 비워 두면 이름 없이 보내요.', { name: myName.trim() || t('나') })}</Text>
+                <Text style={s.rowSub}>{t('받은 사람에게 "{name}님의 근무표"로 보여요. 비워 두면 이름 없이 보내요.', { name: myName.trim() || '○○' })}</Text>
               </View>
               <TextInput style={s.nameInput} value={myName} onChangeText={setMyNameText} onEndEditing={commitName} onBlur={commitName}
                 maxLength={SENDER_NAME_MAX} placeholder={t('예: 민수')} placeholderTextColor={C.txt3} returnKeyType="done"
