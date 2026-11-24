@@ -25,6 +25,8 @@ export type RingingState = { title: string; body: string; alarmId?: number; base
 export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number, patch: Partial<Alarm>) => Promise<void>, loaded = true) {
   const [notifGranted, setNotifGranted] = useState(false);
   const [overlayGranted, setOverlayGranted] = useState<boolean | null>(null);
+  // 시작 때 권한 창(알림·AlarmKit 시스템 창, 표시 권한 확인)이 다 끝났는지 — 뒤이은 안내 창(useAlarmScreenAsk)이 겹치지 않게
+  const [startupPermsDone, setStartupPermsDone] = useState(false);
   const [tick, setTick] = useState(0);
   const [ringing, setRinging] = useState<RingingState | null>(null);
   const appStateRef    = useRef(AppState.currentState);
@@ -69,7 +71,8 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       if (Platform.OS === 'android' && AlarmModule?.canDrawOverlays) {
         setOverlayGranted(await AlarmModule.canDrawOverlays());
       }
-    })();
+      setStartupPermsDone(true);
+    })().catch(() => setStartupPermsDone(true));
   }, []);
 
   // AlarmKit 방식이 바뀌었으면 재예약 — 로드 전이면 loaded가 true가 될 때 돈다(useAlarms의 첫 재예약이
@@ -297,5 +300,5 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
     setRinging(null);
   };
 
-  return { notifGranted, requestPermission, overlayGranted, requestOverlayPermission, tick, ringing, stopRinging, snoozeRinging };
+  return { notifGranted, requestPermission, overlayGranted, requestOverlayPermission, tick, ringing, stopRinging, snoozeRinging, startupPermsDone };
 }

@@ -816,6 +816,52 @@ grep -q "AlarmTones" "$NATIVE_DIR/AlarmService.kt" || _TP="$_TP AlarmService"
 grep -q "o.sound\|o\.sound" "$ROOT/modules/alarmapp-alarmkit/ios/AlarmappAlarmKitModule.swift" || _TP="$_TP AlarmKit.swift"
 [ -z "$_TP" ] && ok "" || fail "소리 id 전달 끊김 —$_TP"
 
+# ── 알람 화면 항상 맨 앞(1.6.1, 2026-11-24 세이람 0eb9d8b 이식) — 울리는 동안 끌 곳이 숨지 않게 ──
+# ① 커버·잠금해제 전 울림 화면(CoverAlarmActivity)은 울리는 동안 뒤로 가기로 닫히지 않는다(소리는 계속인데 끌 곳이 사라짐).
+#    대신 이미 꺼졌으면 남아 있지 않는다(onResume에서 닫고, 뒤로 가기도 허용) — 막기만 하면 낡은 화면이 못 닫힌다.
+printf "  맨 앞: 커버 울림 화면 뒤로 가기 막기(울리는 동안만) ... "
+_CA="$NATIVE_DIR/CoverAlarmActivity.kt"
+if ! grep -q "override fun onBackPressed" "$_CA"; then fail "CoverAlarmActivity에 onBackPressed 없음 — 뒤로 가기로 울림 화면이 닫힘"
+elif ! grep -A4 "override fun onBackPressed" "$_CA" | grep -q "AlarmService.currentRinging"; then fail "뒤로 가기가 울림 여부를 안 봄 — 꺼진 뒤에도 못 닫히거나 울리는 중에 닫힘"
+elif ! grep -A4 "override fun onResume" "$_CA" | grep -q "AlarmService.currentRinging == null"; then fail "onResume에서 꺼진 알람의 낡은 화면을 닫지 않음"
+else ok ""; fi
+# ② 기본 화면: 울리는 동안 홈·다른 앱에 가려지면 다시 맨 앞으로(scheduleKeepFront). 울림이 끝나는 모든 길(끄기·스누즈·서비스 종료)에서
+#    멈춘다 — 안 멈추면 끈 뒤에도 앱이 튀어나온다. 화면 꺼짐·통화 중에는 띄우지 않고, "다른 앱 위에 표시"가 없으면 돌리지 않는다.
+printf "  맨 앞: 가려지면 다시 올림 + 끝나면 멈춤 ... "
+_AS="$NATIVE_DIR/AlarmService.kt"
+_KF_BAD=""
+grep -q "private fun scheduleKeepFront" "$_AS" || _KF_BAD="$_KF_BAD 함수없음"
+[ "$(grep -c 'scheduleKeepFront(' "$_AS")" -ge 2 ] || _KF_BAD="$_KF_BAD 호출없음"
+[ "$(grep -c 'cancelKeepFront()' "$_AS")" -ge 4 ] || _KF_BAD="$_KF_BAD 멈춤(끄기·스누즈·onDestroy)부족"
+_KF_BODY=$(awk '/private fun scheduleKeepFront/,/^    }$/' "$_AS")
+echo "$_KF_BODY" | grep -q "canDrawOverlays()" || _KF_BAD="$_KF_BAD 오버레이권한검사없음"
+echo "$_KF_BODY" | grep -q "currentRinging == null" || _KF_BAD="$_KF_BAD 울림검사없음"
+echo "$_KF_BODY" | grep -q "isScreenOn()" || _KF_BAD="$_KF_BAD 화면꺼짐검사없음"
+echo "$_KF_BODY" | grep -q "inCall()" || _KF_BAD="$_KF_BAD 통화중검사없음"
+echo "$_KF_BODY" | grep -q "MainActivity.inFront" || _KF_BAD="$_KF_BAD 맨앞판정없음"
+grep -q "inFront = true" "$NATIVE_DIR/MainActivity.kt" && grep -q "inFront = false" "$NATIVE_DIR/MainActivity.kt" || _KF_BAD="$_KF_BAD MainActivity맨앞기록없음"
+[ -z "$_KF_BAD" ] && ok "" || fail "다시 올리기 —$_KF_BAD"
+# ③ 화면이 하나뿐인 폰은 전체 화면 알림(fullScreenIntent)도 단다 — "다른 앱 위에 표시"가 꺼져 있어도 잠금·화면 꺼짐 때 울림 화면이 뜬다.
+#    접는 폰(화면 둘 이상)은 달지 않는다 — 시스템이 기본 화면에 먼저 띄워 커버 화면 지정과 경쟁한다(42b5b66 이후 제거한 이유).
+printf "  맨 앞: 전체 화면 알림은 화면 하나인 폰만 ... "
+if ! grep -q "\.setFullScreenIntent(" "$_AS"; then fail "AlarmService에 setFullScreenIntent 호출 없음"
+elif ! grep -B8 "\.setFullScreenIntent(" "$_AS" | grep -q "if (!hasMultipleDisplays())"; then fail "fullScreenIntent가 접는 폰에서도 달림 — 커버 화면과 경쟁"
+else ok ""; fi
+# ④ Android 14+ 전체 화면 알림 허용 확인·설정 열기(네이티브) + 안내 판정(순수 함수, logic-tests) + 설정 줄.
+printf "  맨 앞: 전체 화면 알림 허용 확인·안내 ... "
+_FSI_BAD=""
+grep -q "fun canUseFullScreenIntent" "$NATIVE_DIR/AlarmModule.kt" || _FSI_BAD="$_FSI_BAD AlarmModule.canUseFullScreenIntent"
+grep -q "fun openFullScreenIntentSettings" "$NATIVE_DIR/AlarmModule.kt" || _FSI_BAD="$_FSI_BAD AlarmModule.openFullScreenIntentSettings"
+[ -f "$ROOT/src/utils/alarmScreenAsk.ts" ] || _FSI_BAD="$_FSI_BAD src/utils/alarmScreenAsk.ts"
+grep -q "canUseFullScreenIntent" "$ROOT/src/components/Home/SettingsView.tsx" 2>/dev/null || _FSI_BAD="$_FSI_BAD 설정줄"
+[ -z "$_FSI_BAD" ] && ok "" || fail "없음 —$_FSI_BAD"
+# ⑤ iOS 시간 민감 알림 — core.ts가 interruptionLevel 'timeSensitive'를 쓰면 엔타이틀먼트가 있어야 한다.
+#    없으면 iOS가 오류 없이 보통 단계로 낮춘다(집중 모드에서 안 뜸). ios/는 gitignore라 app.json에 둔다.
+printf "  iOS 시간 민감 알림 엔타이틀먼트(app.json) ... "
+if grep -q "timeSensitive" "$ROOT/src/utils/notifications/core.ts" && ! grep -q '"com.apple.developer.usernotifications.time-sensitive": true' "$ROOT/app.json"; then
+  fail "core.ts는 timeSensitive를 쓰는데 app.json ios.entitlements에 time-sensitive 없음 — 조용히 보통 알림으로 낮아짐"
+else ok ""; fi
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

@@ -92,7 +92,8 @@
       "entitlements": {
         "com.apple.security.application-groups": [
           "group.com.danielpark.shared"
-        ]
+        ],
+        "com.apple.developer.usernotifications.time-sensitive": true
       },
       "buildNumber": "11",
       "associatedDomains": [

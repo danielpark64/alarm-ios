@@ -236,6 +236,39 @@ class AlarmModule(private val reactContext: ReactApplicationContext) :
         reactContext.startActivity(intent)
     }
 
+    /** Android 14+: 전체 화면 알림(잠금·화면 꺼짐 때 울림 화면을 띄우는 길) 허용 여부. 13 이하는 설치 때 자동 허용 → true */
+    @ReactMethod
+    fun canUseFullScreenIntent(promise: Promise) {
+        val ok = if (Build.VERSION.SDK_INT >= 34) {
+            try {
+                (reactContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager).canUseFullScreenIntent()
+            } catch (_: Exception) { true }
+        } else true
+        promise.resolve(ok)
+    }
+
+    /** Android 14+: 전체 화면 알림 허용 화면으로 보낸다(그 화면이 없는 기기는 앱 알림 설정으로) */
+    @ReactMethod
+    fun openFullScreenIntentSettings() {
+        var opened = false
+        if (Build.VERSION.SDK_INT >= 34) {
+            try {
+                reactContext.startActivity(
+                    Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:${reactContext.packageName}"))
+                        .apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
+                )
+                opened = true
+            } catch (_: Exception) {}
+        }
+        if (!opened) try {
+            reactContext.startActivity(
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, reactContext.packageName)
+                    .apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
+            )
+        } catch (_: Exception) {}
+    }
+
     @ReactMethod
     fun snoozeAlarm(alarmId: Int, title: String, body: String, volume: Double) {
         val ctx = reactContext

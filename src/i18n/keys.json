@@ -891,6 +891,12 @@
   ]
  },
  {
+  "key": "꺼짐 ›",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
   "key": "끄기",
   "files": [
    "src/components/AlarmRinging.tsx",
@@ -907,6 +913,7 @@
  {
   "key": "나중에",
   "files": [
+   "src/hooks/useAlarmScreenAsk.ts",
    "app/index.tsx"
   ]
  },
@@ -938,9 +945,33 @@
   ]
  },
  {
+  "key": "눌러서 \"다른 앱 위에 표시\"를 켜면 다른 앱을 쓰는 중에도 알람 끄기 화면이 맨 앞에 떠요",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "눌러서 \"전체 화면 알림\"을 허용하면 화면이 꺼져 있거나 잠겨 있어도 알람 끄기 화면이 떠요",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
   "key": "눌러서 교대알람에서 보기 ▶",
   "files": [
    "src/utils/shiftShareLink.ts"
+  ]
+ },
+ {
+  "key": "눌러서 설정 앱의 \"알람 및 타이머\"를 켜면 무음·집중 모드에서도 시계 앱처럼 잠금 화면 가득 알람이 떠요",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "눌러서 허용하면 무음·집중 모드에서도 시계 앱처럼 잠금 화면 가득 알람이 떠요",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
   ]
  },
  {
@@ -951,6 +982,18 @@
  },
  {
   "key": "다른 앱",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "다른 앱 위에 알람 띄우기",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "다른 앱을 쓰는 중에도 알람 끄기 화면이 맨 앞에 떠요",
   "files": [
    "src/components/Home/SettingsView.tsx"
   ]
@@ -1271,6 +1314,18 @@
   ]
  },
  {
+  "key": "무음·집중 모드에서도 시계 앱처럼 잠금 화면 가득 알람이 떠요",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
+  "key": "무음·집중 모드에서도 시계 앱처럼 화면 가득 알람이 울리게 하려면 설정 앱에서 \"알람 및 타이머\"를 켜 주세요.\n\n\"설정으로 이동\"을 누르면 이 앱의 설정 화면이 열려요. \"알람 및 타이머\"를 켜고 돌아오면 돼요.",
+  "files": [
+   "src/hooks/useAlarmScreenAsk.ts"
+  ]
+ },
+ {
   "key": "믿을 수 있는 알람",
   "files": [
    "src/content/help.ko.ts"
@@ -1521,6 +1576,7 @@
  {
   "key": "설정으로 이동",
   "files": [
+   "src/hooks/useAlarmScreenAsk.ts",
    "app/index.tsx"
   ]
  },
@@ -1613,6 +1669,12 @@
   "key": "시간을 맞춰보세요.",
   "files": [
    "src/content/tutorialSteps.ko.ts"
+  ]
+ },
+ {
+  "key": "시계 앱처럼 울리기",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
   ]
  },
  {
@@ -1764,6 +1826,12 @@
   ]
  },
  {
+  "key": "알람 화면",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
   "key": "알람내용",
   "files": [
    "src/components/AlarmForm/index.tsx"
@@ -1794,6 +1862,12 @@
   ]
  },
  {
+  "key": "알람을 시계 앱처럼 울리려면",
+  "files": [
+   "src/hooks/useAlarmScreenAsk.ts"
+  ]
+ },
+ {
   "key": "알람이 없습니다",
   "files": [
    "src/components/Home/AlarmsTab.tsx"
@@ -1803,6 +1877,12 @@
   "key": "알람이 울릴 때 화면에 바로 떠서 끄기 버튼을 누를 수 있게 하려면 권한이 필요해요.\n\n\"설정으로 이동\"을 누르면 \"다른 앱 위에 표시\"라는 제목의 화면이 열려요.\n\n1. 그 목록에서 \"알람\"을 찾아주세요\n2. \"알람\" 옆에 있는 스위치를 켜주세요\n3. 켠 다음에는 화면 왼쪽 위 ← 버튼을 눌러 앱으로 돌아와주세요",
   "files": [
    "app/index.tsx"
+  ]
+ },
+ {
+  "key": "알람이 울릴 때 화면이 꺼져 있거나 잠겨 있어도 끄기 화면이 뜨게 하려면 \"전체 화면 알림\"을 허용해 주세요.\n\n\"설정으로 이동\"을 누르면 열리는 화면에서 스위치를 켜고 ← 버튼으로 돌아오면 돼요.",
+  "files": [
+   "src/hooks/useAlarmScreenAsk.ts"
   ]
  },
  {
@@ -2263,6 +2343,13 @@
   ]
  },
  {
+  "key": "잠금 화면에 알람 띄우기",
+  "files": [
+   "src/components/Home/SettingsView.tsx",
+   "src/hooks/useAlarmScreenAsk.ts"
+  ]
+ },
+ {
   "key": "저장",
   "files": [
    "src/components/AlarmForm/index.tsx",
@@ -2512,6 +2599,12 @@
   ]
  },
  {
+  "key": "켜짐",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
   "key": "켠 알람은 제때 알려 드리고, 끈 알람은 깨끗이 지워요",
   "files": [
    "src/content/help.ko.ts"
@@ -2701,6 +2794,12 @@
   "key": "화면 오른쪽 위에 있는 ＋ 버튼을 누르면 새 알람을 만들 수 있어요.\n처음이라 헷갈리면 위쪽 \"근무표 만들기 따라하기\"를 눌러 화면을 보면서 그대로 따라 해보세요.",
   "files": [
    "src/content/help.ko.ts"
+  ]
+ },
+ {
+  "key": "화면이 꺼져 있거나 잠겨 있어도 알람 끄기 화면이 떠요",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
   ]
  },
  {

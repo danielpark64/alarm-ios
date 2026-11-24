@@ -42,6 +42,24 @@ class MainActivity : ReactActivity() {
     applyRingingWindowFlags(intent)
   }
 
+  // 지금 맨 앞(resumed)인지 — AlarmService.scheduleKeepFront가 "울림 화면이 가려졌나"를 볼 때 쓴다.
+  // 기본 화면의 울림 화면은 이 액티비티 위의 RN 모달(AlarmRinging)이고, 모달(Dialog)은 액티비티를 pause시키지
+  // 않으므로 이 값이 곧 "울림 화면이 보이는가"다(앞으로 오면 JS가 getCurrentRinging으로 모달을 다시 띄운다).
+  override fun onResume() {
+    super.onResume()
+    inFront = true
+  }
+
+  override fun onPause() {
+    inFront = false
+    super.onPause()
+  }
+
+  companion object {
+    @Volatile var inFront = false
+      private set
+  }
+
   // configChanges에 smallestScreenSize가 있어 폴더블을 접고 펼쳐도 액티비티가 재생성되지 않는다.
   // 펼친 상태(대형 화면, 제한 없음)로 켠 뒤 접으면 커버 화면이 폰 크기인데도 가로 회전이 허용돼
   // 버리므로, 구성이 바뀔 때마다 현재 화면 크기 기준으로 다시 건다. super 호출은 필수(RN 전달).

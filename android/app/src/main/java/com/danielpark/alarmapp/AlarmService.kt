@@ -5,15 +5,18 @@ import android.content.Context
 import android.content.Intent
 import android.hardware.display.DisplayManager
 import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.UserManager
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.provider.Settings
 import android.view.Display
 import androidx.core.app.NotificationCompat
 import com.facebook.react.ReactApplication
@@ -39,6 +42,7 @@ class AlarmService : Service() {
                 cancelReps(alarmId)
                 stopRinging()
                 cancelCoverRelaunch()
+                cancelKeepFront()
                 notifyStopped(currentRinging)
                 currentRinging = null
                 stopForeground(STOP_FOREGROUND_REMOVE)
@@ -57,6 +61,7 @@ class AlarmService : Service() {
                 cancelReps(alarmId)
                 stopRinging()
                 cancelCoverRelaunch()
+                cancelKeepFront()
                 // 스누즈는 notifyStopped를 보내지 않는다 — 스누즈 진입점은 JS snoozeRinging 하나뿐이고
                 // 그쪽이 Expo rep 취소를 이미 직접 한다. 여기서 alarmStopped를 보내면 '한 번' 알람이
                 // 비활성화되어 rescheduleAll → cancelNativeAlarms가 방금 건 SNOOZE_REQUEST_CODE까지 지운다.
@@ -116,24 +121,7 @@ class AlarmService : Service() {
                 // 잠금해제 전에는 MainActivity(RN)가 directBootAware가 아니라 실행 자체가 막힌다
                 // (ActivityNotFoundException이 아래 catch에 조용히 삼켜져서 화면도 안 켜지고
                 //  끄기 UI도 없는 상태가 됐음). 그 구간엔 네이티브 화면으로 대체한다.
-                val locked = getSystemService(UserManager::class.java)?.isUserUnlocked == false
-                val intent = if (isCoverDisplay || locked) {
-                    Intent(this, CoverAlarmActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        putExtra("alarmId", alarmId)
-                        putExtra("title", title)
-                        // 기본 디스플레이에서 키가드 해제를 요청하면 보안 잠금 바운서가 떠서
-                        // 알람 화면을 가린다 — 커버 화면일 때만 해제를 요청하게 알려준다.
-                        putExtra("dismissKeyguard", isCoverDisplay)
-                    }
-                } else {
-                    Intent(this, MainActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                            Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                            Intent.FLAG_ACTIVITY_SINGLE_TOP
-                        putExtra("alarmRinging", true)
-                    }
-                }
+                val intent = ringScreenIntent(alarmId, title, isCoverDisplay)
                 val options = ActivityOptions.makeBasic()
                 displayId?.let { options.setLaunchDisplayId(it) }
                 startActivity(intent, options.toBundle())
@@ -142,6 +130,8 @@ class AlarmService : Service() {
                 // 다시 앞으로 띄워서 사용자가 끄기를 누를 기회를 계속 준다.
                 if (isCoverDisplay) scheduleCoverRelaunch(alarmId, title, displayId!!)
             } catch (e: Exception) { e.printStackTrace() }
+            // 기본 화면: 울리는 동안 홈 버튼·다른 앱에 가려지면 다시 맨 앞으로 올린다(커버 화면은 위의 재표시가 맡는다)
+            if (displayId == null || displayId == Display.DEFAULT_DISPLAY) scheduleKeepFront(alarmId, title)
         }
 
         val alreadyOn = findRingingTargetDisplayId(dm)
@@ -175,6 +165,82 @@ class AlarmService : Service() {
             cover?.displayId
         } catch (e: Exception) { null }
     }
+
+    /**
+     * 울림 화면 인텐트. 커버 화면이거나 잠금해제 전(Direct Boot — MainActivity(RN)는 directBootAware가 아니라
+     * 실행 자체가 막힌다)이면 네이티브 화면(CoverAlarmActivity), 아니면 앱 본 화면(MainActivity) 위의 RN 끄기 모달.
+     */
+    private fun ringScreenIntent(alarmId: Int, title: String, isCoverDisplay: Boolean): Intent {
+        val locked = getSystemService(UserManager::class.java)?.isUserUnlocked == false
+        return if (isCoverDisplay || locked) {
+            Intent(this, CoverAlarmActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                putExtra("alarmId", alarmId)
+                putExtra("title", title)
+                // 기본 디스플레이에서 키가드 해제를 요청하면 보안 잠금 바운서가 떠서
+                // 알람 화면을 가린다 — 커버 화면일 때만 해제를 요청하게 알려준다.
+                putExtra("dismissKeyguard", isCoverDisplay)
+            }
+        } else {
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra("alarmRinging", true)
+            }
+        }
+    }
+
+    // ── 가려지면 다시 맨 앞으로(1.6.1, 세이람 0eb9d8b 이식) ──
+    private var keepFrontRunnable: Runnable? = null
+
+    /**
+     * 울리는 동안에만 KEEP_FRONT_INTERVAL_MS마다 "울림 화면이 맨 앞인가"를 보고, 홈 버튼·다른 앱에 가려졌으면 다시 올린다
+     * (세이람 사용자 보고 "알람이 숨어 버림" — 소리는 계속인데 끌 곳이 안 보임).
+     * 울림이 끝나면(끄기·스누즈·서비스 종료) cancelKeepFront가 멈춘다 — 끈 뒤에는 절대 튀어나오지 않는다.
+     * 화면이 꺼져 있으면(전원 버튼) 다시 켜지 않고, 통화 중이면 통화 화면을 덮지 않는다.
+     * "다른 앱 위에 표시"가 없으면 백그라운드에서 띄울 수 없으므로(Android 10+, 예외 없이 조용히 막힘) 돌리지 않는다.
+     */
+    private fun scheduleKeepFront(alarmId: Int, title: String) {
+        cancelKeepFront()
+        if (!canDrawOverlays()) return
+        val dm = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+        val r = object : Runnable {
+            override fun run() {
+                if (currentRinging == null) return
+                // 펼쳐서 울리다 접은 플립처럼 커버 화면이 켜져 있으면 기본 화면에 다시 띄우지 않는다
+                val coverOn = findRingingTargetDisplayId(dm) != null
+                val shown = MainActivity.inFront || CoverAlarmActivity.inFront
+                if (!shown && coverRelaunchRunnable == null && !coverOn && isScreenOn() && !inCall()) {
+                    try {
+                        startActivity(ringScreenIntent(alarmId, title, false))
+                    } catch (e: Exception) { e.printStackTrace() }
+                }
+                coverRelaunchHandler.postDelayed(this, KEEP_FRONT_INTERVAL_MS)
+            }
+        }
+        keepFrontRunnable = r
+        coverRelaunchHandler.postDelayed(r, KEEP_FRONT_INTERVAL_MS)
+    }
+
+    private fun cancelKeepFront() {
+        keepFrontRunnable?.let { coverRelaunchHandler.removeCallbacks(it) }
+        keepFrontRunnable = null
+    }
+
+    private fun isScreenOn(): Boolean =
+        try { (getSystemService(Context.POWER_SERVICE) as PowerManager).isInteractive } catch (_: Exception) { true }
+
+    private fun inCall(): Boolean = try {
+        val mode = (getSystemService(Context.AUDIO_SERVICE) as AudioManager).mode
+        mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_IN_COMMUNICATION || mode == AudioManager.MODE_RINGTONE
+    } catch (_: Exception) { false }
+
+    private fun canDrawOverlays(): Boolean =
+        try { Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this) } catch (_: Exception) { false }
+
+    private fun hasMultipleDisplays(): Boolean =
+        try { (getSystemService(Context.DISPLAY_SERVICE) as DisplayManager).displays.size > 1 } catch (_: Exception) { false }
 
     private val coverRelaunchHandler = Handler(Looper.getMainLooper())
     private var coverRelaunchRunnable: Runnable? = null
@@ -391,6 +457,7 @@ class AlarmService : Service() {
     override fun onDestroy() {
         stopRinging()
         cancelCoverRelaunch()
+        cancelKeepFront()
         currentRinging = null
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
@@ -440,7 +507,7 @@ class AlarmService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val b = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(body)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
@@ -456,11 +523,21 @@ class AlarmService : Service() {
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            // setFullScreenIntent는 시스템이 디스플레이 지정 없이 즉시 MainActivity를 띄워버려서
-            // bringRingingActivityToFront()의 커버 디스플레이 타겟팅 시도보다 먼저 기본 디스플레이에
-            // 태스크를 만들어버리는 경쟁 상태를 유발함(폴더 닫힘 시 끄기 화면이 안 보이는 원인).
-            // bringRingingActivityToFront()가 SYSTEM_ALERT_WINDOW 권한으로 이미 동일한 역할을 하므로 제거.
-            .build()
+        // setFullScreenIntent는 시스템이 디스플레이 지정 없이 즉시 MainActivity를 띄워버려서
+        // bringRingingActivityToFront()의 커버 디스플레이 타겟팅 시도보다 먼저 기본 디스플레이에
+        // 태스크를 만들어버리는 경쟁 상태를 유발함(폴더 닫힘 시 끄기 화면이 안 보이는 원인) → 접는 폰(화면 둘 이상)은 달지 않는다.
+        // 화면이 하나뿐인 일반 폰은 커버와 경쟁할 일이 없으므로 단다(1.6.1, 세이람 0eb9d8b) — "다른 앱 위에 표시"가 꺼져
+        // 있거나 직접 띄우기가 어떤 이유로 막혀도 잠금·화면 꺼짐 상태에서는 시스템이 울림 화면을 띄운다.
+        // 둘 다 떠도 MainActivity는 singleTask, CoverAlarmActivity는 singleInstance라 화면은 하나다.
+        if (!hasMultipleDisplays()) {
+            val fullScreenPi = PendingIntent.getActivity(
+                this, 13,
+                ringScreenIntent(alarmId, title, false),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            b.setFullScreenIntent(fullScreenPi, true)
+        }
+        return b.build()
     }
 
     companion object {
@@ -492,5 +569,7 @@ class AlarmService : Service() {
 
         // 커버 디스플레이 AOD 강제 전환(약 4초)보다 짧게 잡아 끄기 화면을 계속 앞으로 띄움
         private const val COVER_RELAUNCH_INTERVAL_MS = 2_500L
+        // 가려진 울림 화면을 다시 올리는 간격(세이람과 같은 2.5초)
+        private const val KEEP_FRONT_INTERVAL_MS = 2_500L
     }
 }

@@ -10,6 +10,8 @@ import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.WindowManager
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -20,6 +22,7 @@ import android.widget.TextView
 // 아무것도 보이지 않는 문제가 있어, RN 없이 "끄기" 버튼 하나만 있는 순수 네이티브 화면을 사용한다.
 class CoverAlarmActivity : Activity() {
     private var alarmId: Int = -1
+    private var backBlocker: Any? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,6 +74,57 @@ class CoverAlarmActivity : Activity() {
         })
         root.addView(stopButton, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         setContentView(root)
+        blockBack()
+    }
+
+    /**
+     * 울리는 동안 뒤로 가기로 이 화면이 닫히면 소리·진동은 계속되는데 끌 곳이 안 보인다(세이람 "알람이 숨어 버림" 보고).
+     * → 울리는 중에는 뒤로 가기를 무시한다. 이미 꺼졌으면(알림 버튼·워치 등 다른 경로) 닫는다.
+     * 매니페스트가 enableOnBackInvokedCallback="false"라 지금은 onBackPressed로 오지만, 켜질 때를 위해 콜백도 건다.
+     */
+    private fun blockBack() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            try {
+                val cb = OnBackInvokedCallback { if (AlarmService.currentRinging == null) finish() }
+                onBackInvokedDispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, cb)
+                backBlocker = cb
+            } catch (e: Exception) { e.printStackTrace() }
+        }
+    }
+
+    @Deprecated("Android 13 미만·예측형 뒤로 가기를 안 쓰는 경우의 뒤로 가기")
+    @Suppress("DEPRECATION", "MissingSuperCall")
+    override fun onBackPressed() {
+        // 울리는 중에는 닫지 않는다(super를 부르지 않음). 이미 꺼졌으면 남아 있을 이유가 없으니 닫는다.
+        if (AlarmService.currentRinging == null) finish()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 다른 경로(알림 버튼·워치 등)로 이미 꺼졌으면 낡은 끄기 화면을 남기지 않는다 — 뒤로 가기를 막았으므로 꼭 필요
+        if (AlarmService.currentRinging == null) { finish(); return }
+        inFront = true
+    }
+
+    override fun onPause() {
+        inFront = false
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            (backBlocker as? OnBackInvokedCallback)?.let {
+                try { onBackInvokedDispatcher.unregisterOnBackInvokedCallback(it) } catch (_: Exception) {}
+            }
+        }
+        backBlocker = null
+        super.onDestroy()
+    }
+
+    companion object {
+        /** 지금 맨 앞(resumed)인지 — AlarmService.scheduleKeepFront가 가려졌는지 볼 때 쓴다 */
+        @Volatile var inFront = false
+            private set
     }
 
     private fun stopAlarmAndFinish() {

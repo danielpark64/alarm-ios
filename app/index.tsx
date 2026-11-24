@@ -16,6 +16,7 @@ import * as Notifications from 'expo-notifications';
 import { useAlarms } from '../src/hooks/useAlarms';
 import { useDayOverrides } from '../src/hooks/useDayOverrides';
 import { useAlarmNotifications } from '../src/hooks/useAlarmNotifications';
+import { useAlarmScreenAsk } from '../src/hooks/useAlarmScreenAsk';
 import { useSelectMode } from '../src/hooks/useSelectMode';
 import { useHolidaySync, refreshHolidays } from '../src/hooks/useHolidaySync';
 import { useSayramShare } from '../src/hooks/useSayramShare';
@@ -49,7 +50,10 @@ export default function App() {
   const { overrides, overridesLoaded, setOverride } = useDayOverrides(alarms);
   const shiftShare = useShiftShare(); // 근무표 보내기(설정 항목)·받기 신호 — 받은 근무는 [공유] 탭에서만 쓴다
   useHolidaySync();
-  const { notifGranted, requestPermission, overlayGranted, requestOverlayPermission, tick, ringing, stopRinging, snoozeRinging } = useAlarmNotifications(alarms, updateAlarm, loaded);
+  const { notifGranted, requestPermission, overlayGranted, requestOverlayPermission, tick, ringing, stopRinging, snoozeRinging, startupPermsDone } = useAlarmNotifications(alarms, updateAlarm, loaded);
+  // 알람 화면 권한 안내(3일에 한 번) — Android 14+ 전체 화면 알림, iOS 26+ AlarmKit 거부. 표시 권한이 꺼져 있으면
+  // 아래 showOverlayPrompt가 먼저 묻고 이건 묻지 않는다(창 두 개가 겹치지 않게).
+  useAlarmScreenAsk(alarms, loaded, startupPermsDone && overlayGranted !== false);
   const { selectMode, selectedIds, enterSelectMode, toggleSelect, selectAll, exitSelectMode } = useSelectMode();
   // 메인 화면은 달력 — 교대근무자는 약속 잡을 때 근무표(달력)부터 본다.
   // 탭은 저장하지 않는다 — 앱을 새로 켜면 항상 달력(공유 탭에 있다가 꺼도 마찬가지).

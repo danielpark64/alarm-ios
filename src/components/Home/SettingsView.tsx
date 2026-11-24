@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, TouchableOpacity, Platform, StyleSheet, Switch, TextInput } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Platform, StyleSheet, Switch, TextInput, AppState } from 'react-native';
 import { Text } from '../common/AppText';
 import Slider from '@react-native-community/slider';
 import Constants from 'expo-constants';
@@ -12,6 +12,7 @@ import { useWeekStart, type WeekStartSetting } from '../../hooks/useWeekStart';
 import { useSayramShare } from '../../hooks/useSayramShare';
 import { useShiftShare } from '../../hooks/useShiftShare';
 import { SENDER_NAME_MAX } from '../../utils/shiftShareLink';
+import { alarmKitAuthState, canDrawOverlays, canUseFullScreenIntent, openAlarmKitPermission, openFullScreenIntentSettings, requestOverlayPermission } from '../../utils/alarmScreenNative';
 
 const FONT_SCALES: { id: FontScaleName; label: string }[] = [
   { id: 'small',  label: N('작게') },
@@ -45,6 +46,24 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp, onSendShifts
   const [myName, setMyNameText] = useState(shift.myName ?? '');
   useEffect(() => { setMyNameText(shift.myName ?? ''); }, [shift.myName]);
   const commitName = () => { if (myName.trim() !== (shift.myName ?? '')) shift.setMyName(myName); };
+
+  // 알람 화면 권한(1.6.1) — 울릴 때 끄기 화면이 맨 앞에 뜨게 하는 것. 설정 앱에서 바꾸고 돌아오면 다시 읽는다.
+  //   Android 14+만 "전체 화면 알림" 줄(13 이하는 늘 허용), iOS 26 미만은 AlarmKit 줄을 숨긴다('unavailable').
+  const showFsiRow = Platform.OS === 'android' && Number(Platform.Version) >= 34;
+  const [overlayOk, setOverlayOk] = useState(true);
+  const [fsiOk, setFsiOk] = useState(true);
+  const [akAuth, setAkAuth] = useState(() => alarmKitAuthState());
+  useEffect(() => {
+    const refresh = () => {
+      if (Platform.OS === 'android') {
+        canDrawOverlays().then(setOverlayOk);
+        canUseFullScreenIntent().then(setFsiOk);
+      } else setAkAuth(alarmKitAuthState());
+    };
+    refresh();
+    const sub = AppState.addEventListener('change', st => { if (st === 'active') refresh(); });
+    return () => sub.remove();
+  }, []);
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={s.scrollC} showsVerticalScrollIndicator={false}>
@@ -164,6 +183,61 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp, onSendShifts
                 accessibilityLabel={t('세이람과 일정 공유')}
               />
             </View>
+          </View>
+        </>
+      )}
+
+      {(Platform.OS === 'android' || akAuth !== 'unavailable') && (
+        <>
+          <Text style={s.sectionLabel}>{t('알람 화면')}</Text>
+          <View style={s.card}>
+            {Platform.OS === 'android' && (
+              <TouchableOpacity style={s.row} activeOpacity={overlayOk ? 1 : 0.7}
+                onPress={() => { if (!overlayOk) requestOverlayPermission(); }}
+                accessibilityLabel={t('다른 앱 위에 알람 띄우기')}>
+                <View style={{ flex: 1, minWidth: 0, marginRight: 12 }}>
+                  <Text style={s.rowLabel}>{t('다른 앱 위에 알람 띄우기')}</Text>
+                  <Text style={s.rowSub}>{overlayOk
+                    ? t('다른 앱을 쓰는 중에도 알람 끄기 화면이 맨 앞에 떠요')
+                    : t('눌러서 "다른 앱 위에 표시"를 켜면 다른 앱을 쓰는 중에도 알람 끄기 화면이 맨 앞에 떠요')}</Text>
+                </View>
+                <Text style={[s.rowValue, overlayOk && { color: C.accent }]}>{overlayOk ? t('켜짐') : t('꺼짐 ›')}</Text>
+              </TouchableOpacity>
+            )}
+            {showFsiRow && (
+              <>
+                <View style={s.divider} />
+                <TouchableOpacity style={s.row} activeOpacity={fsiOk ? 1 : 0.7}
+                  onPress={() => { if (!fsiOk) openFullScreenIntentSettings(); }}
+                  accessibilityLabel={t('잠금 화면에 알람 띄우기')}>
+                  <View style={{ flex: 1, minWidth: 0, marginRight: 12 }}>
+                    <Text style={s.rowLabel}>{t('잠금 화면에 알람 띄우기')}</Text>
+                    <Text style={s.rowSub}>{fsiOk
+                      ? t('화면이 꺼져 있거나 잠겨 있어도 알람 끄기 화면이 떠요')
+                      : t('눌러서 "전체 화면 알림"을 허용하면 화면이 꺼져 있거나 잠겨 있어도 알람 끄기 화면이 떠요')}</Text>
+                  </View>
+                  <Text style={[s.rowValue, fsiOk && { color: C.accent }]}>{fsiOk ? t('켜짐') : t('꺼짐 ›')}</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity style={s.row} activeOpacity={akAuth === 'authorized' ? 1 : 0.7}
+                onPress={() => {
+                  if (akAuth === 'authorized') return;
+                  openAlarmKitPermission().then(() => setAkAuth(alarmKitAuthState())).catch(() => {});
+                }}
+                accessibilityLabel={t('시계 앱처럼 울리기')}>
+                <View style={{ flex: 1, minWidth: 0, marginRight: 12 }}>
+                  <Text style={s.rowLabel}>{t('시계 앱처럼 울리기')}</Text>
+                  <Text style={s.rowSub}>{akAuth === 'authorized'
+                    ? t('무음·집중 모드에서도 시계 앱처럼 잠금 화면 가득 알람이 떠요')
+                    : akAuth === 'notDetermined'
+                      ? t('눌러서 허용하면 무음·집중 모드에서도 시계 앱처럼 잠금 화면 가득 알람이 떠요')
+                      : t('눌러서 설정 앱의 "알람 및 타이머"를 켜면 무음·집중 모드에서도 시계 앱처럼 잠금 화면 가득 알람이 떠요')}</Text>
+                </View>
+                <Text style={[s.rowValue, akAuth === 'authorized' && { color: C.accent }]}>{akAuth === 'authorized' ? t('켜짐') : t('꺼짐 ›')}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </>
       )}
