@@ -4,7 +4,7 @@
 **사용자에게 보이는 모든 글은 한국어로 쓴다**(전역 규칙).
 
 ## 지금 상태 한 줄
-**두 스토어 모두 1.6.0 공개 — Play vc12(11-23 확인), iOS 빌드 11(11-24 판매 중 확인).** 다음 판 1.6.1 = 작은 수정 묶음(아래 48~49줄), 아이폰 확인은 TestFlight 업로드 뒤. 남은 실기기 확인: 카톡 받은 링크·알람 소리 6가지·이름 칸 줄바꿈·'오늘' 버튼.
+**1.6.1 준비 끝(11-24) — Play vc13 AAB `~/Desktop/교대알람-1.6.1-vc13.aab`(Console 업로드·검토 보내기 남음), iOS 빌드 12 VALID·1.6.1 버전에 연결·새 기능 15개 로캘(심사 제출 `asc-submit.mjs com.danielpark.alarmapp 1.6.1 --go` 남음).** 1.6.1 = 근무표 링크 바로 열기(유니버설 링크/App Links)·보낸 사람 이름, 새 형식 [업데이트] 안내, 알람 화면 맨 앞(Android)·시간 민감 알림(iOS), 달력 '오늘' 버튼 항상, 공유 탭 이름 줄바꿈. 출시 노트 `store-assets/listings/release-1.6.1.json`. App ID에 Associated Domains를 ASC API로 켬. 1.6.0은 두 스토어 공개 중.
 
 ### iOS 1.6.0 제출 내용 (2026-11-23)
 - 15개 로캘: 새 기능 = `store-assets/listings/release-1.6.0.md`의 App Store 글. 설명 = 1.5.3 설명 + "하루 근무 변경" 다음에 공유 단락 + 아이폰 안내 단락에 AlarmKit 한 줄(iOS 26 이상 무음·집중 모드에서도). fr·de는 4000자 때문에 무음 안내 문장을 AlarmKit 문장으로 바꾸고 위젯 단락을 줄임. 키워드는 기존 + 공유 낱말(공유/share/共有/共享/分享/compartir/partage/teilen/compartilhar).
