@@ -920,6 +920,7 @@
  {
   "key": "나중에",
   "files": [
+   "src/components/common/UpdatePrompt.tsx",
    "src/hooks/useAlarmScreenAsk.ts",
    "app/index.tsx"
   ]
@@ -1526,6 +1527,12 @@
   ]
  },
  {
+  "key": "새 버전이 있어요",
+  "files": [
+   "src/components/common/UpdatePrompt.tsx"
+  ]
+ },
+ {
   "key": "새 알람 추가하기",
   "files": [
    "src/content/help.ko.ts"
@@ -1949,6 +1956,7 @@
  {
   "key": "업데이트",
   "files": [
+   "src/components/common/UpdatePrompt.tsx",
    "src/hooks/useShiftShare.tsx"
   ]
  },

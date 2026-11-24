@@ -465,4 +465,6 @@ export const FR: Record<string, string> = {
   "알람을 시계 앱처럼 울리려면": "Faire sonner les alarmes comme l’app Horloge",
   "무음·집중 모드에서도 시계 앱처럼 화면 가득 알람이 울리게 하려면 설정 앱에서 \"알람 및 타이머\"를 켜 주세요.\n\n\"설정으로 이동\"을 누르면 이 앱의 설정 화면이 열려요. \"알람 및 타이머\"를 켜고 돌아오면 돼요.": "Pour que les alarmes sonnent en plein écran comme l’app Horloge, même en mode silencieux ou Concentration, activez « Alarmes et minuteurs » dans l’app Réglages.\n\nTouchez « Ouvrir les réglages » pour ouvrir les réglages de cette app, activez « Alarmes et minuteurs », puis revenez.",
   "알람이 울릴 때 화면이 꺼져 있거나 잠겨 있어도 끄기 화면이 뜨게 하려면 \"전체 화면 알림\"을 허용해 주세요.\n\n\"설정으로 이동\"을 누르면 열리는 화면에서 스위치를 켜고 ← 버튼으로 돌아오면 돼요.": "Pour que l’écran d’arrêt s’affiche quand une alarme sonne, même écran éteint ou verrouillé, autorisez « Notifications en plein écran ».\n\nTouchez « Ouvrir les réglages », activez l’interrupteur sur l’écran qui s’ouvre, puis revenez avec le bouton ←.",
+  // 새 버전 안내(1.6.3)
+  "새 버전이 있어요": "Une nouvelle version est disponible",
 };

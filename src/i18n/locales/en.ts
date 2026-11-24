@@ -467,4 +467,6 @@ export const EN: Record<string, string> = {
   "알람을 시계 앱처럼 울리려면": "Ring alarms like the Clock app",
   "무음·집중 모드에서도 시계 앱처럼 화면 가득 알람이 울리게 하려면 설정 앱에서 \"알람 및 타이머\"를 켜 주세요.\n\n\"설정으로 이동\"을 누르면 이 앱의 설정 화면이 열려요. \"알람 및 타이머\"를 켜고 돌아오면 돼요.": "To have alarms ring full screen like the Clock app, even in silent or Focus mode, turn on \"Alarms & Timers\" in the Settings app.\n\nTap \"Open Settings\" to open this app's settings, turn on \"Alarms & Timers\", then come back.",
   "알람이 울릴 때 화면이 꺼져 있거나 잠겨 있어도 끄기 화면이 뜨게 하려면 \"전체 화면 알림\"을 허용해 주세요.\n\n\"설정으로 이동\"을 누르면 열리는 화면에서 스위치를 켜고 ← 버튼으로 돌아오면 돼요.": "To have the dismiss screen appear when an alarm rings, even when the screen is off or locked, allow \"Full screen notifications\".\n\nTap \"Open Settings\", turn on the switch on the screen that opens, then come back with the ← button.",
+  // 새 버전 안내(1.6.3)
+  "새 버전이 있어요": "A new version is available",
 };

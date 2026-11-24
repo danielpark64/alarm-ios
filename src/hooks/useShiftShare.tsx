@@ -6,9 +6,10 @@ import { useT } from '../i18n';
 import { Alarm, DayOverrides } from '../constants';
 import {
   buildShareBody, buildShareLink, buildShareMessage, parseShareLink, decideIncoming, pickAutoColor, nextSeq, newSenderId, dataOf,
-  cleanSenderName, STORE_IOS, STORE_ANDROID, STORE_ANDROID_WEB,
+  cleanSenderName,
   type SharedPerson, type ShiftData,
 } from '../utils/shiftShareLink';
+import { openStore } from '../utils/storeLink'; // [업데이트] — 새 버전 안내와 같은 스토어 이동
 import { ShareReceiveModal, ShareNameModal, type ReceiveDraft } from '../components/Home/ShareReceiveModal';
 
 // 근무표 공유(1.6.0) — 받은 사람 목록(이름·색·근무표 원문만), 전체 창 설정, 보내기·받기.
@@ -21,14 +22,6 @@ const K_SENDER = 'shift_share_sender_v1';
 // 보낼 때 내 이름(1.6.1~) — 처음 보낼 때 한 번 묻고 저장(건너뛰면 '' 저장 = 다시 묻지 않음). 없음(null) = 아직 안 물음.
 // 바꾸기는 설정 [근무표 공유] 한 곳에서만.
 const K_MYNAME = 'shift_share_myname_v1';
-
-/** 새 형식 안내 [업데이트] — 플랫폼별 스토어.
- *  Android는 Play 웹 주소를 먼저 연다 — Play 스토어 앱이 이 주소를 바로 받는다. market://는 삼성 폰에서
- *  원스토어·갤럭시 스토어·Play를 고르는 창이 떠서(2026-11-24 32에서 확인, 이 앱은 Play에만 있음) 웹 주소가 안 열릴 때만 쓴다. */
-function openStore() {
-  if (Platform.OS === 'ios') { Linking.openURL(STORE_IOS).catch(() => {}); return; }
-  Linking.openURL(STORE_ANDROID_WEB).catch(() => Linking.openURL(STORE_ANDROID).catch(() => {}));
-}
 
 export type SharedPersonView = SharedPerson & { data: ShiftData | null };
 

@@ -757,7 +757,7 @@ elif ! grep -q '"autoVerify": *true' "$ROOT/app.json" || ! grep -q '"pathPrefix"
 elif ! grep -q "<string>applinks:danielpark64.github.io</string>" "$_ENT" 2>/dev/null; then fail "ios/app/app.entitlements에 associated-domains 없음"
 elif ! grep -q 'android:autoVerify="true"' "$_MF" || ! grep -q 'android:host="danielpark64.github.io"' "$_MF" || ! grep -q 'android:pathPrefix="/alarm-ios/s"' "$_MF"; then fail "AndroidManifest에 App Links(autoVerify·host·pathPrefix) intent-filter 없음"
 elif [ ! -f "$_NI" ] || ! grep -q "redirectSystemPath" "$_NI" || ! grep -q "/alarm-ios/s" "$_NI"; then fail "app/+native-intent.tsx 없음 — https 공유 주소로 열리면 Unmatched Route"
-elif ! grep -q "STORE_ANDROID" "$ROOT/src/hooks/useShiftShare.tsx" || ! grep -q "STORE_IOS" "$ROOT/src/hooks/useShiftShare.tsx"; then fail "새 형식 안내에 [업데이트](플랫폼별 스토어) 버튼 없음"
+elif ! grep -q "onPress: openStore" "$ROOT/src/hooks/useShiftShare.tsx" || ! grep -q "STORE_ANDROID_WEB" "$ROOT/src/utils/storeLink.ts" || ! grep -q "STORE_IOS" "$ROOT/src/utils/storeLink.ts"; then fail "새 형식 안내에 [업데이트](플랫폼별 스토어, utils/storeLink.ts) 버튼 없음"
 else ok ""; fi
 
 # ⑦ 알람 소리 고르기(2026-11-23) — 알람마다 소리 하나. 소리 파일 이름은 src/constants/alarmTones.ts(JS)와
@@ -921,6 +921,62 @@ grep -q 'NativeStrings.get(this, "appName"' "$_AS" || _AN="$_AN 상시알림제�
 grep -q '\.setContentText(body)' "$_AS" || _AN="$_AN 상시알림본문바뀜"
 grep -q '"appName"' "$_CA" && grep -q "getApplicationIcon" "$_CA" || _AN="$_AN 커버화면"
 [ -z "$_AN" ] && ok "" || fail "앱 이름 없음 —$_AN"
+
+# ── 새 버전 안내(1.6.3, 본부/규칙/업데이트-안내.md) — 앱을 열 때 스토어에 새 판이 있으면 "새 버전이 있어요" ──
+_UP_HOOK="$ROOT/src/hooks/useAppUpdatePrompt.ts"; _UP_NAT="$ROOT/src/utils/appUpdateNative.ts"; _UP_UI="$ROOT/src/components/common/UpdatePrompt.tsx"
+# ① 울리는 중·울림 화면에서는 절대 안 띄운다 — 알람 끄기를 막으면 안 된다.
+#    판정(shouldShowUpdate, logic-tests)에 울림 여부를 넘기고, Android는 띄우기 직전에 네이티브 울림(getCurrentRinging)도 본다.
+#    창은 <Modal>이 아닌 화면 안 덮개(View) — 울림 화면(AlarmRinging, Modal)이 늘 그 위에 뜬다(모달 겹침은 iOS에서 조용히 죽음).
+printf "  새 버전 안내: 울리는 중·울림 화면에서 안 띄움 ... "
+_UR=""
+[ -f "$_UP_HOOK" ] || _UR="$_UR 훅없음"
+grep -q "shouldShowUpdate(" "$_UP_HOOK" 2>/dev/null && grep -q "ringing" "$_UP_HOOK" 2>/dev/null || _UR="$_UR 판정에울림없음"
+grep -q "getCurrentRinging" "$_UP_HOOK" 2>/dev/null || _UR="$_UR 네이티브울림확인없음"
+grep -q "useAppUpdatePrompt(" "$ROOT/app/index.tsx" && grep -A6 "useAppUpdatePrompt(" "$ROOT/app/index.tsx" | grep -q "ringing: !!ringing" || _UR="$_UR index가울림을안넘김"
+[ -f "$_UP_UI" ] && ! grep -q "<Modal" "$_UP_UI" || _UR="$_UR 창이Modal이거나없음"
+# 화면에 그릴 때도 울림 화면이 없을 때만
+grep -q "!ringing && <UpdatePrompt\|!ringing && (<UpdatePrompt\|{!ringing && appUpdate" "$ROOT/app/index.tsx" || _UR="$_UR 그릴때울림검사없음"
+[ -z "$_UR" ] && ok "" || fail "울림 중에 뜰 수 있음 —$_UR"
+# ② 확인이 실패하면(인터넷 없음·스토어 응답 없음·Play 없음) 조용히 — 창·Alert 없이 null, 시간 제한, 앱 시작을 기다리게 하지 않는다.
+printf "  새 버전 안내: 실패하면 조용히(시간 제한·Alert 없음) ... "
+_US=""
+[ -f "$_UP_NAT" ] || _US="$_US appUpdateNative.ts없음"
+grep -q "export async function checkForUpdate" "$_UP_NAT" 2>/dev/null || _US="$_US checkForUpdate없음"
+awk '/export async function checkForUpdate/,/^}$/' "$_UP_NAT" 2>/dev/null | grep -q "catch" || _US="$_US try/catch없음"
+grep -q "AbortController\|withTimeout" "$_UP_NAT" 2>/dev/null || _US="$_US 시간제한없음"
+grep -qE "Alert|console\.(warn|error)" "$_UP_NAT" "$_UP_HOOK" 2>/dev/null && _US="$_US 실패를화면에보임"
+grep -q "checkForUpdate().then\|checkForUpdate()\.then" "$_UP_HOOK" 2>/dev/null || _US="$_US 뒤에서확인안함(await로기다림)"
+grep -q "\.catch(() => null)\|\.catch(() => {})" "$_UP_HOOK" 2>/dev/null || _US="$_US 훅catch없음"
+[ -z "$_US" ] && ok "" || fail "실패가 드러나거나 시작을 막음 —$_US"
+# ③ 다른 시작 안내 창(알림·AlarmKit 시스템 창 → 표시 권한 → 알람 화면 권한 → 첫 실행 따라하기)이 다 끝난 뒤에만.
+printf "  새 버전 안내: 시작 안내 창이 끝난 뒤 ... "
+_UO=""
+grep -q "settled" "$ROOT/src/hooks/useAlarmScreenAsk.ts" || _UO="$_UO useAlarmScreenAsk가끝남을안알림"
+_UREADY=$(grep -A6 "useAppUpdatePrompt(" "$ROOT/app/index.tsx")
+echo "$_UREADY" | grep -q "startupPermsDone" || _UO="$_UO 권한창"
+echo "$_UREADY" | grep -q "screenAskSettled" || _UO="$_UO 알람화면권한창"
+echo "$_UREADY" | grep -q "overlayAskOpen" || _UO="$_UO 표시권한창"
+echo "$_UREADY" | grep -q "firstRunPrompt" || _UO="$_UO 첫실행창"
+[ -z "$_UO" ] && ok "" || fail "다른 창과 겹칠 수 있음 —$_UO"
+# ④ 보내는 값 — iOS는 lookupUrl(번들 ID·나라)만, Android는 JS에서 인터넷을 쓰지 않는다(Play 스토어 앱이 확인 — 세이람은 INTERNET 권한 없음).
+printf "  새 버전 안내: iOS는 번들ID·나라만, Android는 fetch 없음 ... "
+_UF=""
+[ "$(grep -c "fetch(" "$_UP_NAT" 2>/dev/null)" = "1" ] || _UF="$_UF fetch가하나가아님"
+grep "fetch(" "$_UP_NAT" 2>/dev/null | grep -q "fetch(lookupUrl(IOS_BUNDLE_ID, " || _UF="$_UF 조회주소가lookupUrl아님"
+awk '/async function checkAndroid/,/^}$/' "$_UP_NAT" 2>/dev/null | grep -q "fetch(" && _UF="$_UF Android가fetch"
+grep -qE "headers|getUniqueId|deviceId|installationId" "$_UP_NAT" 2>/dev/null && _UF="$_UF 추가로보내는값"
+grep -q "com.google.android.play:app-update" "$ROOT/modules/app-update/android/build.gradle" 2>/dev/null || _UF="$_UF app-update의존성없음"
+[ -z "$_UF" ] && ok "" || fail "보내는 값이 늘어남 —$_UF"
+# ⑤ [업데이트]는 받은 링크의 "업데이트가 필요해요"와 같은 스토어 이동(storeLink.openStore — Android는 Play 웹 주소 먼저),
+#    스토어 주소·번들 ID는 src/constants/appInfo.ts 한 곳(다른 앱이 가져갈 때 여기만 바꾼다).
+printf "  새 버전 안내: 같은 스토어 이동·앱 값 한 곳 ... "
+_UL=""
+grep -q "export function openStore" "$ROOT/src/utils/storeLink.ts" 2>/dev/null || _UL="$_UL storeLink.openStore없음"
+grep -q "openStore" "$_UP_HOOK" 2>/dev/null || _UL="$_UL 새버전안내가openStore안씀"
+grep -q "from '../utils/storeLink'" "$ROOT/src/hooks/useShiftShare.tsx" || _UL="$_UL 공유안내가openStore안씀"
+grep -q "function openStore" "$ROOT/src/hooks/useShiftShare.tsx" && _UL="$_UL 공유에복사본남음"
+grep -rq "apps.apple.com/app/id6825757463" "$ROOT/src/utils" "$ROOT/src/hooks" "$ROOT/app" && _UL="$_UL 스토어주소가appInfo밖에"
+[ -z "$_UL" ] && ok "" || fail "스토어 이동이 두 갈래 —$_UL"
 
 if $STATIC_ONLY; then
   echo ""

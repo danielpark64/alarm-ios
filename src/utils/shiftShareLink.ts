@@ -19,10 +19,8 @@ export const SHARE_DAYS = 215;       // 오늘부터 약 7개월 — 세이람 d
 export const MAX_LINK = 4000;        // 이보다 긴 주소는 메신저가 자르거나 앱이 못 받는다 — 통째로 거부
 export const MY_COLOR = '#A29BFE';
 export const SENDER_NAME_MAX = 20;   // 보낸 사람 이름(v2 배열 8번째 칸, 1.6.1~) 최대 글자 수(코드 포인트)
-// 새 형식 안내 [업데이트] — 플랫폼별 스토어(Android는 market:// 실패 시 웹)
-export const STORE_IOS = 'https://apps.apple.com/app/id6825757463';
-export const STORE_ANDROID = 'market://details?id=com.danielpark.alarmapp';
-export const STORE_ANDROID_WEB = 'https://play.google.com/store/apps/details?id=com.danielpark.alarmapp';   // 나 창·전체 창의 내 점(앱 강조색)
+// 새 형식 안내 [업데이트] — 스토어 주소는 앱 값 한 곳(constants/appInfo.ts)에. 여는 코드는 utils/storeLink.ts openStore
+export { STORE_IOS, STORE_ANDROID, STORE_ANDROID_WEB } from '../constants/appInfo';
 // 받은 사람 자동 색 — 내 색(보라)·비번 파랑·다 같이 쉬는 날 초록과 겹치지 않는 것들
 export const AUTO_COLORS = ['#F0A35E', '#5EC8F0', '#F06E9C', '#E6D36A', '#9BE07A', '#C792EA', '#FF8A65', '#4DD0C8', '#B0BEC5', '#FFB3C7'];
 

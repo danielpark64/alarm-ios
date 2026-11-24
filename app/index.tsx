@@ -17,6 +17,8 @@ import { useAlarms } from '../src/hooks/useAlarms';
 import { useDayOverrides } from '../src/hooks/useDayOverrides';
 import { useAlarmNotifications } from '../src/hooks/useAlarmNotifications';
 import { useAlarmScreenAsk } from '../src/hooks/useAlarmScreenAsk';
+import { useAppUpdatePrompt } from '../src/hooks/useAppUpdatePrompt';
+import { UpdatePrompt } from '../src/components/common/UpdatePrompt';
 import { useSelectMode } from '../src/hooks/useSelectMode';
 import { useHolidaySync, refreshHolidays } from '../src/hooks/useHolidaySync';
 import { useSayramShare } from '../src/hooks/useSayramShare';
@@ -53,7 +55,11 @@ export default function App() {
   const { notifGranted, requestPermission, overlayGranted, requestOverlayPermission, tick, ringing, stopRinging, snoozeRinging, startupPermsDone } = useAlarmNotifications(alarms, updateAlarm, loaded);
   // 알람 화면 권한 안내(3일에 한 번) — Android 14+ 전체 화면 알림, iOS 26+ AlarmKit 거부. 표시 권한이 꺼져 있으면
   // 아래 showOverlayPrompt가 먼저 묻고 이건 묻지 않는다(창 두 개가 겹치지 않게).
-  useAlarmScreenAsk(alarms, loaded, startupPermsDone && overlayGranted !== false);
+  const { settled: screenAskSettled } = useAlarmScreenAsk(alarms, loaded, startupPermsDone && overlayGranted !== false);
+  // 새 버전 안내(1.6.3)가 시작 창들과 겹치지 않게 — 표시 권한 안내가 떠 있는지·답했는지, 첫 실행 따라하기 권유를 띄웠는지
+  const [overlayAskOpen, setOverlayAskOpen] = useState(false);
+  const [overlayAskAnswered, setOverlayAskAnswered] = useState(false);
+  const [firstRunPrompt, setFirstRunPrompt] = useState(false);
   const { selectMode, selectedIds, enterSelectMode, toggleSelect, selectAll, exitSelectMode } = useSelectMode();
   // 메인 화면은 달력 — 교대근무자는 약속 잡을 때 근무표(달력)부터 본다.
   // 탭은 저장하지 않는다 — 앱을 새로 켜면 항상 달력(공유 탭에 있다가 꺼도 마찬가지).
@@ -215,14 +221,14 @@ export default function App() {
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [rotationTutorialStep, tab, insets.top]);
 
-  const showOverlayPrompt = () => Alert.alert(
+  const showOverlayPrompt = () => { setOverlayAskOpen(true); Alert.alert(
     t('표시 권한 설정 방법'),
     t('알람이 울릴 때 화면에 바로 떠서 끄기 버튼을 누를 수 있게 하려면 권한이 필요해요.\n\n"설정으로 이동"을 누르면 "다른 앱 위에 표시"라는 제목의 화면이 열려요.\n\n1. 그 목록에서 "교대알람"을 찾아주세요\n2. "교대알람" 옆에 있는 스위치를 켜주세요\n3. 켠 다음에는 화면 왼쪽 위 ← 버튼을 눌러 앱으로 돌아와주세요'),
     [
-      { text: t('취소'), style: 'cancel' },
-      { text: t('설정으로 이동'), onPress: requestOverlayPermission },
+      { text: t('취소'), style: 'cancel', onPress: () => { setOverlayAskOpen(false); setOverlayAskAnswered(true); } },
+      { text: t('설정으로 이동'), onPress: () => { setOverlayAskOpen(false); setOverlayAskAnswered(true); requestOverlayPermission(); } },
     ]
-  );
+  ); };
 
   // 권한이 꺼져 있으면 앱을 켤 때마다 자동으로 한 번 안내 (배너만으로는 못 알아챌 수 있음)
   // overlayGranted === null은 "아직 확인 전"이라 여기선 무시 — false로 확정된 경우에만 안내
@@ -327,6 +333,8 @@ export default function App() {
       })();
       return;
     }
+    // alarmapp://?k=…&updatePreview=1 — 새 버전 안내 창 모양만 띄운다(스토어 확인 없이, 시작 창 순서·울림 검사는 그대로). 캡처용
+    if (q.updatePreview != null) { appUpdate.preview(); return; }
     // alarmapp://?k=…&akTest=<분> — iOS 26+ AlarmKit 무음 테스트 알람(앱 알람 목록과 무관, 울림 화면 확인용).
     if (q.akTest != null) {
       scheduleAlarmKitTest(Math.max(1, parseInt(String(q.akTest), 10) || 1));
@@ -448,6 +456,7 @@ export default function App() {
       const seen = await AsyncStorage.getItem(TUTORIAL_PROMPT_KEY);
       if (seen) return;
       await AsyncStorage.setItem(TUTORIAL_PROMPT_KEY, '1');
+      setFirstRunPrompt(true); // 첫 실행에는 새 버전 안내를 띄우지 않는다(방금 스토어에서 받은 판)
       Alert.alert(
         t('처음이시군요!'),
         t('근무표 만들기 따라하기를 해볼까요?\n(설정에서 언제든 보실 수 있습니다)'),
@@ -561,6 +570,15 @@ export default function App() {
   const repLimitedIds = useMemo(() => getRepLimitedIds(alarms), [alarms]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const next = useMemo(() => nextAlarmParts(alarms, overrides), [alarms, overrides, tick, lang]); // lang: 문구와 공휴일 게이트가 언어를 따른다
+
+  // 새 버전 안내(1.6.3, 본부/규칙/업데이트-안내.md) — 뒤에서 확인하고, 울리는 중이 아니고 시작 창들이 다 끝났을 때만 띄운다.
+  // 시작 창 순서: 알림·AlarmKit 시스템 창(startupPermsDone) → 표시 권한 안내(overlayAsk*) → 알람 화면 권한(screenAskSettled)
+  //   → (첫 실행이면 따라하기 권유 — 그 실행에는 안 띄움, firstRunPrompt). 따라하기 중에도 안 띄운다.
+  const appUpdate = useAppUpdatePrompt({
+    loaded, ringing: !!ringing,
+    ready: startupPermsDone && !overlayAskOpen && (screenAskSettled || (overlayGranted === false && overlayAskAnswered))
+      && !firstRunPrompt && tutorialStep === null && rotationTutorialStep === null,
+  });
 
   if (!loaded)
     return <View style={s.loading}><Text style={s.loadingT}>⏰</Text></View>;
@@ -740,6 +758,11 @@ export default function App() {
       )}
 
       <BottomNav tab={tab} setTab={handleNavPress} bottomInset={insets.bottom} />
+
+      {/* 새 버전 안내 — Modal이 아닌 덮개라 울림 화면(Modal)이 늘 위. 울리는 중엔 그리지도 않는다 */}
+      {!ringing && appUpdate.visible && (
+        <UpdatePrompt required={appUpdate.required} onUpdate={appUpdate.onUpdate} onLater={appUpdate.onLater} />
+      )}
     </SafeAreaView>
 
     {tutorialStep !== null && (
