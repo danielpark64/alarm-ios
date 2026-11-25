@@ -1,0 +1,39 @@
+{
+  "_note": "1.6.3 새로운 기능 (2026-11-25). play = Google Play, ios = App Store. 울림 카드·'5분 후 다시'·스누즈 뒷정리는 Android 전용(AlarmRinging은 Android에서만 그려지고, getPendingSnooze·reconcileSnooze는 iOS에서 바로 빠짐 — 2d66645..7ad90af diff로 확인). iOS는 사용자에게 보이는 변화가 없어 안정성 한 줄만. 앱 밖 결제·후원 안내 없음, 이모지 없음.",
+  "ko": {
+    "play": "• 알람이 울리는 화면이 새로워졌어요. 가운데 카드에 근무 이름과 근무일 날짜가 보이고, 큰 끄기 버튼으로 바로 끌 수 있어요.\n• 울리는 화면에 '5분 후 다시' 버튼이 생겼어요.\n• 5분 뒤로 미룬 알람도 근무를 바꾸거나 그날 알람을 끄거나 시간을 바꾸면 함께 정리돼 울리지 않아요.",
+    "ios": "• 안정성을 개선했어요."
+  },
+  "en": {
+    "play": "• A new alarm screen: a card in the middle shows the shift name and the work date, with a big button to turn the alarm off.\n• The alarm screen now has a \"Snooze 5 min\" button.\n• A postponed alarm is also cleared when you change that day's shift, turn off that day's alarm, or change the time.",
+    "ios": "• Stability improvements."
+  },
+  "ja": {
+    "play": "• アラームが鳴る画面が新しくなりました。中央のカードに勤務名と勤務日が表示され、大きなボタンですぐに止められます。\n• 鳴っている画面に「5分後にもう一度」ボタンを追加しました。\n• 5分後に延ばしたアラームも、勤務の変更・その日のアラームオフ・時刻の変更をすると一緒に整理され、鳴りません。",
+    "ios": "• 安定性を向上しました。"
+  },
+  "zh-Hans": {
+    "play": "• 全新的闹钟响铃画面:中间的卡片显示班次名称和上班日期,用大按钮即可直接关闭。\n• 响铃画面新增「5分钟后再响」按钮。\n• 已推迟5分钟的闹钟,在更改当天班次、关闭当天闹钟或修改时间后也会一并清除,不再响铃。",
+    "ios": "• 提升了稳定性。"
+  },
+  "zh-Hant": {
+    "play": "• 全新的鬧鐘響鈴畫面:中間的卡片顯示班別名稱和上班日期,用大按鈕即可直接關閉。\n• 響鈴畫面新增「5分鐘後再響」按鈕。\n• 已延後5分鐘的鬧鐘,在變更當天班別、關閉當天鬧鐘或修改時間後也會一併清除,不再響鈴。",
+    "ios": "• 提升了穩定性。"
+  },
+  "es": {
+    "play": "• Nueva pantalla de alarma: una tarjeta central muestra el nombre del turno y la fecha de trabajo, con un botón grande para apagarla.\n• La pantalla de alarma tiene un botón \"Otra vez en 5 min\".\n• Una alarma pospuesta también se elimina si cambias el turno de ese día, apagas la alarma de ese día o cambias la hora.",
+    "ios": "• Mejoras de estabilidad."
+  },
+  "fr": {
+    "play": "• Nouvel écran d'alarme : une carte au centre affiche le nom du poste et la date de travail, avec un grand bouton pour l'arrêter.\n• L'écran d'alarme propose un bouton « Encore dans 5 min ».\n• Une alarme reportée est aussi annulée si vous changez le poste du jour, coupez l'alarme du jour ou modifiez l'heure.",
+    "ios": "• Améliorations de la stabilité."
+  },
+  "de": {
+    "play": "• Neuer Alarmbildschirm: Eine Karte in der Mitte zeigt Schichtname und Arbeitstag, mit großer Taste zum Ausschalten.\n• Der Alarmbildschirm hat eine Taste \"In 5 Min. erneut\".\n• Ein verschobener Alarm wird ebenfalls gelöscht, wenn du die Schicht des Tages änderst, den Alarm für den Tag ausschaltest oder die Uhrzeit änderst.",
+    "ios": "• Verbesserte Stabilität."
+  },
+  "pt": {
+    "play": "• Nova tela de alarme: um cartão no centro mostra o nome do turno e a data de trabalho, com um botão grande para desligar.\n• A tela de alarme ganhou o botão \"De novo em 5 min\".\n• Um alarme adiado também é cancelado se você mudar o turno do dia, desligar o alarme daquele dia ou alterar o horário.",
+    "ios": "• Melhorias de estabilidade."
+  }
+}
