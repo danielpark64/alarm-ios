@@ -154,6 +154,6 @@ adb -s RF9R3049REV shell am start -a android.intent.action.VIEW -d "alarmapp://?
 
 ## 2026-11-26 01:23 — 1.6.4 (c) 고침, 미니에서 재확인 중 멈춤(사용자 시스템 재부팅)
 - 원인 2개: ① 종료 상태 알림 버튼 응답을 리스너 등록 전에 놓침 → `getLastNotificationResponseAsync`+`handleResponseOnce`(`801bf2c`) ② 알람 로드 전 판정 → `waitAlarmsLoaded`(`f6c374e`). 경쟁 수정 `1b27904`.
-- 미니(Release, 801bf2c): 종료 상태에서 [5분 후 다시] → `snooze_grp_1_22`+보조 10개 예약됨(통과). **5분 뒤 실제로 다시 오는지는 재부팅으로 못 봄** — 다시 볼 것.
+- 미니(Release, 801bf2c): 종료 상태에서 [5분 후 다시] → `snooze_grp_1_22`+보조 10개 예약됨(통과). 재부팅 뒤 다시: 01:38:28 종료 상태에서 [5분 후 다시] → 01:43:27 다시 옴 — **통과**(`~/Desktop/스크린샷/미니-164-c4-5분뒤재울림.png`).
 - 남은 것: 5분 뒤 재울림 확인, TestFlight 19(현재 18은 이 수정 전), (e) 잠금 화면 끄기, verify-fix 1회, 1.6.3 App Store 제출(1.6.2 통과 뒤).
 - 미니 시험 도구: main `scripts/ios-device-test.sh`(브랜치엔 없음 — scratchpad 복사본으로 씀). 정리: clearTestAlarms 함, 현황판 미니 줄 지움.
