@@ -80,13 +80,16 @@ export async function getPendingSnoozes(): Promise<PendingSnooze[]> {
  * Android·기록 없음: 예전 그대로 전부 취소(Android는 Expo 스누즈를 걸지 않는다).
  */
 export async function cancelAllExceptSnooze() {
-  const recs = await loadIosSnoozes();
-  if (Platform.OS !== 'ios' || !recs.length) {
+  if (Platform.OS !== 'ios') {
     await Notifications.cancelAllScheduledNotificationsAsync();
     return;
   }
-  const keep = new Set(recs.map(r => r.id));
+  // 종료 상태에서 [5분 후 다시]를 누르면 앱이 열리며 응답 리스너(scheduleIosSnooze)와 시작 재예약이 겹친다.
+  // 전체 취소(cancelAll)를 쓰면 방금 건 스누즈가 지워질 수 있어 iOS는 읽은 목록만 하나씩 지운다(세이람 1.2.4와 같은 수정).
+  // 순서가 중요: 예약 목록을 먼저 읽고 기록을 나중에 읽는다 — scheduleIosSnooze는 기록을 먼저 쓰고 예약하므로,
+  // 목록에 보인 스누즈는 반드시 기록에도 있다(반대 순서면 그 사이에 걸린 스누즈를 "기록 없음"으로 보고 지운다).
   const all = await Notifications.getAllScheduledNotificationsAsync();
+  const keep = new Set((await loadIosSnoozes()).map(r => r.id));
   await Promise.all(all
     .filter(n => !(isIosSnoozeNotifId(n.identifier) && keep.has(iosSnoozeBaseId(n.identifier))))
     .map(n => Notifications.cancelScheduledNotificationAsync(n.identifier).catch(() => {})));
