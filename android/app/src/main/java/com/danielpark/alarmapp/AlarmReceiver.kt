@@ -28,6 +28,12 @@ class AlarmReceiver : BroadcastReceiver() {
         val crescendo = intent.getBooleanExtra("crescendo", false)
         // 근무일(1.6.3 울림 카드 날짜) — 옛 예약·요일 반복엔 없다(울린 날로 보임)
         val workDate  = intent.getStringExtra("workDate") ?: ""
+        // 스누즈 재알림이 울릴 때 — 대기 중 스누즈 기록을 지운다(게이트에 막혀도 지운다: 더는 대기 중이 아니다)
+        if (intent.getBooleanExtra("isSnooze", false)) AlarmService.clearPendingSnooze(context)
+        // 원래 알람의 예정 발화 시각(분 단위 ms) — 스누즈 뒤 일정이 바뀌었는지 JS가 판정할 기준(snoozeCheck.ts).
+        // 보조(+1/+2분)·스누즈 인텐트는 원래 값을 실어 오고, 메인 발화는 예약 때의 hour/min으로 만든다.
+        val fireAt = if (intent.hasExtra("fireAt")) intent.getLongExtra("fireAt", 0L)
+                     else AlarmService.fireAtOf(intent.getIntExtra("hour", -1), intent.getIntExtra("min", -1))
 
         // 비활성 알람 차단 — JS 측이 꺼둔 알람은 울리지 않음.
         // 비교 기준은 반드시 baseAlarmId(JS 알람 원본 id)여야 한다 — alarmId extra는 합성
@@ -61,6 +67,7 @@ class AlarmReceiver : BroadcastReceiver() {
             putExtra("tone", tone)
             putExtra("crescendo", crescendo)
             putExtra("workDate", workDate)
+            putExtra("fireAt", fireAt)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             context.startForegroundService(svcIntent)
@@ -85,6 +92,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 putExtra("tone", tone)            // 보조(+1/+2분) 울림도 같은 소리
                 putExtra("crescendo", crescendo)
                 putExtra("workDate", workDate)    // 보조 울림도 같은 근무일
+                putExtra("fireAt", fireAt)        // 보조 울림도 같은 원래 발화 시각(스누즈 판정 기준)
             }
             val repPi = PendingIntent.getBroadcast(
                 context, AlarmIds.repSlotId(alarmId, repIdx), repIntent,

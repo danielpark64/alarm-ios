@@ -1062,6 +1062,30 @@ grep -q 'putExtra("workDate"' "$_AS" || _WD="$_WD 서비스→화면·스누즈"
 grep -q "workDate" "$ROOT/src/hooks/useAlarmNotifications.ts" || _WD="$_WD JS울림상태"
 [ -z "$_WD" ] && ok "" || fail "근무일 날짜 —$_WD"
 
+# ④ 스누즈 뒷정리(1.6.3 verify-fix) — rescheduleAll이 스누즈를 지우지 않으므로, 일정이 바뀌어 그 근무일·그 시각에 더는 안 울리면
+#    (이날 끄기·하루 근무 변경 비번·시간 변경·끄기·삭제) rescheduleAll 끝에서 스누즈를 취소한다. 판정은 순수 함수 snoozeStillDue(logic-tests),
+#    취소는 android.ts cancelSnooze 한 곳. 앱이 죽어 있을 때 커버 화면 스누즈의 Expo 보조 알림은 consumeLastSnoozed로 시작 때 지운다.
+printf "  1.6.3 스누즈 뒷정리: 바뀐 일정이면 취소·단일 진입점·대체 경로 ... "
+_SC=""; _IDX="$ROOT/src/utils/notifications/index.ts"; _AND="$ROOT/src/utils/notifications/android.ts"
+grep -q "export function cancelSnooze" "$_AND" || _SC="$_SC cancelSnooze없음"
+_CSN=$(grep -rn "AlarmModule\(?\)\?\.cancelSnooze\|AlarmModule\.cancelSnooze" "$ROOT/src" "$ROOT/app" 2>/dev/null | grep -v "^$_AND:" | wc -l | tr -d ' ')
+[ "$_CSN" = "0" ] || _SC="$_SC 네이티브스누즈취소가여러곳($_CSN)"
+awk '/export async function rescheduleAll/,/^}$/' "$_IDX" | grep -q "reconcileSnooze(" || _SC="$_SC rescheduleAll이스누즈판정안함"
+awk '/async function reconcileSnooze/,/^}$/' "$_IDX" | grep -q "snoozeStillDue(" || _SC="$_SC 판정이순수함수아님"
+awk '/async function reconcileSnooze/,/^}$/' "$_IDX" | grep -A1 "await getPendingSnooze" | grep -q "isStaleGen(gen)" || _SC="$_SC await뒤isStaleGen없음"
+grep -q "fun getPendingSnooze" "$NATIVE_DIR/AlarmModule.kt" || _SC="$_SC 네이티브getPendingSnooze없음"
+grep -q "fun cancelSnooze" "$NATIVE_DIR/AlarmModule.kt" || _SC="$_SC 네이티브cancelSnooze없음"
+awk '/private fun scheduleSnooze/,/^    }$/' "$_AS" | grep -q "PREFS_SNOOZE" || _SC="$_SC 스누즈기록안남김"
+awk '/private fun scheduleSnooze/,/^    }$/' "$_AS" | grep -q 'putExtra("fireAt"' || _SC="$_SC 스누즈에원래발화시각없음"
+grep -q 'getBooleanExtra("isSnooze"' "$NATIVE_DIR/AlarmReceiver.kt" || _SC="$_SC 스누즈울릴때기록안지움"
+[ "$(grep -c 'putExtra("fireAt"' "$NATIVE_DIR/AlarmReceiver.kt")" -ge 2 ] || _SC="$_SC 수신기가발화시각안넘김(울림·보조)"
+grep -q "fun consumeLastSnoozed" "$NATIVE_DIR/AlarmModule.kt" || _SC="$_SC consumeLastSnoozed없음"
+grep -A2 "consumeLastSnoozed()" "$ROOT/src/hooks/useAlarmNotifications.ts" | grep -q "cancelExpoGroupReps(" || _SC="$_SC 시작때스누즈보조알림안지움"
+grep -q "keepOnceForSnooze(" "$ROOT/src/hooks/useAlarms.ts" || _SC="$_SC 한번알람자동끄기가스누즈무시"
+awk '/q.clearTestAlarms != null/,/return;/' "$ROOT/app/index.tsx" | grep -q "cancelSnooze(" || _SC="$_SC clearTestAlarms가스누즈안지움"
+grep -q "매 rescheduleAll이 지우는 대상" "$_AS" && _SC="$_SC AlarmService옛주석"
+[ -z "$_SC" ] && ok "" || fail "스누즈 뒷정리 —$_SC"
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

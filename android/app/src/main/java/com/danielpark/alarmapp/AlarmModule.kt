@@ -214,6 +214,52 @@ class AlarmModule(private val reactContext: ReactApplicationContext) :
         })
     }
 
+    /** 마지막 스누즈 기록을 한 번 읽고 지운다(1.6.3) — consumeLastStopped와 같은 대체 경로. 3분 넘으면 보조 알림이 이미 지나갔다. */
+    @ReactMethod
+    fun consumeLastSnoozed(promise: Promise) {
+        val prefs = reactContext.getSharedPreferences(AlarmService.PREFS_SNOOZED, Context.MODE_PRIVATE)
+        val body = prefs.getString("body", null)
+        val at = prefs.getLong("at", 0L)
+        val baseAlarmId = prefs.getInt("baseAlarmId", -1)
+        if (body != null) prefs.edit().clear().apply()
+        if (body == null || System.currentTimeMillis() - at > 3 * 60 * 1000L) {
+            promise.resolve(null)
+            return
+        }
+        promise.resolve(Arguments.createMap().apply {
+            putString("body", body)
+            putInt("baseAlarmId", baseAlarmId)
+        })
+    }
+
+    /**
+     * 대기 중인 스누즈(1.6.3) — 없거나 울릴 때가 1분 넘게 지났으면(재부팅으로 예약이 사라진 경우 등) null.
+     * JS rescheduleAll 끝(reconcileSnooze)이 바뀐 일정으로 판정하고, 시작 때 '한 번' 알람 자동 끄기도 이걸 본다.
+     */
+    @ReactMethod
+    fun getPendingSnooze(promise: Promise) {
+        val prefs = reactContext.getSharedPreferences(AlarmService.PREFS_SNOOZE, Context.MODE_PRIVATE)
+        val triggerAt = prefs.getLong("triggerAt", 0L)
+        if (triggerAt == 0L || triggerAt < System.currentTimeMillis() - 60_000L) {
+            if (triggerAt != 0L) prefs.edit().clear().apply()
+            promise.resolve(null)
+            return
+        }
+        promise.resolve(Arguments.createMap().apply {
+            putInt("baseAlarmId", prefs.getInt("baseAlarmId", -1))
+            putString("workDate", prefs.getString("workDate", "") ?: "")
+            putDouble("fireAt", prefs.getLong("fireAt", 0L).toDouble())
+            putDouble("triggerAt", triggerAt.toDouble())
+        })
+    }
+
+    /** 스누즈 예약(요청코드 9002)과 대기 기록을 지운다 — JS는 notifications/android.ts cancelSnooze 한 곳에서만 부른다. */
+    @ReactMethod
+    fun cancelSnooze() {
+        cancelOne(AlarmIds.SNOOZE_REQUEST_CODE)
+        AlarmService.clearPendingSnooze(reactContext)
+    }
+
     // "다른 앱 위에 표시" 권한 — 화면이 켜진 채 잠금 해제 상태일 때 알람 끄기 팝업을
     // 백그라운드에서 띄우면 OneUI 등에서 몇 초 후 강제로 닫아버리는 문제 방지용
     @ReactMethod

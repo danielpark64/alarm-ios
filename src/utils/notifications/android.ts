@@ -1,5 +1,6 @@
 import { Platform, NativeModules } from 'react-native';
 import { mainNativeId, weekdaySlotId, repSlotId } from './alarmIds';
+import type { PendingSnooze } from '../snoozeCheck';
 
 const { AlarmModule } = NativeModules;
 
@@ -43,7 +44,8 @@ export function cancelNativeAlarms(alarmId: number) {
   ids.push(repSlotId(alarmId, 1), repSlotId(alarmId, 2));
   // ⚠️ 스누즈(SNOOZE_REQUEST_CODE)는 여기서 지우지 않는다(1.6.3) — rescheduleAll이 포그라운드 복귀·알람 변경마다 모든 알람에
   // 이 함수를 부르므로, 지우면 "5분 후 다시"를 누르고 앱을 다시 열기만 해도 스누즈가 사라졌다. 지운·끈 알람의 스누즈는
-  // 스누즈 예약에 실린 baseAlarmId로 AlarmReceiver의 비활성 게이트가 막는다(AlarmService.scheduleSnooze).
+  // 스누즈 예약에 실린 baseAlarmId로 AlarmReceiver의 비활성 게이트가 막고, 이날 끄기·하루 근무 변경·시간 변경처럼 알람은 켜져 있어도
+  // 그 근무일·그 시각에 더는 안 울리게 된 경우는 rescheduleAll 끝의 reconcileSnooze가 아래 cancelSnooze로 지운다.
 
   if (AlarmModule.cancelAlarms) {
     AlarmModule.cancelAlarms(ids);
@@ -60,4 +62,24 @@ export function cancelNativeAlarms(alarmId: number) {
 export function syncActiveNativeAlarms(aliveIds: number[]) {
   if (Platform.OS !== 'android' || !AlarmModule?.syncActiveAlarms) return;
   AlarmModule.syncActiveAlarms(aliveIds);
+}
+
+// ── "5분 후 다시"(네이티브 스누즈, 요청코드 9002) — 1.6.3 ──────────────────────────────
+// cancelNativeAlarms는 스누즈를 지우지 않는다(위 주석). 대신 rescheduleAll 끝(index.ts reconcileSnooze)이 대기 중인 스누즈를
+// 읽어(getPendingSnooze) 바뀐 일정으로 판정(utils/snoozeCheck.ts snoozeStillDue)하고, 필요하면 아래 cancelSnooze로 지운다.
+
+/** 대기 중인 스누즈 — 없거나 Android가 아니면 null */
+export async function getPendingSnooze(): Promise<PendingSnooze | null> {
+  if (Platform.OS !== 'android' || !AlarmModule?.getPendingSnooze) return null;
+  try {
+    const s = await AlarmModule.getPendingSnooze();
+    if (!s) return null;
+    return { baseAlarmId: s.baseAlarmId ?? -1, workDate: s.workDate ?? '', fireAt: s.fireAt ?? 0 };
+  } catch { return null; }
+}
+
+/** 스누즈 취소의 단일 진입점 — 네이티브 예약(9002)과 대기 기록을 함께 지운다. AlarmModule.cancelSnooze를 직접 부르지 말 것(정적 체크). */
+export function cancelSnooze() {
+  if (Platform.OS !== 'android' || !AlarmModule?.cancelSnooze) return;
+  AlarmModule.cancelSnooze();
 }

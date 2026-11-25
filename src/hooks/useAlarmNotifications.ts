@@ -280,6 +280,11 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
           const last = await AlarmModule.consumeLastStopped();
           if (last) await afterNativeStop(last.body, last.baseAlarmId);
         }
+        // 커버 화면 "5분 후 다시"도 앱이 죽어 있으면 alarmSnoozed를 못 받는다 — 마지막 스누즈 기록으로 Expo +1/+2분 보조 알림을 지운다(1.6.3)
+        if (AlarmModule?.consumeLastSnoozed) {
+          const lastSnz = await AlarmModule.consumeLastSnoozed();
+          if (lastSnz?.body) await cancelExpoGroupReps(lastSnz.body);
+        }
       }
     };
     restore();

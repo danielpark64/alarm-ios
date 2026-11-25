@@ -2,7 +2,8 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { Alarm, SNOOZE_ENABLED, DayOverrides, REP_MAX, IOS_REP_COUNT_NEAREST, IOS_REP_COUNT_OTHERS, ANDROID_REP_COUNT } from '../../constants';
 import { getNextFireDate } from '../index';
-import { cancelNativeAlarms, syncActiveNativeAlarms } from './android';
+import { cancelNativeAlarms, syncActiveNativeAlarms, getPendingSnooze, cancelSnooze } from './android';
+import { snoozeStillDue } from '../snoozeCheck';
 import { scheduleAlarmTriggers, scheduleGroupReps, schedulePatternAlarmReps } from './core';
 import { nextGen, isStaleGen } from './rescheduleGen';
 import { usesAlarmKit } from '../alarmkitRoute';
@@ -176,6 +177,18 @@ export async function rescheduleAll(alarms: Alarm[], overrides: DayOverrides = {
   // 돌기 때문에 삭제분을 못 지운다. 반드시 재등록이 끝난 뒤에 호출해야 방금 건 예약이
   // 유령으로 오인돼 취소되지 않는다.
   syncActiveNativeAlarms(alarms.map(a => a.id));
+
+  // 대기 중인 "5분 후 다시"가 바뀐 일정에서도 유효한지 — 아니면 취소(이날 끄기·하루 근무 변경·시간 변경·끄기·삭제)
+  await reconcileSnooze(alarms, overrides, gen);
+}
+
+// 스누즈(Android 네이티브 9002)는 cancelNativeAlarms가 지우지 않는다(앱만 다시 열어도 사라지던 문제). 그래서 재예약이 끝날 때마다
+// 대기 중인 스누즈를 읽어, 지금 일정으로 그 알람이 "그 근무일·그 시각"에 더는 울리지 않으면 지운다. 그대로 울리면 둔다.
+async function reconcileSnooze(alarms: Alarm[], overrides: DayOverrides, gen: number) {
+  const snooze = await getPendingSnooze();
+  if (isStaleGen(gen)) return; // 더 새로운 rescheduleAll이 같은 판정을 다시 한다
+  if (!snooze) return;
+  if (!snoozeStillDue(alarms.find(a => a.id === snooze.baseAlarmId), snooze, overrides)) cancelSnooze();
 }
 
 // 단일 알람 재스케줄 (개별 변경 시 fallback용)
