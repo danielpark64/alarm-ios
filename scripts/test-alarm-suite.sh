@@ -1111,6 +1111,8 @@ awk '/export async function rescheduleAll/,/^}$/' "$_IDX" | grep -A1 "await list
 grep -q "getPendingSnoozes()" "$ROOT/src/hooks/useAlarms.ts" || _IS="$_IS 한번알람자동끄기가iOS기록무시"
 grep -q "scheduleIosSnooze(" "$_UAN" || _IS="$_IS 응답이iOS스누즈안검"
 grep -q "cancelSnooze(data.snoozeId)" "$_UAN" || _IS="$_IS 스누즈알림끄기가기록안지움"
+# 종료 상태에서 [5분 후 다시](미니 실기기 2회 재현, 11-26): 응답이 알람 로드보다 먼저 와 목록이 비어 스누즈를 안 걸었다 → 로드를 기다린다
+grep -q "waitAlarmsLoaded(" "$_UAN" || _IS="$_IS 종료상태스누즈가로드를안기다림"
 # 종료 상태에서 [5분 후 다시] → 앱 시작 재예약과 겹침(세이람 1.2.4 verify-fix와 같은 경쟁): iOS는 전체 취소(cancelAll) 금지,
 # 예약 목록을 먼저 읽고 그 뒤에 기록을 읽어야 한다(기록은 예약보다 먼저 쓰므로, 목록에 보인 스누즈는 기록에도 있다).
 awk '/export async function cancelAllExceptSnooze/,/^}$/' "$_SZF" | grep -q "Platform.OS !== 'ios' ||" && _IS="$_IS iOS기록없으면전체취소"

@@ -50,6 +50,12 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
   alarmsRef.current     = alarms;
   updateAlarmRef.current = updateAlarm;
   loadedRef.current      = loaded;
+  // 알람 목록 로드를 기다린다(최대 ms) — 종료 상태에서 알림 액션으로 앱이 열릴 때 응답이 로드보다 먼저 온다.
+  const waitAlarmsLoaded = async (ms = 10_000) => {
+    const t0 = Date.now();
+    while (!loadedRef.current && Date.now() - t0 < ms) await new Promise(res => setTimeout(res, 100));
+    return loadedRef.current;
+  };
   // 포그라운드 재스케줄 변경 감지 키(아래 AppState 효과 참고). 알람이 울리면 null로 리셋한다 —
   // Expo +1/+2분 rep 슬롯(grp_{h}_{m}_rep1/2)은 "다음 1회분"만 걸려 있어 울리면 소모되는데,
   // 식별자가 날짜와 무관해 날짜 키만으로는 다음 날 rep 재생성이 보장되지 않기 때문이다
@@ -212,14 +218,20 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       await dismissPresentedAlarm({ groupKey, alarmIds: alarmIds ?? (alarmId != null ? [alarmId] : []) });
 
       if (action === 'snooze' && Platform.OS === 'ios') {
+        // 앱이 완전히 종료된 채 [5분 후 다시]를 누르면 응답이 알람 목록 로드보다 먼저 온다(미니 실기기 2회 재현, 11-26).
+        // 그대로 판정하면 목록이 비어 스누즈를 안 건다 → 로드를 기다리고, 끝내 못 읽으면 판정 없이 걸어 둔다(재예약 끝 reconcileSnooze가 판정).
+        const ready = await waitAlarmsLoaded();
         // iOS [5분 후 다시](1.6.4) — 원래 알람의 {알람 id, 근무일, 울린 시각}을 기록하고 5분 뒤 Expo 알림 + 보조 알림 묶음을 건다.
         // 스누즈를 또 미루면 처음 기록(snoozeTargets)을 그대로 넘긴다. 바뀐 일정에서 더는 안 울릴 알람(알림 센터에 남은 지난 알림 등)은 뺀다.
         const ov = getDayOverridesCache();
         const sid = iosSnoozeId(data);
         const carried: PendingSnooze[] | null = Array.isArray(data?.snoozeTargets) && data.snoozeTargets.length ? data.snoozeTargets : null;
         const fireAt = iosSnoozeOrigin(r.notification.date || Date.now(), data?.repIndex, IOS_REP_INTERVAL_SEC);
-        const targets = (carried ?? iosSnoozeTargets(alarmsRef.current, alarmIds ?? (alarmId != null ? [alarmId] : []), fireAt, ov))
-          .filter(tg => snoozeStillDue(alarmsRef.current.find(a => a.id === tg.baseAlarmId), tg, ov));
+        const ids = alarmIds ?? (alarmId != null ? [alarmId] : []);
+        const targets = ready
+          ? (carried ?? iosSnoozeTargets(alarmsRef.current, ids, fireAt, ov))
+              .filter(tg => snoozeStillDue(alarmsRef.current.find(a => a.id === tg.baseAlarmId), tg, ov))
+          : (carried ?? ids.map(id => ({ baseAlarmId: id, workDate: '', fireAt })));
         const owners = targets.map(tg => alarmsRef.current.find(a => a.id === tg.baseAlarmId)).filter(Boolean) as Alarm[];
         if (sid && targets.length) {
           await scheduleIosSnooze({
