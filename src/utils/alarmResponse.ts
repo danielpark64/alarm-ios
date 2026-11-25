@@ -6,7 +6,7 @@ export type ResponseAction = 'openRinging' | 'snooze' | 'stop';
 /**
  * 알림 응답(본문 탭·액션 버튼·닫기) → 할 일.
  *
- * - '5분 후'(snooze) → 스누즈(Android 전용 버튼).
+ * - '5분 후 다시'(snooze) → 스누즈(1.6.4부터 iOS 알림 버튼. Android 알림·워치엔 버튼이 없다 — alarmCategoryActions).
  * - **Android 본문 탭 + 네이티브(AlarmService)가 울리는 중 → 끄지 않고 울림 화면을 연다.**
  *   본문 탭은 "알람을 보러 왔다"는 뜻이다. 예전엔 액션과 구분 없이 꺼 버려, 알림을 눌렀는데 울림 화면 대신 알람이 그냥 꺼졌다.
  *   울림 화면(MainActivity 위 끄기 모달)에서 직접 끄거나 다시 알림을 고르게 한다.
@@ -23,6 +23,16 @@ export function responseAction(os: string, actionIdentifier: string, nativeRingi
   if (actionIdentifier === 'snooze') return 'snooze';
   if (os === 'android' && actionIdentifier === defaultId && nativeRinging) return 'openRinging';
   return 'stop';
+}
+
+/**
+ * 알림 카테고리 'alarm'의 버튼(= 워치에 보이는 버튼) — 순서는 세이람과 같다: [알람 끄기, 5분 후 다시].
+ * - iOS(1.6.4): 늘 둘 다. iOS 26 미만·AlarmKit 거부·진동만 알람은 Expo 알림으로 울리므로 여기서 미룬다(5분 뒤 Expo 알림).
+ * - Android: 알림·워치 스누즈는 Expo 예약만 걸려 Doze에 약해 끈다(snoozeEnabled = SNOOZE_ENABLED, 기본 false).
+ *   Android의 [5분 후 다시]는 울림 카드·커버 화면의 네이티브 스누즈(AlarmService.ACTION_SNOOZE) 한 길이다.
+ */
+export function alarmCategoryActions(os: string, snoozeEnabled: boolean): ('stop' | 'snooze')[] {
+  return os === 'ios' || snoozeEnabled ? ['stop', 'snooze'] : ['stop'];
 }
 
 /** 네이티브 알람 본문("HH:MM 알람" — 키가 {time}으로 시작)에서 같은 시각 묶음 키("7_5"). 없으면 null */

@@ -12,7 +12,8 @@ import { useT, LANGS, type LanguageSetting } from '../src/i18n';
 import { syncWidget } from '../src/utils/widgetSync';
 import { rescheduleAll, registerNotificationCategories } from '../src/utils/notifications';
 import { alarmKitEnv, isAlarmKitMode, listAlarmKit, scheduleAlarmKitTest } from '../src/utils/notifications/alarmkit';
-import { getPendingSnooze, cancelSnooze } from '../src/utils/notifications/android';
+import { getPendingSnooze } from '../src/utils/notifications/android';
+import { cancelSnooze } from '../src/utils/notifications/snooze';
 import * as Notifications from 'expo-notifications';
 import { useAlarms } from '../src/hooks/useAlarms';
 import { useDayOverrides } from '../src/hooks/useDayOverrides';
@@ -439,7 +440,8 @@ export default function App() {
       const ids = new Set(alarms.filter(a => a.label === '테스트 알람' || a.pattern?.[0]?.blockId === 'tn1').map(a => a.id));
       if (ids.size) deleteAlarms(ids);
       // 테스트 알람의 "5분 후 다시"(9002)도 지운다 — 대기 중 스누즈가 테스트 알람 것이거나 기록이 없으면(남은 예약 정리)
-      getPendingSnooze().then(s => { if (!s || ids.has(s.baseAlarmId)) cancelSnooze(); });
+      // iOS Expo 스누즈(1.6.4)는 테스트 알람을 지우면 그 재예약의 reconcileSnooze가 지운다 — 사용자 알람의 스누즈는 남긴다.
+      if (Platform.OS === 'android') getPendingSnooze().then(s => { if (!s || ids.has(s.baseAlarmId)) cancelSnooze(); });
       setTab('alarms');
       return;
     }

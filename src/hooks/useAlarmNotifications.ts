@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Platform, AppState, NativeModules, DeviceEventEmitter } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
-import { Alarm, notifSoundFor } from '../constants';
+import { Alarm, notifSoundFor, IOS_REP_INTERVAL_SEC } from '../constants';
 import { requestNotificationPermission, registerNotificationCategories, rescheduleAll, refreshRepsOnly, cancelExpoGroupReps, cancelRepSeries, dismissPresentedAlarm } from '../utils/notifications';
 import { notificationPermissionGranted, openNotificationSettings } from '../utils/alarmScreenNative';
 import { responseAction, groupKeyFromBody } from '../utils/alarmResponse';
@@ -15,6 +15,8 @@ import { getHolidayVersion } from '../constants/holidays';
 import { t as tr } from '../i18n/translate';
 import { syncIosWidget } from '../utils/iosWidgetNative';
 import { requestAlarmKitIfNeeded, alarmKitEnv } from '../utils/notifications/alarmkit';
+import { cancelSnooze, scheduleIosSnooze } from '../utils/notifications/snooze';
+import { iosSnoozeId, iosSnoozeOrigin, iosSnoozeTargets, snoozeStillDue, type PendingSnooze } from '../utils/snoozeCheck';
 
 const { AlarmModule } = NativeModules;
 
@@ -191,7 +193,9 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       }
 
       // 그룹 또는 개별 보조 알림 전부 취소 (Expo 쪽) — 워치/잠금화면의 "알람 끄기"·닫기가 여기로 온다
-      if (groupKey) await cancelRepSeries(`grp_${groupKey}`);
+      // iOS 스누즈 알림(1.6.4)이면 그 스누즈의 남은 알림·기록부터 지운다(취소 단일 진입점). 또 미루면 아래에서 새로 건다.
+      if (data?.snoozeId) await cancelSnooze(data.snoozeId);
+      else if (groupKey) await cancelRepSeries(`grp_${groupKey}`);
       else if (alarmId != null) await cancelRepSeries(`alarm_${alarmId}`);
 
       // 네이티브 쪽 rep도 같이 취소 — Expo 알림의 액션 버튼으로 껐을 때 네이티브
@@ -207,8 +211,28 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       // 이 알람의 표시된 알림도 지운다(1.6.2) — 액션 버튼은 Android에서 알림을 자동으로 안 지운다
       await dismissPresentedAlarm({ groupKey, alarmIds: alarmIds ?? (alarmId != null ? [alarmId] : []) });
 
-      if (action === 'snooze') {
-        // Android 전용 — iOS는 스누즈 버튼 없음
+      if (action === 'snooze' && Platform.OS === 'ios') {
+        // iOS [5분 후 다시](1.6.4) — 원래 알람의 {알람 id, 근무일, 울린 시각}을 기록하고 5분 뒤 Expo 알림 + 보조 알림 묶음을 건다.
+        // 스누즈를 또 미루면 처음 기록(snoozeTargets)을 그대로 넘긴다. 바뀐 일정에서 더는 안 울릴 알람(알림 센터에 남은 지난 알림 등)은 뺀다.
+        const ov = getDayOverridesCache();
+        const sid = iosSnoozeId(data);
+        const carried: PendingSnooze[] | null = Array.isArray(data?.snoozeTargets) && data.snoozeTargets.length ? data.snoozeTargets : null;
+        const fireAt = iosSnoozeOrigin(r.notification.date || Date.now(), data?.repIndex, IOS_REP_INTERVAL_SEC);
+        const targets = (carried ?? iosSnoozeTargets(alarmsRef.current, alarmIds ?? (alarmId != null ? [alarmId] : []), fireAt, ov))
+          .filter(tg => snoozeStillDue(alarmsRef.current.find(a => a.id === tg.baseAlarmId), tg, ov));
+        const owners = targets.map(tg => alarmsRef.current.find(a => a.id === tg.baseAlarmId)).filter(Boolean) as Alarm[];
+        if (sid && targets.length) {
+          await scheduleIosSnooze({
+            id: sid,
+            title: r.notification.request.content.title ?? tr('⏰ 알람'),
+            body: r.notification.request.content.body ?? '',
+            // 소리·진동은 원래 알람 값 그대로 — 진동만이면 false(notifSound가 무음 파일을 붙여 진동만 난다)
+            soundOn: typeof data?.snd === 'boolean' ? data.snd : owners.some(a => a.snd === 'default'),
+            tone: data?.tone, rm: rm ?? owners[0]?.rm, targets,
+          });
+        }
+      } else if (action === 'snooze') {
+        // Android — 알림·워치에 스누즈 버튼이 없어(SNOOZE_ENABLED=false) 평소엔 오지 않는다. 켜면 예전 Expo 스누즈.
         Notifications.scheduleNotificationAsync({
           content: { title: tr('⏰ 스누즈'), body: r.notification.request.content.body ?? undefined, sound: notifSoundFor(Platform.OS, true, data?.tone, __DEV__), categoryIdentifier: 'alarm', data: { tone: data?.tone } },
           trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(Date.now()+5*60*1000) },

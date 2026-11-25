@@ -487,7 +487,7 @@ fi
 printf "  보조 알림 취소가 cancelRepSeries를 거치는지(rep1/rep2 직접 취소 없음) ... "
 if grep -rn "_rep1\`\|_rep2\`" "$ROOT/src/hooks" "$ROOT/src/utils/notifications/index.ts" "$ROOT/app" 2>/dev/null | grep -v "^\s*//" | grep -q "cancelScheduledNotificationAsync"; then
   fail "rep1/rep2만 직접 취소하는 코드가 있음 — cancelRepSeries로 바꿀 것"
-elif ! grep -q "REP_MAX" "$_IDX" 2>/dev/null; then
+elif ! grep -q "REP_MAX" "$_IDX" "$ROOT/src/utils/notifications/core.ts" 2>/dev/null; then
   fail "cancelRepSeries가 REP_MAX 상한을 안 씀"
 else
   ok ""
@@ -1067,7 +1067,7 @@ grep -q "workDate" "$ROOT/src/hooks/useAlarmNotifications.ts" || _WD="$_WD JS울
 #    취소는 android.ts cancelSnooze 한 곳. 앱이 죽어 있을 때 커버 화면 스누즈의 Expo 보조 알림은 consumeLastSnoozed로 시작 때 지운다.
 printf "  1.6.3 스누즈 뒷정리: 바뀐 일정이면 취소·단일 진입점·대체 경로 ... "
 _SC=""; _IDX="$ROOT/src/utils/notifications/index.ts"; _AND="$ROOT/src/utils/notifications/android.ts"
-grep -q "export function cancelSnooze" "$_AND" || _SC="$_SC cancelSnooze없음"
+grep -q "export function cancelSnooze" "$ROOT/src/utils/notifications/snooze.ts" 2>/dev/null || _SC="$_SC cancelSnooze없음(snooze.ts)"
 _CSN=$(grep -rn "AlarmModule\(?\)\?\.cancelSnooze\|AlarmModule\.cancelSnooze" "$ROOT/src" "$ROOT/app" 2>/dev/null | grep -v "^$_AND:" | wc -l | tr -d ' ')
 [ "$_CSN" = "0" ] || _SC="$_SC 네이티브스누즈취소가여러곳($_CSN)"
 awk '/export async function rescheduleAll/,/^}$/' "$_IDX" | grep -q "reconcileSnooze(" || _SC="$_SC rescheduleAll이스누즈판정안함"
@@ -1085,6 +1085,33 @@ grep -q "keepOnceForSnooze(" "$ROOT/src/hooks/useAlarms.ts" || _SC="$_SC 한번�
 awk '/q.clearTestAlarms != null/,/return;/' "$ROOT/app/index.tsx" | grep -q "cancelSnooze(" || _SC="$_SC clearTestAlarms가스누즈안지움"
 grep -q "매 rescheduleAll이 지우는 대상" "$_AS" && _SC="$_SC AlarmService옛주석"
 [ -z "$_SC" ] && ok "" || fail "스누즈 뒷정리 —$_SC"
+
+# ⑤ 1.6.4 iOS [5분 후 다시](feature/ios-snooze) — 세이람과 문구·순서·간격을 맞추고, 고친버그 30·31번(바뀐 일정의 스누즈·앱만 열면 사라짐)이
+#    iOS에도 생기지 않게. 순수 판정은 logic-tests/ios-snooze.test.js. Android 알림·워치 스누즈는 계속 끈다(Doze).
+printf "  1.6.4 iOS 다시 울림: 버튼·AlarmKit·Expo 스누즈·뒷정리 ... "
+_IS=""; _SZF="$ROOT/src/utils/notifications/snooze.ts"; _AKF="$ROOT/src/utils/notifications/alarmkit.ts"; _UAN="$ROOT/src/hooks/useAlarmNotifications.ts"
+[ -f "$_SZF" ] || _IS="$_IS snooze.ts없음"
+awk '/export async function registerNotificationCategories/,/^}$/' "$_IDX" | grep -q "alarmCategoryActions(Platform.OS" || _IS="$_IS 버튼구성이순수함수아님"
+awk '/export async function registerNotificationCategories/,/^}$/' "$_IDX" | grep -q "customDismissAction: true" || _IS="$_IS iOScustomDismissAction없음"
+awk '/export async function registerNotificationCategories/,/^}$/' "$_IDX" | grep -q "snoozeLabel()" || _IS="$_IS 알림버튼문구가snoozeLabel아님"
+awk '/function buttons\(\)/,/^}$/' "$_AKF" | grep -q "SNOOZE_ENABLED" && _IS="$_IS AlarmKit스누즈가SNOOZE_ENABLED에묶임"
+awk '/function buttons\(\)/,/^}$/' "$_AKF" | grep -q "Platform.OS === 'ios'" || _IS="$_IS AlarmKit스누즈iOS전용아님"
+awk '/function buttons\(\)/,/^}$/' "$_AKF" | grep -q "snoozeLabel()" || _IS="$_IS AlarmKit버튼문구다름"
+grep -q "export function cancelSnooze" "$_SZF" 2>/dev/null && awk '/export function cancelSnooze/,/^}$/' "$_SZF" | grep -q "Platform.OS" || _IS="$_IS cancelSnooze가플랫폼안나눔"
+grep -q "notifSound(" "$_SZF" 2>/dev/null || _IS="$_IS 스누즈소리가notifSound아님"
+grep -q "sound: undefined" "$_SZF" 2>/dev/null && _IS="$_IS 스누즈sound:undefined"
+grep -q "scheduleRepSeries(" "$_SZF" 2>/dev/null || _IS="$_IS 스누즈보조가scheduleRepSeries아님"
+grep -q "cancelRepSeries(" "$_SZF" 2>/dev/null || _IS="$_IS 스누즈취소가cancelRepSeries아님"
+grep -q "categoryIdentifier: 'alarm'" "$_SZF" 2>/dev/null || _IS="$_IS 스누즈알림에버튼없음"
+awk '/async function reconcileSnooze/,/^}$/' "$_IDX" | grep -q "iosSnoozeStillDue(" || _IS="$_IS iOS판정없음"
+awk '/async function reconcileSnooze/,/^}$/' "$_IDX" | grep -A1 "await loadIosSnoozes" | grep -q "isStaleGen(gen)" || _IS="$_IS iOS기록읽은뒤isStaleGen없음"
+awk '/export async function rescheduleAll/,/^}$/' "$_IDX" | grep -q "cancelAllExceptSnooze(" || _IS="$_IS 재예약이iOS스누즈를지움"
+awk '/export async function rescheduleAll/,/^}$/' "$_IDX" | grep -q "alarmKitKeepIds(" || _IS="$_IS AlarmKit카운트다운판정없음"
+awk '/export async function rescheduleAll/,/^}$/' "$_IDX" | grep -A1 "await listAlarmKit" | grep -q "isStaleGen(gen)" || _IS="$_IS AlarmKit목록뒤isStaleGen없음"
+grep -q "getPendingSnoozes()" "$ROOT/src/hooks/useAlarms.ts" || _IS="$_IS 한번알람자동끄기가iOS기록무시"
+grep -q "scheduleIosSnooze(" "$_UAN" || _IS="$_IS 응답이iOS스누즈안검"
+grep -q "cancelSnooze(data.snoozeId)" "$_UAN" || _IS="$_IS 스누즈알림끄기가기록안지움"
+[ -z "$_IS" ] && ok "" || fail "iOS 다시 울림 —$_IS"
 
 if $STATIC_ONLY; then
   echo ""
