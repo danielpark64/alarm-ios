@@ -140,3 +140,14 @@ adb -s RF9R3049REV shell am start -a android.intent.action.VIEW -d "alarmapp://?
 - 배터리를 더 쓰는 방식(iOS 백그라운드 오디오 등)은 하지 않는다.
 - 자격증명 입력·결제·법적 선언은 사용자가 직접. Play Console 스토어 등록정보(스크린샷)는 사용자가 시키면 크롬(u/2 프로필, Susu Development)으로 Claude가 올린다. AAB 업로드는 사용자가 직접.
 - 계획은 Fable, 실행은 Opus 에이전트(`model: "opus"`), 결과 점검은 Fable이 직접.
+
+## 2026-11-26 미니 실기기 확인(1.6.4 빌드 18, iPadOS 27.2.1, 진동만, `scripts/ios-device-test.sh` 자동 조작 — main ddaa35c)
+- (a) 진동만 알람 알림에 [알람 끄기]·[5분 후 다시] 둘 다 있음 — 통과(`~/Desktop/스크린샷/미니-164-07-펼친알림.png`)
+- (b) 앱 백그라운드에서 [5분 후 다시] → `snooze_grp_*` + 보조 10개 예약, 5분 뒤 다시 옴 — 통과
+- **(c) 앱 완전 종료 상태에서 [5분 후 다시] → 남은 보조 알림은 지워지는데 스누즈가 예약되지 않음(대기 0개) — 두 번 재현, 실패.**
+  추정 원인: 응답 리스너(`useAlarmNotifications.ts` s2)가 `loaded`를 기다리지 않아, 콜드 스타트 때 `alarmsRef.current`가 `[]`인 채
+  `iosSnoozeTargets`/`snoozeStillDue`를 돌려 targets가 비고 `scheduleIosSnooze`를 건너뜀(뒷정리는 알람 목록이 필요 없어 그대로 됨).
+  고칠 방향: 스누즈 판정 전에 알람 로드를 기다리기(또는 AsyncStorage에서 직접 읽기) + 로직 테스트로 "빈 목록이면 로드 후 판정" 고정.
+- (d) 미룬 뒤 알람 시간을 바꿔 저장 → 대기 스누즈 11개 → 0개 — 통과
+- (e) 잠금 화면 [알람 끄기]: 자동 잠그기(`mobile: lock`)가 안 되고 암호 유무도 확정 못 함(devicectl `passcodeRequired: false`는 풀린 상태 값) — 미확인
+- 끝: clearTestAlarms → 알람 0·대기 알림 0·AlarmKit 0 확인
