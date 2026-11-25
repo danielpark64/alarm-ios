@@ -12,6 +12,7 @@ import { useT, LANGS, type LanguageSetting } from '../src/i18n';
 import { syncWidget } from '../src/utils/widgetSync';
 import { rescheduleAll, registerNotificationCategories } from '../src/utils/notifications';
 import { alarmKitEnv, isAlarmKitMode, listAlarmKit, scheduleAlarmKitTest } from '../src/utils/notifications/alarmkit';
+import { getPendingSnooze, cancelSnooze } from '../src/utils/notifications/android';
 import * as Notifications from 'expo-notifications';
 import { useAlarms } from '../src/hooks/useAlarms';
 import { useDayOverrides } from '../src/hooks/useDayOverrides';
@@ -437,6 +438,8 @@ export default function App() {
       // testAlarm이 만든 '테스트 알람'과 testPattern=night가 만든 근무표(blockId 'tn1')만 지운다 — 사용자의 알람은 건드리지 않는다.
       const ids = new Set(alarms.filter(a => a.label === '테스트 알람' || a.pattern?.[0]?.blockId === 'tn1').map(a => a.id));
       if (ids.size) deleteAlarms(ids);
+      // 테스트 알람의 "5분 후 다시"(9002)도 지운다 — 대기 중 스누즈가 테스트 알람 것이거나 기록이 없으면(남은 예약 정리)
+      getPendingSnooze().then(s => { if (!s || ids.has(s.baseAlarmId)) cancelSnooze(); });
       setTab('alarms');
       return;
     }
@@ -763,6 +766,7 @@ export default function App() {
           body={ringing?.body ?? ''}
           source={ringing?.source ?? 'expo'}
           tone={ringing?.tone}
+          workDate={ringing?.workDate}
           onStop={stopRinging}
           onSnooze={snoozeRinging}
         />

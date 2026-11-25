@@ -45,6 +45,8 @@ object AlarmStore {
         // 알람 소리 id(AlarmTones)·점점 크게 — 옛 원장엔 없으므로 기본음·꺼짐(기존 동작)으로 읽는다
         val tone: String = AlarmTones.DEFAULT,
         val crescendo: Boolean = false,
+        // 근무일(YYYY-MM-DD) — 울림 카드의 날짜(1.6.3). 야간 퇴근은 울린 날의 전날. 옛 원장·요일 반복은 ""(울린 날로 보임)
+        val workDate: String = "",
     )
 
     // requestCode → Entry. 예약/취소가 짧은 시간에 수십~수백 번 몰아쳐 들어오므로
@@ -153,6 +155,7 @@ object AlarmStore {
         put("base", e.baseAlarmId)
         put("tone", e.tone)
         put("cres", e.crescendo)
+        put("wdate", e.workDate)
     }
 
     private fun fromJson(o: JSONObject) = Entry(
@@ -170,5 +173,6 @@ object AlarmStore {
         baseAlarmId = o.optInt("base", -1),
         tone = o.optString("tone", AlarmTones.DEFAULT),
         crescendo = o.optBoolean("cres", false),
+        workDate = o.optString("wdate", ""),
     )
 }

@@ -52,11 +52,17 @@ class AlarmService : Service() {
                 return START_NOT_STICKY
             }
             ACTION_SNOOZE -> {
-                val title = intent.getStringExtra(EXTRA_TITLE) ?: "⏰ 알람"
-                val body  = intent.getStringExtra(EXTRA_BODY)  ?: ""
-                val soundOn = intent.getBooleanExtra("soundOn", true)
-                val vibOn   = intent.getBooleanExtra("vibOn", true)
-                val volume  = intent.getFloatExtra("volume", 1f)
+                // 지금 울리는 알람의 값을 먼저 쓴다(1.6.3) — 울림 카드의 "5분 후 다시"(JS snoozeAlarm·커버 화면)는 제목·소리 설정을
+                // 다 싣지 않는다. 예전엔 extra가 없으면 soundOn=true로 떨어져 '진동만' 알람이 스누즈 뒤 소리로 울렸다.
+                val cur = currentRinging
+                val title = intent.getStringExtra(EXTRA_TITLE) ?: cur?.title ?: "⏰ 알람"
+                val body  = intent.getStringExtra(EXTRA_BODY)  ?: cur?.body ?: ""
+                val soundOn = if (intent.hasExtra("soundOn")) intent.getBooleanExtra("soundOn", true) else cur?.soundOn ?: true
+                val vibOn   = if (intent.hasExtra("vibOn")) intent.getBooleanExtra("vibOn", true) else cur?.vibOn ?: true
+                val volume  = if (intent.hasExtra("volume")) intent.getFloatExtra("volume", 1f) else cur?.volume ?: 1f
+                val baseAlarmId = cur?.baseAlarmId ?: -1
+                val workDate = cur?.workDate ?: ""
+                val fireAt = cur?.fireAt ?: 0L
                 // 스누즈 재알림도 같은 소리 — JS snoozeAlarm 경로엔 extra가 없으니 지금 울리던 소리를 쓴다
                 val tone      = intent.getStringExtra("tone") ?: ringingTone
                 val crescendo = if (intent.hasExtra("crescendo")) intent.getBooleanExtra("crescendo", false) else ringingCrescendo
@@ -65,13 +71,14 @@ class AlarmService : Service() {
                 cancelPendingRingLaunch()
                 cancelCoverRelaunch()
                 cancelKeepFront()
-                // 스누즈는 notifyStopped를 보내지 않는다 — 스누즈 진입점은 JS snoozeRinging 하나뿐이고
-                // 그쪽이 Expo rep 취소를 이미 직접 한다. 여기서 alarmStopped를 보내면 '한 번' 알람이
-                // 비활성화되어 rescheduleAll → cancelNativeAlarms가 방금 건 SNOOZE_REQUEST_CODE까지 지운다.
+                // 스누즈는 notifyStopped를 보내지 않는다 — alarmStopped를 보내면 '한 번' 알람이 비활성화되어
+                // 스누즈 재알림이 AlarmReceiver 게이트(baseAlarmId)에 막힌다. 대신 alarmSnoozed를 보내 JS가 Expo +1/+2분
+                // 보조 알림만 지우고 울림 모달을 닫게 한다(1.6.3 — 커버 화면의 "5분 후 다시"는 JS를 거치지 않는다).
                 currentRinging = null
                 onRingingEnded()
                 stopForeground(STOP_FOREGROUND_REMOVE)
-                scheduleSnooze(title, body, soundOn, vibOn, volume, tone, crescendo)
+                scheduleSnooze(title, body, soundOn, vibOn, volume, tone, crescendo, baseAlarmId, workDate, fireAt)
+                emitSnoozed(body, baseAlarmId)
                 stopSelf()
                 return START_NOT_STICKY
             }
@@ -87,13 +94,18 @@ class AlarmService : Service() {
         val crescendo = intent?.getBooleanExtra("crescendo", false) ?: false
         ringingTone = tone
         ringingCrescendo = crescendo
+        // 근무일(1.6.3 울림 카드 날짜) — 예약이 실어 준 값, 없으면(옛 예약·요일 반복) 울린 날
+        val workDate = intent?.getStringExtra("workDate")?.takeIf { WORK_DATE_RE.matches(it) }
+            ?: java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+        // 원래 알람의 예정 발화 시각(AlarmReceiver가 실어 줌) — 스누즈 기록에 남겨 JS가 일정 변경을 판정한다
+        val fireAt = intent?.getLongExtra("fireAt", 0L) ?: 0L
         // 이번 울림의 시작 시각 — 울림 인텐트에 실어 보내, 끈 뒤에 늦게 도착한 인텐트를 MainActivity가 알아본다(1.6.2)
         ringStartedAt = maxOf(System.currentTimeMillis(), lastRingEndedAt + 1)
 
         startForeground(NOTIFICATION_ID, buildNotification(title, body, alarmId, soundOn, vibOn, volume, tone, crescendo))
         startRinging(soundOn, vibOn, volume, tone, crescendo)
-        currentRinging = RingingInfo(title, body, alarmId, baseAlarmId)
-        emitRingingEvent(title, body, alarmId, baseAlarmId)
+        currentRinging = RingingInfo(title, body, alarmId, baseAlarmId, soundOn, vibOn, volume, workDate, fireAt)
+        emitRingingEvent(title, body, alarmId, baseAlarmId, workDate)
         bringRingingActivityToFront(title, alarmId)
         return START_STICKY
     }
@@ -204,6 +216,7 @@ class AlarmService : Service() {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 putExtra("alarmId", alarmId)
                 putExtra("title", title)
+                putExtra("workDate", currentRinging?.workDate ?: "")
                 // 기본 디스플레이에서 키가드 해제를 요청하면 보안 잠금 바운서가 떠서
                 // 알람 화면을 가린다 — 커버 화면일 때만 해제를 요청하게 알려준다.
                 putExtra("dismissKeyguard", isCoverDisplay)
@@ -360,7 +373,7 @@ class AlarmService : Service() {
     }
 
     // 포그라운드 JS로 알람 울림 이벤트 전달 (인앱 끄기/스누즈 UI 표시용)
-    private fun emitRingingEvent(title: String, body: String, alarmId: Int, baseAlarmId: Int) {
+    private fun emitRingingEvent(title: String, body: String, alarmId: Int, baseAlarmId: Int, workDate: String) {
         // 잠금해제 전(Direct Boot)에는 RN이 붙을 수 없어 어차피 no-op이다. 그런데 reactHost가
         // by lazy라 여기서 건드리는 순간 잠긴 상태에서 ReactHost 전체가 생성되면서
         // startForeground 5초 제한을 갉아먹는다. 잠겨 있으면 아예 만지지 않는다.
@@ -374,8 +387,24 @@ class AlarmService : Service() {
                 putString("body", body)
                 putInt("alarmId", alarmId)
                 putInt("baseAlarmId", baseAlarmId)
+                putString("workDate", workDate)
             }
             reactContext.emitDeviceEvent("alarmRinging", params)
+        } catch (e: Exception) { e.printStackTrace() }
+    }
+
+    // 스누즈했다고 JS에 알림(1.6.3) — Expo +1/+2분 보조 알림 취소·울림 모달 닫기. 커버 화면의 "5분 후 다시"는 JS를 거치지 않아
+    // 이 이벤트가 유일한 통로다(JS snoozeRinging 경로는 직접도 지운다 — 취소는 멱등). 앱이 죽어 있으면 못 받는다(끄기 경로와 같은 한계).
+    private fun emitSnoozed(body: String, baseAlarmId: Int) {
+        if (getSystemService(UserManager::class.java)?.isUserUnlocked == false) return
+        try {
+            val reactContext = (applicationContext as? ReactApplication)
+                ?.reactHost?.currentReactContext ?: return
+            val params = Arguments.createMap().apply {
+                putString("body", body)
+                putInt("baseAlarmId", baseAlarmId)
+            }
+            reactContext.emitDeviceEvent("alarmSnoozed", params)
         } catch (e: Exception) { e.printStackTrace() }
     }
 
@@ -459,11 +488,22 @@ class AlarmService : Service() {
         vibrator = null
     }
 
-    // 의도적으로 AlarmStore 원장에 기록하지 않는다 — 스누즈는 수명 5분짜리 일회성 예약이라
-    // 부팅 복구 대상이 아니고, 매 rescheduleAll이 지우는 대상이라 원장에 넣으면 정합성만 나빠진다.
+    // AlarmStore 원장에는 넣지 않는다 — 스누즈는 수명 5분짜리 일회성 예약이라 부팅 복구 대상이 아니다.
     // 절충: 스누즈 대기 중에 재부팅하면 그 스누즈는 사라진다(원래 알람 예약은 정상 복구됨).
-    private fun scheduleSnooze(title: String, body: String, soundOn: Boolean, vibOn: Boolean, volume: Float, tone: String, crescendo: Boolean) {
+    // rescheduleAll(cancelNativeAlarms)은 스누즈를 지우지 않는다(1.6.3 — 앱만 다시 열어도 스누즈가 사라졌다). 대신
+    //  1) baseAlarmId를 실어 지운·끈 알람의 스누즈는 AlarmReceiver 비활성 게이트가 막고,
+    //  2) 대기 중 기록(PREFS_SNOOZE: 알람 id·근무일·원래 발화 시각)을 남겨, rescheduleAll 끝(reconcileSnooze)이 바뀐 일정으로
+    //     그 근무일·그 시각에 더는 안 울리면(이날 끄기·하루 근무 변경·시간 변경) AlarmModule.cancelSnooze로 지운다.
+    //  3) "마지막 스누즈"(PREFS_SNOOZED)도 남겨, 앱이 죽어 있어 alarmSnoozed를 못 받았으면 시작 때 Expo 보조 알림을 지운다.
+    // alarmId extra는 넣지 않는다(-1 → 보조 울림·주간 재예약 없음).
+    private fun scheduleSnooze(title: String, body: String, soundOn: Boolean, vibOn: Boolean, volume: Float, tone: String, crescendo: Boolean,
+                               baseAlarmId: Int, workDate: String, fireAt: Long) {
+        android.util.Log.d("AlarmService", "snooze ${SNOOZE_MINUTES}min base=$baseAlarmId wdate=$workDate fireAt=$fireAt soundOn=$soundOn vibOn=$vibOn")
         val intent = Intent(this, AlarmReceiver::class.java).apply {
+            putExtra("baseAlarmId", baseAlarmId)
+            putExtra("workDate", workDate)
+            putExtra("fireAt", fireAt)       // 다시 스누즈해도 원래 발화 시각을 잃지 않게
+            putExtra("isSnooze", true)       // 울릴 때 대기 중 기록을 지우게(AlarmReceiver)
             putExtra(EXTRA_TITLE, title)
             putExtra(EXTRA_BODY, body)
             putExtra("recurrence", "once")
@@ -478,8 +518,21 @@ class AlarmService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val triggerAt = System.currentTimeMillis() + 5 * 60 * 1000L
+        val triggerAt = System.currentTimeMillis() + SNOOZE_MINUTES * 60 * 1000L
         AlarmScheduling.schedule(this, am, triggerAt, pi)
+        try {
+            getSharedPreferences(PREFS_SNOOZE, Context.MODE_PRIVATE).edit()
+                .putInt("baseAlarmId", baseAlarmId)
+                .putString("workDate", workDate)
+                .putLong("fireAt", fireAt)
+                .putLong("triggerAt", triggerAt)
+                .apply()
+            getSharedPreferences(PREFS_SNOOZED, Context.MODE_PRIVATE).edit()
+                .putString("body", body)
+                .putInt("baseAlarmId", baseAlarmId)
+                .putLong("at", System.currentTimeMillis())
+                .apply()
+        } catch (e: Exception) { e.printStackTrace() }
     }
 
     override fun onDestroy() {
@@ -589,7 +642,13 @@ class AlarmService : Service() {
     companion object {
         // 현재 울리고 있는 알람 정보 (RN 쪽이 재시작/포그라운드 복귀해도 끄기 팝업을 복구할 수 있도록)
         // alarmId는 합성 requestCode, baseAlarmId는 JS 알람 원본 id(없으면 -1 — 구버전 예약분)
-        data class RingingInfo(val title: String, val body: String, val alarmId: Int, val baseAlarmId: Int = -1)
+        // soundOn·vibOn·volume — 울림 카드의 "5분 후 다시"가 같은 설정으로 다시 울리게(1.6.3). workDate — 카드의 근무일 날짜
+        data class RingingInfo(val title: String, val body: String, val alarmId: Int, val baseAlarmId: Int = -1,
+                               val soundOn: Boolean = true, val vibOn: Boolean = true, val volume: Float = 1f, val workDate: String = "",
+                               val fireAt: Long = 0L)
+        /** 스누즈 분 — JS constants SNOOZE_MIN과 같아야 한다(정적 체크 "1.6.3 울림 카드") */
+        const val SNOOZE_MINUTES = 5
+        val WORK_DATE_RE = Regex("""\d{4}-\d{2}-\d{2}""")
         @Volatile var currentRinging: RingingInfo? = null
         // 지금 울리는 알람의 소리 — JS snoozeAlarm(extra 없음) 경로의 스누즈 재알림이 같은 소리를 쓰게
         @Volatile var ringingTone: String = AlarmTones.DEFAULT
@@ -600,6 +659,27 @@ class AlarmService : Service() {
 
         // 네이티브 경로로 마지막에 끈 알람 기록 — AlarmModule.consumeLastStopped가 읽고 지운다
         const val PREFS_STOPPED       = "AlarmLastStopped"
+        // 대기 중인 스누즈(1.6.3) — AlarmModule.getPendingSnooze가 읽고, 울릴 때(AlarmReceiver)·cancelSnooze가 지운다
+        const val PREFS_SNOOZE        = "AlarmPendingSnooze"
+        // 마지막 스누즈(1.6.3) — 앱이 죽어 있어 alarmSnoozed를 못 받았을 때 AlarmModule.consumeLastSnoozed가 읽고 지운다
+        const val PREFS_SNOOZED       = "AlarmLastSnoozed"
+
+        fun clearPendingSnooze(ctx: Context) {
+            try { ctx.getSharedPreferences(PREFS_SNOOZE, Context.MODE_PRIVATE).edit().clear().apply() }
+            catch (e: Exception) { e.printStackTrace() } // 잠금해제 전(Direct Boot)엔 못 연다 — 만료 검사가 대신 걸러 낸다
+        }
+
+        /** 예약 hour/min → 이번 발화의 예정 시각(ms). 지금보다 2분 넘게 뒤면 어제 것(자정 직후 늦게 온 보조 울림 등). 모르면 0 */
+        fun fireAtOf(hour: Int, min: Int): Long {
+            if (hour !in 0..23 || min !in 0..59) return 0L
+            val now = System.currentTimeMillis()
+            val cal = java.util.Calendar.getInstance().apply {
+                set(java.util.Calendar.HOUR_OF_DAY, hour); set(java.util.Calendar.MINUTE, min)
+                set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+            }
+            if (cal.timeInMillis > now + 2 * 60_000L) cal.add(java.util.Calendar.DAY_OF_MONTH, -1)
+            return cal.timeInMillis
+        }
 
         const val CHANNEL_ID          = "alarm_ringing_ch"
         const val NOTIFICATION_ID     = 9001

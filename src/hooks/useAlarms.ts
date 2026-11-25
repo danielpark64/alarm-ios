@@ -3,6 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alarm, WorkSegment, SoundMode, VibMode, ALARMS_STORAGE_KEY } from '../constants';
 import { todayStr, pruneSkips } from '../utils';
 import { rescheduleAll } from '../utils/notifications';
+import { getPendingSnooze } from '../utils/notifications/android';
+import { keepOnceForSnooze } from '../utils/snoozeCheck';
 import { syncWidget } from '../utils/widgetSync';
 import { reconcileWorkPattern } from '../utils/workPattern';
 import { getDayOverridesCache, loadDayOverrides } from '../utils/dayOverrideStore';
@@ -39,9 +41,11 @@ export function useAlarms() {
         if (raw) { const d = JSON.parse(raw); loaded = (d.alarms ?? DEFAULT).map(migrateAlarm); loadedNextId = d.nextId ?? 100; }
       } catch {}
       setNextId(loadedNextId);
-      // 만료된 '한 번' 알람 자동 비활성화
+      // 만료된 '한 번' 알람 자동 비활성화 — 단, 자정 직전에 "5분 후 다시"를 눌러 스누즈 대기 중인 알람은 남긴다
+      // (끄면 스누즈가 비활성 게이트·rescheduleAll 스누즈 판정에 막혀 사라진다). 스누즈가 울리고 끄면 afterNativeStop이 끈다.
       const today = todayStr();
-      const migrated = loaded.map(a => (a.rm === 'once' && a.sd < today && a.active) ? { ...a, active: false } : a);
+      const snooze = await getPendingSnooze();
+      const migrated = loaded.map(a => (a.rm === 'once' && a.sd < today && a.active && !keepOnceForSnooze(a, snooze)) ? { ...a, active: false } : a);
       if (migrated.some((a, i) => a.active !== loaded[i].active)) {
         loaded = migrated;
         // ⚠️ nextId는 반드시 디스크에서 읽은 값을 그대로 다시 쓴다 — 예전엔 여기서 상수 100을 저장해,

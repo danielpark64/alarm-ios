@@ -8,7 +8,7 @@ import { notificationPermissionGranted, openNotificationSettings } from '../util
 import { responseAction, groupKeyFromBody } from '../utils/alarmResponse';
 import { getAlarmDefaults } from './useAlarmDefaults';
 import { getDayOverridesCache } from '../utils/dayOverrideStore';
-import { todayStr } from '../utils';
+import { todayStr, workDateOfFire } from '../utils';
 import { loadLanguageSetting } from '../i18n';
 import { getHolidayVersion } from '../constants/holidays';
 // 문구가 리스너 콜백 안에 있어 훅(useT)이 아니라 순수 번역 함수를 쓴다. 지역 변수 t와 겹치지 않게 tr로 가져온다
@@ -20,7 +20,8 @@ const { AlarmModule } = NativeModules;
 
 // alarmId: Expo 경로면 알람 원본 id, 네이티브 경로면 합성 requestCode. baseAlarmId: 네이티브 경로에서
 // 함께 오는 알람 원본 id(구버전 예약분은 없음) — '한 번' 알람 자동 비활성화 등 알람 목록 조회에 쓴다.
-export type RingingState = { title: string; body: string; alarmId?: number; baseAlarmId?: number; groupKey?: string; source?: 'native' | 'expo'; tone?: string };
+// workDate — 울림 카드에 보일 근무일(YYYY-MM-DD, 1.6.3). 네이티브가 예약 때 받은 값, Expo 갈래는 알람에서 거꾸로 계산, 없으면 울린 날
+export type RingingState = { title: string; body: string; alarmId?: number; baseAlarmId?: number; groupKey?: string; source?: 'native' | 'expo'; tone?: string; workDate?: string };
 
 // AlarmModule.getCurrentRinging() 결과 → 울림 화면 상태(포그라운드 복구·알림 본문 탭 공용)
 const nativeRingingState = (info: any): RingingState => ({
@@ -28,6 +29,7 @@ const nativeRingingState = (info: any): RingingState => ({
   alarmId: info.alarmId >= 0 ? info.alarmId : undefined,
   baseAlarmId: (info.baseAlarmId ?? -1) >= 0 ? info.baseAlarmId : undefined,
   source: 'native',
+  workDate: info.workDate || undefined,
 });
 
 // 알림 권한/리스너/포그라운드 재스케줄/네이티브 울림 이벤트를 한곳에서 관리
@@ -150,9 +152,11 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
         // ringing 상태를 덮어쓰지 않음 (alarmId/source가 깨져 끄기 팝업이 즉시 닫히는 문제 방지)
         setRinging(prev => {
           if (prev?.source === 'native') return prev;
+          const a = d?.alarmId != null ? alarmsRef.current.find(x => x.id === d.alarmId) : undefined;
           return {
             title: title ?? tr('⏰ 알람'), body: body ?? '',
             alarmId: d?.alarmId, groupKey: d?.groupKey, tone: d?.tone,
+            workDate: a ? workDateOfFire(a, new Date(), getDayOverridesCache()) : undefined,
           };
         });
       }
@@ -231,7 +235,7 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
   // 네이티브 AlarmService 알람 울림 이벤트 (포그라운드 인앱 끄기/스누즈 UI)
   useEffect(() => {
     if (Platform.OS !== 'android') return;
-    const sub = DeviceEventEmitter.addListener('alarmRinging', (e: { title: string; body: string; alarmId: number; baseAlarmId?: number }) => {
+    const sub = DeviceEventEmitter.addListener('alarmRinging', (e: { title: string; body: string; alarmId: number; baseAlarmId?: number; workDate?: string }) => {
       lastRescheduleKeyRef.current = null; // 울림 → 다음 포그라운드 복귀 때 rep 재생성 보장
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       setRinging({
@@ -239,6 +243,7 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
         alarmId: e.alarmId >= 0 ? e.alarmId : undefined,
         baseAlarmId: (e.baseAlarmId ?? -1) >= 0 ? e.baseAlarmId : undefined,
         source: 'native',
+        workDate: e.workDate || undefined,
       });
     });
     // 네이티브 알림의 "끄기" 버튼(워치 포함)·커버 화면으로 끈 경우 — JS 팝업을 거치지 않아
@@ -248,7 +253,14 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       setRinging(prev => (prev?.source === 'native' ? null : prev));
       await afterNativeStop(e.body, e.baseAlarmId);
     });
-    return () => { sub.remove(); stopped.remove(); };
+    // "5분 후 다시"(1.6.3) — 커버 화면처럼 JS를 거치지 않은 스누즈도 Expo +1/+2분 보조 알림을 지우고 울림 모달을 닫는다.
+    // 끄기 뒷정리(afterNativeStop)와 달리 '한 번' 알람을 끄지 않는다 — 끄면 스누즈 재알림이 비활성 게이트에 막힌다.
+    const snoozed = DeviceEventEmitter.addListener('alarmSnoozed', async (e: { body?: string }) => {
+      lastRescheduleKeyRef.current = null;
+      setRinging(prev => (prev?.source === 'native' ? null : prev));
+      if (e.body) await cancelExpoGroupReps(e.body);
+    });
+    return () => { sub.remove(); stopped.remove(); snoozed.remove(); };
   }, []);
 
   // 앱 시작/포그라운드 복귀 시 AlarmService가 여전히 울리는 중이면 끄기 팝업 복구
@@ -267,6 +279,11 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
         if (AlarmModule?.consumeLastStopped) {
           const last = await AlarmModule.consumeLastStopped();
           if (last) await afterNativeStop(last.body, last.baseAlarmId);
+        }
+        // 커버 화면 "5분 후 다시"도 앱이 죽어 있으면 alarmSnoozed를 못 받는다 — 마지막 스누즈 기록으로 Expo +1/+2분 보조 알림을 지운다(1.6.3)
+        if (AlarmModule?.consumeLastSnoozed) {
+          const lastSnz = await AlarmModule.consumeLastSnoozed();
+          if (lastSnz?.body) await cancelExpoGroupReps(lastSnz.body);
         }
       }
     };

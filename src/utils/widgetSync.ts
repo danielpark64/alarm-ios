@@ -1,5 +1,5 @@
 import { Platform, NativeModules } from 'react-native';
-import { Alarm, DayOverrides, SHIFTS, DAYS_DISPLAY } from '../constants';
+import { Alarm, DayOverrides, SHIFTS, DAYS_DISPLAY, MONTH_KEYS } from '../constants';
 import { pad, todayStr, getType, getNextFireDate, shiftForDate, isOffDay, shiftColorMap, alarmsForDate, isWorkAlarm, isHolidayOffWithOverride, effectiveShift, dayOverrideDisplay, alarmLabel } from './index';
 import { roleLabel } from './workPattern';
 import { t } from '../i18n/translate';
@@ -121,6 +121,10 @@ export async function syncWidget(alarms: Alarm[], overrides: DayOverrides = {}) 
     noOff: t('비번 없음'),
     nextAlarm: t('⏰ 다음 알람'),
     days: DAYS_DISPLAY.map(d => t(d)), // 일~토 — WidgetListService의 위치 계약과 같은 순서
+    // 커버 울림 카드(1.6.3, CoverAlarmActivity) — {n}·{month}·{d}·{dow}는 네이티브가 바꾼다. 날짜 형식은 홈 시계와 같다.
+    snooze: t('{n}분 후 다시'),
+    dateFmt: t('{month} {d}일 {dow}요일'),
+    months: MONTH_KEYS.map(m => t(m)),
   }));
   WidgetModule.updateWidgetData(payload);
 

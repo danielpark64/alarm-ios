@@ -120,7 +120,7 @@ async function schedulePatternAlarmTriggers(alarm: Alarm, overrides: DayOverride
       });
     }
     if (isStaleGen(gen)) return; // 더 새로운 rescheduleAll이 시작됨 — 이 호출은 여기서 멈춘다
-    scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', t.hour, t.min, -1, soundOn, vibOn, volume, alarm.id, tone, cres);
+    scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', t.hour, t.min, -1, soundOn, vibOn, volume, alarm.id, tone, cres, ds);
     nativeIdx++;
   }
 }
@@ -294,7 +294,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
     // 실패해서(+1분/+2분 보조 알림이 안 지워짐) 알람을 꺼도 잠시 뒤 다시 울린다.
     // 대가로 override 날엔 네이티브 알림 문구(화면 텍스트)가 원래 시각으로 보일 수 있으나,
     // 실제 발화 시각(ft/hh/mm)은 정확하다 — 문구 정확도보다 rep 취소 정확도가 우선이다.
-    scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', hh, mm, -1, soundOn, vibOn, volume, alarm.id, tone, cres);
+    scheduleNative(mainNativeId(alarm.id, nativeIdx), ft, title, bodyText, 'once', hh, mm, -1, soundOn, vibOn, volume, alarm.id, tone, cres, ds);
     nativeIdx++;
     if (alarm.rm === 'once') break;
   }

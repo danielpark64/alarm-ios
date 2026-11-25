@@ -42,6 +42,7 @@ object AlarmScheduling {
             putExtra("volume",      e.volume)
             putExtra("tone",        e.tone)
             putExtra("crescendo",   e.crescendo)
+            putExtra("workDate",    e.workDate)   // 울림 카드의 근무일 날짜(1.6.3)
         }
 
     /** 원장 엔트리 하나를 실제 AlarmManager 예약으로 건다. */

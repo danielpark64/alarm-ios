@@ -473,4 +473,5 @@ export const DE: Record<string, string> = {
   "알람이 늦게 울리면 여기를 눌러 주세요": "Wenn Alarme zu spät klingeln, hier tippen",
   "알림이 꺼져 있으면 알람이 울릴 때 알림도 끄기 화면도 뜨지 않아요.\n\n\"설정으로 이동\"을 누르면 열리는 화면에서 알림을 켜고 돌아오면 돼요.": "Wenn Mitteilungen aus sind, erscheinen beim Alarm weder die Mitteilung noch der Bildschirm zum Ausschalten.\n\nTippe auf „Zu den Einstellungen“, schalte auf dem geöffneten Bildschirm Mitteilungen ein und kehre zurück.",
   "절전 중에도 알람이 제때 울려요": "Alarme klingeln auch im Energiesparmodus pünktlich",
+  "{n}분 후 다시": "In {n} Min. erneut",
 };
