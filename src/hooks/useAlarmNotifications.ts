@@ -36,6 +36,9 @@ const nativeRingingState = (info: any): RingingState => ({
 
 // 알림 권한/리스너/포그라운드 재스케줄/네이티브 울림 이벤트를 한곳에서 관리
 // loaded: useAlarms의 로드 완료 여부 — 로드 전엔 alarms가 []라 포그라운드 재스케줄을 돌리면 안 된다.
+// 처리한 알림 응답(식별자|버튼|시각) — 리스너와 시작 때 마지막 응답이 겹쳐도 한 번만
+const handledResponses = new Set<string>();
+
 export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number, patch: Partial<Alarm>) => Promise<void>, loaded = true) {
   const [notifGranted, setNotifGranted] = useState(false);
   const [overlayGranted, setOverlayGranted] = useState<boolean | null>(null);
@@ -179,7 +182,7 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
       }
       setTick(t => t + 1);
     });
-    const s2 = Notifications.addNotificationResponseReceivedListener(async r => {
+    const onResponse = async (r: Notifications.NotificationResponse) => {
       const data     = r.notification.request.content.data as any;
       const alarmId  = data?.alarmId  as number | undefined;
       const alarmIds = data?.alarmIds as number[] | undefined;
@@ -264,7 +267,21 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
         lastRescheduleKeyRef.current = null;
         await refreshRepsOnly(alarmsRef.current, getDayOverridesCache());
       }
-    });
+    };
+    // 같은 응답을 두 번 처리하지 않는다 — 리스너와 아래 "마지막 응답"이 같은 것을 함께 줄 수 있다.
+    const handleResponseOnce = (r: Notifications.NotificationResponse) => {
+      const key = `${r.notification.request.identifier}|${r.actionIdentifier}|${r.notification.date}`;
+      if (handledResponses.has(key)) return;
+      handledResponses.add(key);
+      void onResponse(r);
+    };
+    const s2 = Notifications.addNotificationResponseReceivedListener(handleResponseOnce);
+    // 앱이 완전히 종료된 채 알림 버튼([알람 끄기]·[5분 후 다시])을 누르면 그 응답은 리스너 등록 전에 와서 놓친다
+    // (미니 실기기 11-26: [5분 후 다시]가 아무것도 안 걸림, [알람 끄기]도 시작 재예약이 우연히 보조 알림을 지운 것뿐).
+    // 시작 때 마지막 응답을 받아 같은 처리기로 한 번 처리하고 비운다(다음 시작 때 또 처리하지 않게).
+    Notifications.getLastNotificationResponseAsync()
+      .then(r => { if (r) { handleResponseOnce(r); Notifications.clearLastNotificationResponseAsync().catch(() => {}); } })
+      .catch(() => {});
     return () => { s1.remove(); s2.remove(); };
   }, []);
 

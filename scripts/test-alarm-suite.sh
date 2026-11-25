@@ -867,7 +867,7 @@ else ok ""; fi
 #    판정은 순수 함수(src/utils/alarmResponse.ts responseAction, logic-tests) 한 곳. 울림 화면 열기 갈래가 있어야 한다.
 printf "  1.6.2: 알림 본문 탭은 끄지 않고 울림 화면 ... "
 _UAN="$ROOT/src/hooks/useAlarmNotifications.ts"
-_RB=$(awk '/addNotificationResponseReceivedListener/,/^    }\);$/' "$_UAN")
+_RB=$(awk '/const onResponse = async/,/^    };$/' "$_UAN")  # 1.6.4: 응답 처리기는 onResponse(리스너·시작 때 마지막 응답이 함께 씀)
 if [ ! -f "$ROOT/src/utils/alarmResponse.ts" ]; then fail "src/utils/alarmResponse.ts 없음"
 elif ! echo "$_RB" | grep -q "responseAction("; then fail "응답 리스너가 responseAction으로 판정 안 함 — 본문 탭도 끔"
 elif ! echo "$_RB" | grep -q "DEFAULT_ACTION_IDENTIFIER"; then fail "응답 리스너가 DEFAULT_ACTION_IDENTIFIER를 넘기지 않음"
@@ -1113,6 +1113,10 @@ grep -q "scheduleIosSnooze(" "$_UAN" || _IS="$_IS 응답이iOS스누즈안검"
 grep -q "cancelSnooze(data.snoozeId)" "$_UAN" || _IS="$_IS 스누즈알림끄기가기록안지움"
 # 종료 상태에서 [5분 후 다시](미니 실기기 2회 재현, 11-26): 응답이 알람 로드보다 먼저 와 목록이 비어 스누즈를 안 걸었다 → 로드를 기다린다
 grep -q "waitAlarmsLoaded(" "$_UAN" || _IS="$_IS 종료상태스누즈가로드를안기다림"
+# 앱이 종료된 채 알림 버튼([알람 끄기]·[5분 후 다시])을 누르면 응답 리스너가 등록되기 전에 응답이 와서 놓친다(미니 11-26 재현)
+# → 시작 때 getLastNotificationResponseAsync로 받아 같은 처리기로 한 번만(중복 방지) 처리한다.
+grep -q "getLastNotificationResponseAsync" "$_UAN" || _IS="$_IS 종료상태알림응답을놓침"
+grep -q "handleResponseOnce" "$_UAN" || _IS="$_IS 알림응답중복처리방지없음"
 # 종료 상태에서 [5분 후 다시] → 앱 시작 재예약과 겹침(세이람 1.2.4 verify-fix와 같은 경쟁): iOS는 전체 취소(cancelAll) 금지,
 # 예약 목록을 먼저 읽고 그 뒤에 기록을 읽어야 한다(기록은 예약보다 먼저 쓰므로, 목록에 보인 스누즈는 기록에도 있다).
 awk '/export async function cancelAllExceptSnooze/,/^}$/' "$_SZF" | grep -q "Platform.OS !== 'ios' ||" && _IS="$_IS iOS기록없으면전체취소"
