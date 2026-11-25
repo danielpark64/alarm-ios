@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>교대알람 · 알람 울림 화면 — 시안</title>
+<style>
+body{margin:0;font-family:-apple-system,"Apple SD Gothic Neo",sans-serif;background:#f3f1ec;color:#222}
+h1{font-size:20px;margin:20px 20px 4px}.sub{margin:0 20px 16px;color:#666;font-size:14px;line-height:1.6}
+.row{display:flex;gap:26px;flex-wrap:wrap;padding:0 20px 24px}
+.cap{font-size:14px;font-weight:600;margin:0 0 8px}
+.ph{width:300px;height:620px;border-radius:34px;border:8px solid #222;overflow:hidden;position:relative;box-shadow:0 6px 18px #0002}
+.old{background:#0b0b1c;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.old .e{font-size:64px}.old .a{color:#9aa0ff;font-size:15px}.old .l{font-size:26px;font-weight:800}.old .t{color:#ccc}
+.old .b{margin-top:30px;background:#a39af7;color:#111;font-weight:800;padding:14px 46px;border-radius:30px}
+.new{background:radial-gradient(ellipse at 50% 20%,#1d1850 0%,#0d0b26 60%);}
+.star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;opacity:.7}
+.dim{position:absolute;inset:0;background:#0006}
+.card{position:absolute;left:26px;right:26px;top:150px;background:#16133a;border:1px solid #2e2870;border-radius:24px;padding:22px 18px 20px;text-align:center;color:#fff;box-shadow:0 10px 40px #0008}
+.app{display:flex;align-items:center;justify-content:center;gap:6px;color:#b3abff;font-size:13px}
+.ic{width:18px;height:18px;border-radius:5px;background:linear-gradient(#7c6cf6,#4a3fc0)}
+.name{font-size:28px;font-weight:800;margin:14px 0 4px}
+.date{color:#aaa6d6;font-size:14px}
+.off{width:68px;height:68px;border-radius:50%;margin:26px auto 0;background:#7c6cf6;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;box-shadow:0 0 0 4px #7c6cf633,0 0 24px #7c6cf6aa}
+.snz{display:inline-block;margin-top:16px;border:1px solid #3a3480;color:#cfcaff;border-radius:20px;padding:6px 14px;font-size:12px}
+.note{max-width:960px;margin:0 20px 30px;background:#fff;border-radius:12px;padding:14px 18px;font-size:14px;line-height:1.7}
+</style></head><body>
+<h1>알람 울림 화면 — 시안 (세이람과 같은 B안 카드)</h1>
+<p class="sub">세이람 창에서 고르신 모양을 교대알람에 맞췄어요. 교대알람은 정시에 울리니 시간과 ⏰은 뺐어요.<br>급한 1.6.2에는 넣지 않고 다음 판(1.6.3)에 넣어요.</p>
+<div class="row">
+ <div><p class="cap">지금 (1.6.2)</p>
+  <div class="ph old"><div class="e">⏰</div><div class="a">▣ 교대알람</div><div class="l">🚆 초번 출근</div><div class="t">08:00 알람</div><div class="b">끄기</div></div></div>
+ <div><p class="cap">바꿀 모양</p>
+  <div class="ph new">
+   <span class="star" style="left:40px;top:60px"></span><span class="star" style="left:220px;top:40px"></span><span class="star" style="left:120px;top:100px"></span><span class="star" style="left:250px;top:120px"></span><span class="star" style="left:60px;top:500px"></span><span class="star" style="left:200px;top:540px"></span><span class="star" style="left:160px;top:470px"></span>
+   <div class="dim"></div>
+   <div class="card">
+    <div class="app"><span class="ic"></span>교대알람</div>
+    <div class="name">초번 출근</div>
+    <div class="date">11월 26일 목요일</div>
+    <div class="off">끄기</div>
+    <div class="snz">5분 후 다시</div>
+   </div>
+  </div></div>
+</div>
+<div class="note"><b>정해 주실 것</b><ul>
+<li>지금 교대알람 울림 화면에는 끄기만 있어요. <b>"5분 후 다시"</b>를 넣을까요, 뺄까요? 넣으면 몇 분으로 할까요?</li>
+<li>근무 이름 옆 그림(🚆 같은 알람 아이콘)은 지금 있어요. 카드에서 뺄까요, 이름 위에 작게 둘까요?</li>
+<li>카드 밖을 눌러도 닫히지 않고, 울리는 동안 계속 맨 앞이에요(지금과 같아요).</li>
+</ul></div>
+</body></html>

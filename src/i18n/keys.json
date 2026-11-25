@@ -170,7 +170,6 @@
  {
   "key": "5분 후",
   "files": [
-   "src/components/AlarmRinging.tsx",
    "src/utils/notifications/index.ts"
   ]
  },
@@ -333,7 +332,9 @@
  {
   "key": "{month} {d}일 {dow}요일",
   "files": [
-   "src/components/Home/ClockHeader.tsx"
+   "src/components/Home/ClockHeader.tsx",
+   "src/utils/ringCard.ts",
+   "src/utils/widgetSync.ts"
   ]
  },
  {
@@ -370,6 +371,13 @@
   "key": "{n}명 보는 중",
   "files": [
    "src/components/Home/ShareBar.tsx"
+  ]
+ },
+ {
+  "key": "{n}분 후 다시",
+  "files": [
+   "src/utils/ringCard.ts",
+   "src/utils/widgetSync.ts"
   ]
  },
  {

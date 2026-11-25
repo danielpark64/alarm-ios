@@ -763,6 +763,7 @@ export default function App() {
           body={ringing?.body ?? ''}
           source={ringing?.source ?? 'expo'}
           tone={ringing?.tone}
+          workDate={ringing?.workDate}
           onStop={stopRinging}
           onSnooze={snoozeRinging}
         />

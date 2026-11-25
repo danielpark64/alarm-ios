@@ -47,7 +47,8 @@ class AlarmModule(private val reactContext: ReactApplicationContext) :
         recurrence: String, hour: Int, min: Int, weekday: Int,
         soundOn: Boolean, vibOn: Boolean, volume: Double,
         baseAlarmId: Int,
-        tone: String, crescendo: Boolean
+        tone: String, crescendo: Boolean,
+        workDate: String
     ) {
         val ctx = reactContext
         val entry = AlarmStore.Entry(
@@ -58,6 +59,7 @@ class AlarmModule(private val reactContext: ReactApplicationContext) :
             soundOn = soundOn, vibOn = vibOn, volume = volume.toFloat(),
             baseAlarmId = baseAlarmId,
             tone = tone, crescendo = crescendo,
+            workDate = workDate,
         )
         AlarmScheduling.arm(ctx, entry)
         // 재부팅·앱 교체로 AlarmManager가 비워져도 BootReceiver가 되살릴 수 있게 원장에 남긴다.
@@ -185,6 +187,7 @@ class AlarmModule(private val reactContext: ReactApplicationContext) :
             putString("body", info.body)
             putInt("alarmId", info.alarmId)
             putInt("baseAlarmId", info.baseAlarmId)
+            putString("workDate", info.workDate) // 울림 카드의 근무일 날짜(1.6.3)
         })
     }
 

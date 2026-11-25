@@ -36,4 +36,12 @@ object NativeStrings {
         if (arr.length() != 7) return fallback
         return (0 until 7).map { arr.optString(it, fallback[it]) }
     }
+
+    /** 달 이름 12개(1월~12월, 1.6.3 커버 울림 카드 날짜). 저장된 값이 없거나 개수가 안 맞으면 기본값. */
+    fun months(context: Context): List<String> {
+        val fallback = (1..12).map { "${it}월" }
+        val arr = load(context)?.optJSONArray("months") ?: return fallback
+        if (arr.length() != 12) return fallback
+        return (0 until 12).map { arr.optString(it, fallback[it]) }
+    }
 }

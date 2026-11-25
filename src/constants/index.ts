@@ -68,8 +68,12 @@ export const VIBS = [
   { id: 'pulse', label: N('진동'), icon: '📳' },
 ] as const;
 export const CYCLE_PRESETS = [2,3,4,7,10,30];
-// 인앱 알람 울림 팝업의 "5분 후" 스누즈 버튼 노출 여부. false면 끄기 버튼만 표시.
+// 알림·워치 버튼과 iOS AlarmKit의 "5분 후" 스누즈 노출 여부(false면 끄기만). Android 울림 화면(카드)의 "5분 후 다시"는
+// 1.6.3부터 이 값과 상관없이 늘 보이고 네이티브 스누즈(AlarmService.ACTION_SNOOZE) 한 길로 간다 — 알림·워치의 스누즈는
+// Expo 예약만 걸려 Doze에 약해서 여전히 꺼 둔다(notifications/index.ts registerNotificationCategories).
 export const SNOOZE_ENABLED = false;
+// 스누즈 분 — 네이티브 AlarmService.SNOOZE_MINUTES와 같아야 한다(정적 체크 "1.6.3 울림 카드").
+export const SNOOZE_MIN = 5;
 
 // ── iOS 반복 울림(보조 알림) 설정 ──────────────────────────────────────────
 // iOS는 알림 소리가 최대 30초이고 앱이 백그라운드에서 소리를 이어 울릴 수 없어, "끌 때까지 울림"을

@@ -1,5 +1,5 @@
 import { Platform, NativeModules } from 'react-native';
-import { mainNativeId, weekdaySlotId, repSlotId, SNOOZE_REQUEST_CODE } from './alarmIds';
+import { mainNativeId, weekdaySlotId, repSlotId } from './alarmIds';
 
 const { AlarmModule } = NativeModules;
 
@@ -13,9 +13,11 @@ export function scheduleNative(
   baseAlarmId: number,
   // 알람 소리 id(constants/alarmTones.ts)·점점 크게 — 네이티브가 원장(AlarmStore)에도 남겨 재부팅 뒤에도 같은 소리로 울린다
   tone: string = 'default', crescendo: boolean = false,
+  // 근무일(YYYY-MM-DD, 1.6.3 울림 카드의 날짜) — 야간 퇴근은 근무일 다음 날 울리므로 울린 날과 다르다. 빈 값이면 울린 날로 보인다.
+  workDate: string = '',
 ) {
   if (Platform.OS !== 'android' || !AlarmModule) return;
-  AlarmModule.scheduleAlarm(requestCode, triggerDate.getTime(), title, body, recurrence, hour, min, calWeekday, soundOn, vibOn, volume, baseAlarmId, tone, crescendo);
+  AlarmModule.scheduleAlarm(requestCode, triggerDate.getTime(), title, body, recurrence, hour, min, calWeekday, soundOn, vibOn, volume, baseAlarmId, tone, crescendo, workDate);
 }
 
 // alarmId에 연결된 모든 네이티브 AlarmManager 예약 취소 (요일 슬롯 + 날짜 슬롯 + rep 슬롯 + 스누즈)
@@ -39,8 +41,9 @@ export function cancelNativeAlarms(alarmId: number) {
     ids.push(repSlotId(id, 1), repSlotId(id, 2));
   }
   ids.push(repSlotId(alarmId, 1), repSlotId(alarmId, 2));
-  // 스누즈로 예약된 재알림(AlarmService.SNOOZE_REQUEST_CODE) 취소 — 삭제 후 고아 알림 방지
-  ids.push(SNOOZE_REQUEST_CODE);
+  // ⚠️ 스누즈(SNOOZE_REQUEST_CODE)는 여기서 지우지 않는다(1.6.3) — rescheduleAll이 포그라운드 복귀·알람 변경마다 모든 알람에
+  // 이 함수를 부르므로, 지우면 "5분 후 다시"를 누르고 앱을 다시 열기만 해도 스누즈가 사라졌다. 지운·끈 알람의 스누즈는
+  // 스누즈 예약에 실린 baseAlarmId로 AlarmReceiver의 비활성 게이트가 막는다(AlarmService.scheduleSnooze).
 
   if (AlarmModule.cancelAlarms) {
     AlarmModule.cancelAlarms(ids);

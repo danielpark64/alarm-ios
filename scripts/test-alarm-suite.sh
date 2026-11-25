@@ -1017,6 +1017,51 @@ grep -q "function openStore" "$ROOT/src/hooks/useShiftShare.tsx" && _UL="$_UL �
 grep -rq "apps.apple.com/app/id6825757463" "$ROOT/src/utils" "$ROOT/src/hooks" "$ROOT/app" && _UL="$_UL 스토어주소가appInfo밖에"
 [ -z "$_UL" ] && ok "" || fail "스토어 이동이 두 갈래 —$_UL"
 
+# ── 1.6.3 울림 카드(2026-11-25 사용자 확정 시안 docs/시안/울림화면-카드-시안.html "바꿀 모양") ──────────
+# ① 울림 화면(JS 모달·커버 화면)에 시간·이모지를 넣지 않는다 — 교대알람은 정시에 울리니 시간은 빼고, 근무 이름·근무일 날짜만.
+printf "  1.6.3 울림 카드: 시간·이모지 없음(JS·커버) ... "
+_RC=""; _AR="$ROOT/src/components/AlarmRinging.tsx"
+grep -q "ringTitle(" "$_AR" || _RC="$_RC JS제목에서아이콘안뗌"
+grep -q "ringDateLabel(" "$_AR" || _RC="$_RC JS날짜없음"
+grep -qE "\{body\}" "$_AR" && _RC="$_RC JS가본문(HH:MM)표시"
+LC_ALL=C grep -qE $'\xe2\x8f\xb0|\xf0\x9f' "$_AR" && _RC="$_RC JS에이모지"
+grep -q "fun ringTitle" "$_CA" || _RC="$_RC 커버제목에서아이콘안뗌"
+grep -q "ringDateLabel" "$_CA" || _RC="$_RC 커버날짜없음"
+LC_ALL=C grep -vE '^\s*//' "$_CA" | LC_ALL=C grep -qE $'\xe2\x8f\xb0|\xf0\x9f' && _RC="$_RC 커버에이모지"
+grep -q 'getStringExtra("body")\|EXTRA_BODY' "$_CA" && _RC="$_RC 커버가본문표시"
+[ -z "$_RC" ] && ok "" || fail "울림 화면에 시간·이모지 —$_RC"
+# ② "5분 후 다시"는 기존 네이티브 스누즈(AlarmService.ACTION_SNOOZE) 하나로 — 진동만 알람이 스누즈 뒤 소리로 울리면 안 되고,
+#    포그라운드 복귀 때 도는 rescheduleAll(cancelNativeAlarms)이 방금 건 스누즈를 지우면 안 된다(대신 baseAlarmId 게이트가 지운 알람의 스누즈를 막는다).
+printf "  1.6.3 울림 카드: 스누즈는 네이티브 한 길·설정 그대로·안 지워짐 ... "
+_SZ=""; _SNZ=$(awk '/ACTION_SNOOZE -> \{/,/return START_NOT_STICKY/' "$_AS")
+grep -q "SNOOZE_ENABLED" "$_AR" && _SZ="$_SZ JS버튼이SNOOZE_ENABLED에묶임"
+grep -q "snoozeLabel()" "$_AR" || _SZ="$_SZ JS문구가snoozeLabel아님"
+grep -q "AlarmService.ACTION_SNOOZE" "$_CA" || _SZ="$_SZ 커버에스누즈없음"
+echo "$_SNZ" | grep -vE '^ *//' | grep -q "notifyStopped(" && _SZ="$_SZ 스누즈가notifyStopped(한번알람꺼짐)"
+echo "$_SNZ" | grep -q "cur?.soundOn" || _SZ="$_SZ 소리설정을지금울림에서안가져옴"
+echo "$_SNZ" | grep -q "cur?.vibOn" || _SZ="$_SZ 진동설정을지금울림에서안가져옴"
+echo "$_SNZ" | grep -q "emitSnoozed(" || _SZ="$_SZ JS에스누즈알림없음(Expo보조취소)"
+awk '/private fun scheduleSnooze/,/^    }$/' "$_AS" | grep -q 'putExtra("baseAlarmId"' || _SZ="$_SZ 스누즈예약에baseAlarmId없음"
+awk '/private fun scheduleSnooze/,/^    }$/' "$_AS" | grep -q "SNOOZE_MINUTES" || _SZ="$_SZ 스누즈분이상수아님"
+awk '/export function cancelNativeAlarms/,/^}$/' "$ROOT/src/utils/notifications/android.ts" | grep -q "ids.push(SNOOZE_REQUEST_CODE)" && _SZ="$_SZ 재예약이스누즈를지움"
+grep -q "'alarmSnoozed'" "$ROOT/src/hooks/useAlarmNotifications.ts" || _SZ="$_SZ JS가alarmSnoozed안받음"
+_NSM=$(grep -oE 'SNOOZE_MINUTES *= *[0-9]+' "$_AS" | grep -oE '[0-9]+$'); _JSM=$(grep -oE 'export const SNOOZE_MIN *= *[0-9]+' "$ROOT/src/constants/index.ts" | grep -oE '[0-9]+$')
+[ -n "$_NSM" ] && [ "$_NSM" = "$_JSM" ] || _SZ="$_SZ 스누즈분불일치(네이티브$_NSM/JS$_JSM)"
+grep -q "snooze:" "$ROOT/src/utils/widgetSync.ts" || _SZ="$_SZ 커버스누즈문구번역없음"
+[ -z "$_SZ" ] && ok "" || fail "스누즈 경로 —$_SZ"
+# ③ 날짜는 근무일 기준 — 야간 퇴근은 다음 날 울리므로 예약 때 근무일(ds)을 실어 보내고(원장·부팅 복구 포함) 울림 화면이 그 날짜를 쓴다.
+printf "  1.6.3 울림 카드: 날짜는 근무일(예약→원장→울림→화면) ... "
+_WD=""
+[ "$(grep -cE "scheduleNative\(mainNativeId\(.*, ds\);" "$ROOT/src/utils/notifications/core.ts")" -ge 2 ] || _WD="$_WD core가근무일안넘김"
+grep -q "workDate: string = ''" "$ROOT/src/utils/notifications/android.ts" || _WD="$_WD scheduleNative인자없음"
+grep -q 'putExtra("workDate"' "$NATIVE_DIR/AlarmScheduling.kt" || _WD="$_WD 예약인텐트"
+grep -q '"wdate"' "$NATIVE_DIR/AlarmStore.kt" || _WD="$_WD 원장"
+[ "$(grep -c 'putExtra("workDate"' "$NATIVE_DIR/AlarmReceiver.kt")" -ge 2 ] || _WD="$_WD 수신기(울림·보조)"
+grep -q 'putString("workDate"' "$NATIVE_DIR/AlarmModule.kt" || _WD="$_WD getCurrentRinging"
+grep -q 'putExtra("workDate"' "$_AS" || _WD="$_WD 서비스→화면·스누즈"
+grep -q "workDate" "$ROOT/src/hooks/useAlarmNotifications.ts" || _WD="$_WD JS울림상태"
+[ -z "$_WD" ] && ok "" || fail "근무일 날짜 —$_WD"
+
 if $STATIC_ONLY; then
   echo ""
   echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
