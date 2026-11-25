@@ -1,0 +1,39 @@
+{
+  "_note": "1.6.4 새로운 기능 초안 (2026-11-25, feature/ios-snooze). play = Google Play, ios = App Store. iOS 알람에 [5분 후 다시] — 문구·순서·간격(5분)은 세이람과 같다(iOS 26+ 알람 화면은 시스템 카운트다운, 그 밖은 알림 버튼). Android는 동작 변화 없음(스페인어·프랑스어·포르투갈어 '5분 후 다시' 문구만 세이람과 같게 바뀜)이라 안정성 한 줄. 앱 밖 결제·후원 안내 없음, 이모지 없음. 버튼 이름은 앱 사전(src/i18n/locales)과 같게.",
+  "ko": {
+    "play": "• 안정성을 개선했어요.",
+    "ios": "• 아이폰 알람에 '5분 후 다시' 버튼이 생겼어요. 알람 화면이나 알림에서 누르면 5분 뒤에 같은 소리·진동으로 다시 울려요.\n• 미룬 알람도 그날 근무를 바꾸거나 알람을 끄거나 시간을 바꾸면 함께 정리돼 울리지 않아요."
+  },
+  "en": {
+    "play": "• Stability improvements.",
+    "ios": "• iPhone alarms now have a \"Snooze 5 min\" button. Tap it on the alarm screen or the notification and the alarm rings again in 5 minutes with the same sound and vibration.\n• A snoozed alarm is also cleared when you change that day's shift, turn the alarm off, or change the time."
+  },
+  "ja": {
+    "play": "• 安定性を向上しました。",
+    "ios": "• iPhoneのアラームに「5分後にもう一度」ボタンを追加しました。アラーム画面や通知で押すと、5分後に同じ音・バイブで再び鳴ります。\n• 延ばしたアラームも、その日の勤務の変更・アラームのオフ・時刻の変更をすると一緒に整理され、鳴りません。"
+  },
+  "zh-Hans": {
+    "play": "• 提升了稳定性。",
+    "ios": "• iPhone闹钟新增「5分钟后再响」按钮。在闹钟画面或通知中点按,5分钟后会以相同的铃声和振动再次响起。\n• 已推迟的闹钟,在更改当天班次、关闭闹钟或修改时间后也会一并清除,不再响铃。"
+  },
+  "zh-Hant": {
+    "play": "• 提升了穩定性。",
+    "ios": "• iPhone鬧鐘新增「5分鐘後再響」按鈕。在鬧鐘畫面或通知中點按,5分鐘後會以相同的鈴聲和震動再次響起。\n• 已延後的鬧鐘,在變更當天班別、關閉鬧鐘或修改時間後也會一併清除,不再響鈴。"
+  },
+  "es": {
+    "play": "• Mejoras de estabilidad.",
+    "ios": "• Las alarmas del iPhone ahora tienen el botón \"Posponer 5 min\". Tócalo en la pantalla de alarma o en la notificación y volverá a sonar en 5 minutos con el mismo sonido y vibración.\n• Una alarma pospuesta también se elimina si cambias el turno de ese día, apagas la alarma o cambias la hora."
+  },
+  "fr": {
+    "play": "• Améliorations de la stabilité.",
+    "ios": "• Les alarmes de l'iPhone ont maintenant un bouton « Répéter dans 5 min ». Touchez-le sur l'écran d'alarme ou la notification : l'alarme sonne de nouveau 5 minutes plus tard, avec le même son et la même vibration.\n• Une alarme reportée est aussi annulée si vous changez le poste du jour, coupez l'alarme ou modifiez l'heure."
+  },
+  "de": {
+    "play": "• Verbesserte Stabilität.",
+    "ios": "• iPhone-Alarme haben jetzt die Taste \"In 5 Min. erneut\". Tippe sie auf dem Alarmbildschirm oder in der Mitteilung an, und der Alarm klingelt in 5 Minuten erneut, mit demselben Ton und derselben Vibration.\n• Ein verschobener Alarm wird ebenfalls gelöscht, wenn du die Schicht des Tages änderst, den Alarm ausschaltest oder die Uhrzeit änderst."
+  },
+  "pt": {
+    "play": "• Melhorias de estabilidade.",
+    "ios": "• Os alarmes do iPhone agora têm o botão \"Adiar 5 min\". Toque nele na tela de alarme ou na notificação e o alarme toca de novo em 5 minutos, com o mesmo som e vibração.\n• Um alarme adiado também é cancelado se você mudar o turno do dia, desligar o alarme ou alterar o horário."
+  }
+}
