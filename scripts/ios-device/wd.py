@@ -125,7 +125,7 @@ def source():
 
 def visible_texts(xml):
     seen, out = set(), []
-    for m in re.finditer(r'<XCUIElementType(\w+)[^>]*?(?:label="([^"]*)")?[^>]*?visible="true"', xml):
+    for m in re.finditer(r'<XCUIElementType(\w+) [^>]*?label="([^"]*)"[^>]*?visible="true"', xml):
         kind, lab = m.group(1), m.group(2)
         if lab and (kind, lab) not in seen:
             seen.add((kind, lab)); out.append(f'{kind}: {lab}')
@@ -230,18 +230,19 @@ def main():
         el = find(a[1], wait=float(a[2]) if len(a) > 2 else 10)
         if not el: raise RuntimeError(f"못 찾음: {a[1]}")
         click(el); print(f"눌렀음: {a[1]}")
+    elif cmd == 'tap-xy':  # 좌표 탭 — RN 앱 안은 접근성 트리가 비어 이것만 된다(mobile: tap은 먹음, W3C raw actions는 안 먹었음)
+        mobile('tap', {'x': float(a[1]), 'y': float(a[2])})
+    elif cmd == 'drag':
+        drag(float(a[1]), float(a[2]), float(a[3]), float(a[4]), float(a[5]) if len(a) > 5 else 0.4)
     elif cmd == 'wait-text':  # 앞 화면에 글자가 나올 때까지(초)
         el = find(a[1], wait=float(a[2]) if len(a) > 2 else 30)
         print('있음' if el else '없음'); sys.exit(0 if el else 1)
     elif cmd == 'alert':  # 앱의 시스템 경고창(Alert) 글자를 읽고 첫 버튼으로 닫는다
-        t = mobile('alert', {'action': 'getText'})
-        print(t)
+        print(req('GET', f'/session/{sid()}/alert/text'))
         if len(a) < 2 or a[1] != 'keep':
-            try: mobile('alert', {'action': 'accept'})
+            try: req('POST', f'/session/{sid()}/alert/accept', {})
             except Exception: pass
     elif cmd == 'notif-wait':  # SpringBoard에 text 들어간 알림이 뜰 때까지(초)
-        activate_springboard = len(a) > 3 and a[3] == 'center'
-        if activate_springboard: open_notification_center()
         el = find_notification(a[1], float(a[2]) if len(a) > 2 else 60)
         print('왔음' if el else '안 옴'); sys.exit(0 if el else 1)
     elif cmd == 'notif-action':  # notif-action <알림 글자> <버튼> [기다릴 초] [center]
@@ -251,7 +252,7 @@ def main():
     elif cmd == 'springboard-texts':
         print('\n'.join(visible_texts(source())))
     else:
-        print('명령: session new-session shot texts source activate terminate state home volume-min lock unlock is-locked tap wait-text alert notif-wait notif-action notif-center')
+        print('명령: tap-xy drag session new-session shot texts source activate terminate state home volume-min lock unlock is-locked tap wait-text alert notif-wait notif-action notif-center')
 
 
 if __name__ == '__main__':

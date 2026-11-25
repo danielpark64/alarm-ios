@@ -22,18 +22,22 @@
 #     kill                         앱 완전 종료(최근 앱에서 쓸어 올린 것과 같음)
 #     state                        0 없음 · 1 안 돌아감 · 2/3 백그라운드 · 4 앞
 #     link '<url>'                 딥링크로 열기(devicectl --payload-url). 같은 URL을 다시 쓰려면 &n=<숫자>를 바꿔라
-#     tap '<글자>'                 앞 화면에서 접근성 이름에 그 글자가 든 요소를 눌러라(좌표 탭 금지 — RN이 안 받음)
-#     texts                        앞 화면의 보이는 글자 목록(접근성 트리)
-#     alert [keep]                 앱의 시스템 경고창 글자 읽기(keep이 없으면 첫 버튼으로 닫음)
+#     tap-xy <x> <y>               좌표(포인트, 가로 1133×744 기준 미니) 탭 — mobile: tap. RN 앱 안은 이것만 된다
+#     drag <x1> <y1> <x2> <y2>     끌기(휠 돌리기·스크롤)
+#     tap '<글자>'                 접근성 이름으로 찾아 누르기 — SpringBoard·시스템 화면용(RN 앱 안 요소는 트리에 안 잡힘)
+#     texts                        앞 화면의 보이는 글자 목록(접근성 트리 — RN 앱은 거의 비어 있음, 캡처로 볼 것)
+#     alert [keep]                 시스템 경고창 글자 읽기(RN 앱의 Alert는 안 잡힘)
 #     shot <이름>                  ~/Desktop/스크린샷/<이름>.png로 캡처
 #   알림(SpringBoard)
 #     home                         홈 화면으로
 #     notif-wait '<글자>' [초] [center]          배너(또는 center면 알림 센터)에 그 글자가 든 알림이 올 때까지
-#     notif-action '<글자>' '<버튼>' [초] [center] 알림을 길게 눌러 펼친 뒤 버튼을 누른다 — 배너·잠금 화면·알림 센터 공통
+#     notif-action '<글자>' '<버튼>' [초]  알림이 올 때까지 기다렸다가 알림 센터를 열고, 길게 눌러 버튼을 누른다
+#                                  (배너는 길게 누르지 않는다 — 배너가 사라지면 홈 화면이 편집 모드로 들어감)
+#                                  NOTIF_SHOT=<png> 를 주면 버튼이 펼쳐진 화면을 캡처
 #     notif-center                 알림 센터 열기(맨 위 왼쪽에서 아래로)
-#     lock | unlock | is-locked    잠금(화면 끔)·풀기·상태 — 암호가 있으면 unlock은 잠금 화면까지만
+#     lock | unlock | is-locked    잠금·풀기·상태 — 미니(iPadOS 27.2.1)에선 lock이 시간 초과로 안 됨(11-26)
 #   앱별 묶음(교대알람만 — 다른 앱은 위 명령으로 조합)
-#     alarm-pending                교대알람 dumpPending 딥링크 → 경고창 글자 출력
+#     alarm-pending                교대알람 dumpPending 딥링크 → 경고창을 캡처하고 닫음
 #     alarm-report                 교대알람 report=1 딥링크 → 앱 저장소에서 dev_report JSON을 꺼내 출력
 #
 # 다른 앱 예:
@@ -90,7 +94,8 @@ case $CMD in
   alarm-pending)
     ensure_appium
     xcrun devicectl device process launch --device "$UDID" --payload-url "alarmapp://?k=$ALARM_KEY&dumpPending=1&n=$RANDOM$RANDOM" "$BUNDLE" >/dev/null
-    sleep 3; $WD alert;;
+    # RN 앱 안 경고창은 WDA 접근성 트리에 안 잡힌다(11-26 미니) — 캡처로 남기고 '확인'을 좌표로 눌러 닫는다. 글자는 alarm-report로.
+    sleep 4; mkdir -p "$SHOT_DIR"; $WD shot "$SHOT_DIR/${BUNDLE##*.}-pending-$(date +%H%M%S).png"; $WD tap-xy 566 396;;
   alarm-report)
     xcrun devicectl device process launch --device "$UDID" --payload-url "alarmapp://?k=$ALARM_KEY&report=1&n=$RANDOM$RANDOM" "$BUNDLE" >/dev/null
     sleep 4
