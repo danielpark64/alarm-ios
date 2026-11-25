@@ -41,6 +41,7 @@ class AlarmService : Service() {
             ACTION_STOP -> {
                 cancelReps(alarmId)
                 stopRinging()
+                cancelPendingRingLaunch()
                 cancelCoverRelaunch()
                 cancelKeepFront()
                 notifyStopped(currentRinging)
@@ -61,6 +62,7 @@ class AlarmService : Service() {
                 val crescendo = if (intent.hasExtra("crescendo")) intent.getBooleanExtra("crescendo", false) else ringingCrescendo
                 cancelReps(alarmId)
                 stopRinging()
+                cancelPendingRingLaunch()
                 cancelCoverRelaunch()
                 cancelKeepFront()
                 // 스누즈는 notifyStopped를 보내지 않는다 — 스누즈 진입점은 JS snoozeRinging 하나뿐이고
@@ -85,6 +87,8 @@ class AlarmService : Service() {
         val crescendo = intent?.getBooleanExtra("crescendo", false) ?: false
         ringingTone = tone
         ringingCrescendo = crescendo
+        // 이번 울림의 시작 시각 — 울림 인텐트에 실어 보내, 끈 뒤에 늦게 도착한 인텐트를 MainActivity가 알아본다(1.6.2)
+        ringStartedAt = maxOf(System.currentTimeMillis(), lastRingEndedAt + 1)
 
         startForeground(NOTIFICATION_ID, buildNotification(title, body, alarmId, soundOn, vibOn, volume, tone, crescendo))
         startRinging(soundOn, vibOn, volume, tone, crescendo)
@@ -104,11 +108,29 @@ class AlarmService : Service() {
     // 일정 시간 내에 커버 디스플레이가 켜지지 않으면(=폴더가 닫혀있지 않은 일반적인 경우)
     // 기본 디스플레이로 띄운다.
     private var ringingDisplayListener: DisplayManager.DisplayListener? = null
+    // 기다렸다 띄우기(1200ms 뒤 기본 화면) — 울린 직후 끄면 취소해야 한다(cancelPendingRingLaunch)
+    private val ringLaunchHandler = Handler(Looper.getMainLooper())
+    private var ringLaunchTimeout: Runnable? = null
+
+    /**
+     * 아직 실행 안 된 울림 화면 띄우기를 취소한다(1.6.2) — 끄기·스누즈·onDestroy 세 곳에서 부른다.
+     * 워치·알림 버튼으로 울린 지 1.2초 안에 끄면 예전엔 이 대기가 남아 끈 뒤에 MainActivity가 잠금 위로 다시 떴다.
+     */
+    private fun cancelPendingRingLaunch() {
+        ringLaunchTimeout?.let { ringLaunchHandler.removeCallbacks(it) }
+        ringLaunchTimeout = null
+        ringingDisplayListener?.let {
+            try { (getSystemService(Context.DISPLAY_SERVICE) as DisplayManager).unregisterDisplayListener(it) } catch (_: Exception) {}
+        }
+        ringingDisplayListener = null
+    }
 
     private fun bringRingingActivityToFront(title: String, alarmId: Int) {
         val dm = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
-        val handler = Handler(Looper.getMainLooper())
+        val handler = ringLaunchHandler
+        cancelPendingRingLaunch() // 앞 울림의 대기가 남아 있으면 정리
         var launched = false
+        val token = ringStartedAt
 
         // 폴더가 닫혀 커버 디스플레이로 알람을 띄우는 경우, RN 기반 MainActivity는
         // 작은 커버 디스플레이에서 윈도우 재측정에 실패해 화면이 비어 보이는 문제가 있어
@@ -116,8 +138,9 @@ class AlarmService : Service() {
         fun launch(displayId: Int?) {
             if (launched) return
             launched = true
-            ringingDisplayListener?.let { dm.unregisterDisplayListener(it) }
-            ringingDisplayListener = null
+            cancelPendingRingLaunch()
+            // 띄우기 직전 재확인 — 그사이 꺼졌거나(스누즈 포함) 다른 울림으로 바뀌었으면 띄우지 않는다
+            if (currentRinging == null || ringStartedAt != token) return
             try {
                 val isCoverDisplay = displayId != null && displayId != Display.DEFAULT_DISPLAY
                 // 잠금해제 전에는 MainActivity(RN)가 directBootAware가 아니라 실행 자체가 막힌다
@@ -153,7 +176,9 @@ class AlarmService : Service() {
         }
         ringingDisplayListener = listener
         dm.registerDisplayListener(listener, handler)
-        handler.postDelayed({ launch(null) }, 1200L)
+        val timeout = Runnable { launch(null) }
+        ringLaunchTimeout = timeout
+        handler.postDelayed(timeout, 1200L)
     }
 
     // 폴더블(갤럭시 Z 플립 등)을 접으면 기본 디스플레이(메인 화면)는 꺼지고
@@ -189,6 +214,7 @@ class AlarmService : Service() {
                     Intent.FLAG_ACTIVITY_CLEAR_TOP or
                     Intent.FLAG_ACTIVITY_SINGLE_TOP
                 putExtra("alarmRinging", true)
+                putExtra("ringAt", ringStartedAt)
             }
         }
     }
@@ -458,6 +484,7 @@ class AlarmService : Service() {
 
     override fun onDestroy() {
         stopRinging()
+        cancelPendingRingLaunch()
         cancelCoverRelaunch()
         cancelKeepFront()
         currentRinging = null
@@ -473,6 +500,8 @@ class AlarmService : Service() {
      * CoverAlarmActivity: 떠 있으면 닫는다(알림 "끄기"·워치로 끄면 onResume을 다시 안 거쳐 남았다).
      */
     private fun onRingingEnded() {
+        // 끝난 시각 — 이보다 먼저 시작된 울림의 인텐트가 늦게 와도 MainActivity가 잠금 위 표시를 걸지 않는다(1.6.2)
+        lastRingEndedAt = System.currentTimeMillis()
         try { MainActivity.onRingingEnded() } catch (e: Exception) { e.printStackTrace() }
         try { CoverAlarmActivity.onRingingEnded() } catch (e: Exception) { e.printStackTrace() }
     }
@@ -516,6 +545,7 @@ class AlarmService : Service() {
             Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 putExtra("alarmRinging", true)
+                putExtra("ringAt", ringStartedAt)
             },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
@@ -564,6 +594,9 @@ class AlarmService : Service() {
         // 지금 울리는 알람의 소리 — JS snoozeAlarm(extra 없음) 경로의 스누즈 재알림이 같은 소리를 쓰게
         @Volatile var ringingTone: String = AlarmTones.DEFAULT
         @Volatile var ringingCrescendo: Boolean = false
+        // 울림 시작·끝 시각(1.6.2) — 울림 인텐트의 ringAt이 lastRingEndedAt 이하면 이미 끝난 울림의 인텐트다
+        @Volatile var ringStartedAt: Long = 0L
+        @Volatile var lastRingEndedAt: Long = 0L
 
         // 네이티브 경로로 마지막에 끈 알람 기록 — AlarmModule.consumeLastStopped가 읽고 지운다
         const val PREFS_STOPPED       = "AlarmLastStopped"

@@ -469,4 +469,10 @@ export const EN: Record<string, string> = {
   "알람이 울릴 때 화면이 꺼져 있거나 잠겨 있어도 끄기 화면이 뜨게 하려면 \"전체 화면 알림\"을 허용해 주세요.\n\n\"설정으로 이동\"을 누르면 열리는 화면에서 스위치를 켜고 ← 버튼으로 돌아오면 돼요.": "To have the dismiss screen appear when an alarm rings, even when the screen is off or locked, allow \"Full screen notifications\".\n\nTap \"Open Settings\", turn on the switch on the screen that opens, then come back with the ← button.",
   // 새 버전 안내(1.6.3)
   "새 버전이 있어요": "A new version is available",
+  // 1.6.2 허용 안내(알림 권한·배터리 최적화 설정 줄)
+  "배터리 최적화 제외": "Exclude from battery optimization",
+  "알람 알림을 받으려면": "To get alarm notifications",
+  "알람이 늦게 울리면 여기를 눌러 주세요": "If alarms ring late, tap here",
+  "알림이 꺼져 있으면 알람이 울릴 때 알림도 끄기 화면도 뜨지 않아요.\n\n\"설정으로 이동\"을 누르면 열리는 화면에서 알림을 켜고 돌아오면 돼요.": "With notifications off, neither the alarm notification nor the dismiss screen appears when an alarm rings.\n\nTap \"Open Settings\", turn on notifications on the screen that opens, then come back.",
+  "절전 중에도 알람이 제때 울려요": "Alarms ring on time even in power saving",
 };

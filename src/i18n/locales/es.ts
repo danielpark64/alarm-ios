@@ -467,4 +467,10 @@ export const ES: Record<string, string> = {
   "알람이 울릴 때 화면이 꺼져 있거나 잠겨 있어도 끄기 화면이 뜨게 하려면 \"전체 화면 알림\"을 허용해 주세요.\n\n\"설정으로 이동\"을 누르면 열리는 화면에서 스위치를 켜고 ← 버튼으로 돌아오면 돼요.": "Para que la pantalla para apagar aparezca cuando suene una alarma, aunque la pantalla esté apagada o bloqueada, permite \"Notificaciones en pantalla completa\".\n\nToca \"Ir a Ajustes\", activa el interruptor en la pantalla que se abre y vuelve con el botón ←.",
   // 새 버전 안내(1.6.3)
   "새 버전이 있어요": "Hay una nueva versión",
+  // 1.6.2 허용 안내(알림 권한·배터리 최적화 설정 줄)
+  "배터리 최적화 제외": "Excluir de la optimización de batería",
+  "알람 알림을 받으려면": "Para recibir notificaciones de alarma",
+  "알람이 늦게 울리면 여기를 눌러 주세요": "Si las alarmas suenan tarde, toca aquí",
+  "알림이 꺼져 있으면 알람이 울릴 때 알림도 끄기 화면도 뜨지 않아요.\n\n\"설정으로 이동\"을 누르면 열리는 화면에서 알림을 켜고 돌아오면 돼요.": "Con las notificaciones desactivadas, al sonar una alarma no aparecen ni la notificación ni la pantalla para apagarla.\n\nToca \"Ir a Ajustes\", activa las notificaciones en la pantalla que se abre y vuelve.",
+  "절전 중에도 알람이 제때 울려요": "Las alarmas suenan a tiempo incluso en ahorro de energía",
 };

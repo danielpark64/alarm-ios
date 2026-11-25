@@ -892,6 +892,45 @@ awk '/override fun onDestroy/,/^    }$/' "$_AS" | grep -qE '^ +onRingingEnded\(\
 grep -q "fun onRingingEnded" "$_CA" || _LK="$_LK CoverAlarmActivity.onRingingEnded"
 grep -q "MainActivity.onRingingEnded()" "$NATIVE_DIR/AlarmModule.kt" || _LK="$_LK AlarmModule호출"
 [ -z "$_LK" ] && ok "" || fail "잠금 위에 남음 —$_LK"
+# ⑦-2 울린 지 1.2초 안에(워치·알림 버튼) 끄면 지연된 울림 화면 띄우기(postDelayed 1200ms·DisplayListener)가 취소되지 않아
+#     끈 뒤에 MainActivity가 잠금 위로 다시 떴다. 끝나는 세 길(끄기·스누즈·onDestroy)에서 대기 중인 띄우기를 취소하고,
+#     띄우기 직전에 "아직 같은 울림인가"를 다시 본다. 늦게 도착한 울림 인텐트(ringAt ≤ 마지막으로 끝난 시각)는 플래그를 걸지 않는다.
+printf "  1.6.2: 울리자마자 끄면 지연 띄우기 취소 ... "
+_PL=""
+grep -q "private fun cancelPendingRingLaunch" "$_AS" || _PL="$_PL 취소함수없음"
+_CPL=$(awk '/private fun cancelPendingRingLaunch/,/^    }$/' "$_AS")
+echo "$_CPL" | grep -q "removeCallbacks" || _PL="$_PL 콜백취소없음"
+echo "$_CPL" | grep -q "unregisterDisplayListener" || _PL="$_PL 리스너해제없음"
+awk '/ACTION_STOP -> \{/,/return START_NOT_STICKY/' "$_AS" | grep -q "cancelPendingRingLaunch()" || _PL="$_PL 끄기경로"
+awk '/ACTION_SNOOZE -> \{/,/return START_NOT_STICKY/' "$_AS" | grep -q "cancelPendingRingLaunch()" || _PL="$_PL 스누즈경로"
+awk '/override fun onDestroy/,/^    }$/' "$_AS" | grep -q "cancelPendingRingLaunch()" || _PL="$_PL onDestroy"
+awk '/fun launch\(displayId/,/^        }$/' "$_AS" | grep -q "currentRinging == null" || _PL="$_PL 띄우기직전재확인없음"
+awk '/private fun onRingingEnded/,/^    }$/' "$_AS" | grep -q "lastRingEndedAt = " || _PL="$_PL 끝난시각기록없음"
+[ "$(grep -c 'putExtra("ringAt"' "$_AS")" -ge 2 ] || _PL="$_PL 울림인텐트ringAt(울림화면·알림본문)"
+grep -q "lastRingEndedAt" "$_MA" || _PL="$_PL MainActivity늦은인텐트판정없음"
+[ -z "$_PL" ] && ok "" || fail "끈 뒤 잠금 위로 다시 뜰 수 있음 —$_PL"
+# ⑦-4 허용 안내(1.6.2, 세이람 1.2.3에서 가져옴) — 알람 저장 직후에도 꺼진 허용(알림·다른 앱 위에 표시·전체 화면 알림)을 안내,
+#     알림 권한도 안내. 배터리 최적화는 시작·저장 때 띄우지 않고 설정 화면 줄에서만(사용자 결정 2026-11-25).
+printf "  1.6.2: 허용 안내(저장 직후·알림 권한, 배터리는 설정 줄만) ... "
+_PA=""; _IDX="$ROOT/app/index.tsx"; _SAH="$ROOT/src/hooks/useAlarmScreenAsk.ts"
+[ "$(grep -c 'askAfterSave(true)' "$_IDX")" -ge 4 ] || _PA="$_PA 저장4곳연결부족"
+grep -q "withOverlay: true" "$_SAH" || _PA="$_PA 저장때표시권한안봄"
+grep -q "need === 'notif'" "$_SAH" || _PA="$_PA 알림권한안내없음"
+grep -q "notifications: await notificationPermissionGranted()" "$ROOT/src/utils/alarmScreenNative.ts" || _PA="$_PA 알림권한확인없음"
+grep -qE "openBatteryOptimizationSettings|isIgnoringBatteryOptimizations" "$_SAH" "$_IDX" && _PA="$_PA 배터리를시작·저장때띄움"
+grep -q "openBatteryOptimizationSettings()" "$ROOT/src/components/Home/SettingsView.tsx" || _PA="$_PA 설정화면배터리줄없음"
+grep -q "ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS\|REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" "$NATIVE_DIR/AlarmModule.kt" "$ROOT/android/app/src/main/AndroidManifest.xml" 2>/dev/null \
+  && grep -v '^\s*\*\|//' "$NATIVE_DIR/AlarmModule.kt" | grep -q "ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" && _PA="$_PA 바로요청권한사용(Play선언필요)"
+[ -z "$_PA" ] && ok "" || fail "허용 안내 빠짐 —$_PA"
+# ⑦-3 최근 앱에서 옛 울림 인텐트로 다시 열면(FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) 울림이 끝났는데도 잠금 위 표시가 걸리고
+#     첫 onResume에서 5초 규칙 때문에 안 풀렸다 → 걸지 않고, onResume에서 바로 푼다.
+printf "  1.6.2: 최근 앱 재진입 시 잠금 위 표시 즉시 해제 ... "
+_HS=""
+_AW=$(awk '/private fun applyRingingWindowFlags/,/^  }$/' "$_MA")
+echo "$_AW" | grep -q "isStaleRingingIntent" || _HS="$_HS 걸기전판정없음"
+grep -q "FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY" "$_MA" || _HS="$_HS 최근앱판정없음"
+awk '/override fun onResume/,/^  }$/' "$_MA" | grep -q "isStaleRingingIntent" || _HS="$_HS onResume즉시해제없음"
+[ -z "$_HS" ] && ok "" || fail "최근 앱으로 열면 잠금 위에 남음 —$_HS"
 # ⑧ 끈 알람의 표시된 알림이 알림 줄에 쌓였다 — 끄는 길(afterNativeStop·인앱 끄기·응답 리스너)이 dismissPresentedAlarm을 부른다.
 printf "  1.6.2: 끈 알람의 지난 알림 지우기 ... "
 _NI="$ROOT/src/utils/notifications/index.ts"; _DS=""

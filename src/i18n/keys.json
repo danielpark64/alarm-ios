@@ -1406,6 +1406,12 @@
   ]
  },
  {
+  "key": "배터리 최적화 제외",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
   "key": "변경",
   "files": [
    "src/components/AlarmForm/WorkPatternBuilder.tsx"
@@ -1803,6 +1809,12 @@
   ]
  },
  {
+  "key": "알람 알림을 받으려면",
+  "files": [
+   "src/hooks/useAlarmScreenAsk.ts"
+  ]
+ },
+ {
   "key": "알람 오른쪽에 있는 동그란 스위치를 손가락으로 누르면 켜지거나 꺼져요.",
   "files": [
    "src/content/help.ko.ts"
@@ -1882,6 +1894,12 @@
   ]
  },
  {
+  "key": "알람이 늦게 울리면 여기를 눌러 주세요",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
+  ]
+ },
+ {
   "key": "알람이 없습니다",
   "files": [
    "src/components/Home/AlarmsTab.tsx"
@@ -1903,6 +1921,12 @@
   "key": "알람일수",
   "files": [
    "src/components/AlarmForm/CycleRestControls.tsx"
+  ]
+ },
+ {
+  "key": "알림이 꺼져 있으면 알람이 울릴 때 알림도 끄기 화면도 뜨지 않아요.\n\n\"설정으로 이동\"을 누르면 열리는 화면에서 알림을 켜고 돌아오면 돼요.",
+  "files": [
+   "src/hooks/useAlarmScreenAsk.ts"
   ]
  },
  {
@@ -2390,6 +2414,12 @@
   "files": [
    "src/components/Home/AlarmsTab.tsx",
    "src/components/Home/ShareBar.tsx"
+  ]
+ },
+ {
+  "key": "절전 중에도 알람이 제때 울려요",
+  "files": [
+   "src/components/Home/SettingsView.tsx"
   ]
  },
  {

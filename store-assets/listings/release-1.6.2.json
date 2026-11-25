@@ -1,39 +1,39 @@
 {
-  "_note": "1.6.2 새로운 기능 (2026-11-25). play = Google Play, ios = App Store. 알림 본문 누름·잠금 화면 보호·앱 이름 표시는 Android 전용이라 iOS는 지난 알림 정리만. 앱 밖 결제·후원 안내 없음, 이모지 없음.",
+  "_note": "1.6.2 새로운 기능 (2026-11-25). play = Google Play, ios = App Store. 알림 본문 누름·잠금 화면 보호·앱 이름 표시는 Android 전용이라 iOS는 지난 알림 정리와 새 버전 안내만. 새 버전 안내(앱을 열 때 알려 줌)는 양쪽 공통. 앱 밖 결제·후원 안내 없음, 이모지 없음. 허용 안내(저장 직후·알림 권한)·설정의 배터리 최적화 줄 추가(Android), iOS는 알림 권한 안내만.",
   "ko": {
-    "play": "• 알람이 울릴 때 알림을 눌러도 알람이 꺼지지 않고 알람 화면이 열려요.\n• 알람을 끈 뒤에는 잠금 화면으로 돌아가 휴대폰이 보호돼요.\n• 끈 알람의 지난 알림이 알림 창에 쌓이지 않아요.\n• 알람 화면과 알림에 앱 이름이 함께 보여 어느 앱 알람인지 바로 알 수 있어요.",
-    "ios": "• 끈 알람의 지난 알림이 알림 센터에 쌓이지 않아요.\n• 안정성을 개선했어요."
+    "play": "• 알람이 울릴 때 알림을 눌러도 알람이 꺼지지 않고 알람 화면이 열려요.\n• 알람을 끈 뒤에는 잠금 화면으로 돌아가 휴대폰이 보호돼요.\n• 끈 알람의 지난 알림이 알림 창에 쌓이지 않아요.\n• 알람 화면과 알림에 앱 이름이 함께 보여 어느 앱 알람인지 바로 알 수 있어요.\n• 앱을 열 때 새 버전이 있으면 알려 드려요.\n• 알람을 저장할 때 꼭 필요한 허용(알림·다른 앱 위에 표시)이 꺼져 있으면 알려 드리고, 설정에 '배터리 최적화 제외' 줄을 더했어요.",
+    "ios": "• 끈 알람의 지난 알림이 알림 센터에 쌓이지 않아요.\n• 앱을 열 때 새 버전이 있으면 알려 드려요.\n• 알림이 꺼져 있으면 알람을 저장할 때 알려 드려요.\n• 안정성을 개선했어요."
   },
   "en": {
-    "play": "• Tapping the notification while an alarm is ringing now opens the alarm screen instead of turning the alarm off.\n• After you turn off an alarm, your phone goes back to the lock screen and stays protected.\n• Old notifications from alarms you've turned off no longer pile up.\n• The alarm screen and notification now show the app name, so you can tell right away which app's alarm it is.",
-    "ios": "• Old notifications from alarms you've turned off no longer pile up in Notification Center.\n• Stability improvements."
+    "play": "• Tapping the notification while an alarm rings opens the alarm screen instead of turning it off.\n• After you turn off an alarm, your phone returns to the lock screen.\n• Old notifications from turned-off alarms no longer pile up.\n• The alarm screen and notification show the app name.\n• When a new version is available, the app lets you know when you open it.\n• When you save an alarm, the app tells you if a needed permission is off. Settings has a new battery optimization row.",
+    "ios": "• Old notifications from alarms you've turned off no longer pile up in Notification Center.\n• When a new version is available, the app lets you know when you open it.\n• If notifications are off, the app lets you know when you save an alarm.\n• Stability improvements."
   },
   "ja": {
-    "play": "• アラームが鳴っているときに通知を押しても、アラームは止まらずアラーム画面が開きます。\n• アラームを止めた後はロック画面に戻り、スマホが守られます。\n• 止めたアラームの古い通知がたまらなくなりました。\n• アラーム画面と通知にアプリ名が表示され、どのアプリのアラームかすぐにわかります。",
-    "ios": "• 止めたアラームの古い通知が通知センターにたまらなくなりました。\n• 安定性を向上しました。"
+    "play": "• アラームが鳴っているときに通知を押しても、アラームは止まらずアラーム画面が開きます。\n• アラームを止めた後はロック画面に戻り、スマホが守られます。\n• 止めたアラームの古い通知がたまらなくなりました。\n• アラーム画面と通知にアプリ名が表示され、どのアプリのアラームかすぐにわかります。\n• 新しいバージョンがあると、アプリを開いたときにお知らせします。\n• アラーム保存時に必要な許可がオフならお知らせし、設定に「バッテリー最適化の対象外」を追加しました。",
+    "ios": "• 止めたアラームの古い通知が通知センターにたまらなくなりました。\n• 新しいバージョンがあると、アプリを開いたときにお知らせします。\n• 通知がオフの場合、アラーム保存時にお知らせします。\n• 安定性を向上しました。"
   },
   "zh-Hans": {
-    "play": "• 闹钟响铃时点按通知,不会关闭闹钟,而是打开闹钟画面。\n• 关闭闹钟后会回到锁定屏幕,手机保持受保护。\n• 已关闭闹钟的旧通知不会再堆积。\n• 闹钟画面和通知会显示应用名称,一眼就知道是哪个应用的闹钟。",
-    "ios": "• 已关闭闹钟的旧通知不会再堆积在通知中心。\n• 提升了稳定性。"
+    "play": "• 闹钟响铃时点按通知,不会关闭闹钟,而是打开闹钟画面。\n• 关闭闹钟后会回到锁定屏幕,手机保持受保护。\n• 已关闭闹钟的旧通知不会再堆积。\n• 闹钟画面和通知会显示应用名称,一眼就知道是哪个应用的闹钟。\n• 有新版本时,打开应用就会提醒你。\n• 保存闹钟时,若必要权限已关闭会提醒你;设置中新增「不进行电池优化」。",
+    "ios": "• 已关闭闹钟的旧通知不会再堆积在通知中心。\n• 有新版本时,打开应用就会提醒你。\n• 通知关闭时,保存闹钟会提醒你。\n• 提升了稳定性。"
   },
   "zh-Hant": {
-    "play": "• 鬧鐘響鈴時點按通知,不會關閉鬧鐘,而是開啟鬧鐘畫面。\n• 關閉鬧鐘後會回到鎖定畫面,手機維持受保護。\n• 已關閉鬧鐘的舊通知不會再堆積。\n• 鬧鐘畫面和通知會顯示 App 名稱,一眼就知道是哪個 App 的鬧鐘。",
-    "ios": "• 已關閉鬧鐘的舊通知不會再堆積在通知中心。\n• 提升了穩定性。"
+    "play": "• 鬧鐘響鈴時點按通知,不會關閉鬧鐘,而是開啟鬧鐘畫面。\n• 關閉鬧鐘後會回到鎖定畫面,手機維持受保護。\n• 已關閉鬧鐘的舊通知不會再堆積。\n• 鬧鐘畫面和通知會顯示 App 名稱,一眼就知道是哪個 App 的鬧鐘。\n• 有新版本時,開啟 App 就會提醒你。\n• 儲存鬧鐘時,若必要權限已關閉會提醒你;設定中新增「不進行電池最佳化」。",
+    "ios": "• 已關閉鬧鐘的舊通知不會再堆積在通知中心。\n• 有新版本時,開啟 App 就會提醒你。\n• 通知關閉時,儲存鬧鐘會提醒你。\n• 提升了穩定性。"
   },
   "es": {
-    "play": "• Si tocas la notificación mientras suena una alarma, se abre la pantalla de la alarma en lugar de apagarla.\n• Después de apagar una alarma, el teléfono vuelve a la pantalla de bloqueo y queda protegido.\n• Las notificaciones antiguas de alarmas apagadas ya no se acumulan.\n• La pantalla de alarma y la notificación muestran el nombre de la app, para que sepas al instante de qué app es la alarma.",
-    "ios": "• Las notificaciones antiguas de alarmas apagadas ya no se acumulan en el Centro de notificaciones.\n• Mejoras de estabilidad."
+    "play": "• Tocar la notificación mientras suena una alarma abre su pantalla en lugar de apagarla.\n• Al apagar una alarma, el teléfono vuelve a la pantalla de bloqueo.\n• Las notificaciones de alarmas apagadas ya no se acumulan.\n• La pantalla de alarma y la notificación muestran el nombre de la app.\n• Si hay una versión nueva, la app te avisa al abrirla.\n• Al guardar una alarma, la app avisa si falta un permiso necesario. Nueva opción de batería en Ajustes.",
+    "ios": "• Las notificaciones antiguas de alarmas apagadas ya no se acumulan en el Centro de notificaciones.\n• Si hay una versión nueva, la app te avisa al abrirla.\n• Si las notificaciones están desactivadas, la app te avisa al guardar una alarma.\n• Mejoras de estabilidad."
   },
   "fr": {
-    "play": "• Toucher la notification pendant qu'une alarme sonne ouvre désormais l'écran d'alarme au lieu de l'arrêter.\n• Après l'arrêt d'une alarme, le téléphone revient à l'écran de verrouillage et reste protégé.\n• Les anciennes notifications des alarmes arrêtées ne s'accumulent plus.\n• L'écran d'alarme et la notification affichent le nom de l'app : vous savez tout de suite de quelle app vient l'alarme.",
-    "ios": "• Les anciennes notifications des alarmes arrêtées ne s'accumulent plus dans le centre de notifications.\n• Améliorations de la stabilité."
+    "play": "• Toucher la notification pendant l'alarme ouvre l'écran d'alarme au lieu de l'arrêter.\n• Après l'arrêt d'une alarme, le téléphone revient à l'écran de verrouillage.\n• Les notifications des alarmes arrêtées ne s'accumulent plus.\n• L'écran d'alarme et la notification affichent le nom de l'app.\n• Si une nouvelle version est disponible, l'app vous prévient à l'ouverture.\n• En enregistrant une alarme, l'app signale une autorisation manquante. Nouvelle ligne batterie dans les réglages.",
+    "ios": "• Les anciennes notifications des alarmes arrêtées ne s'accumulent plus dans le centre de notifications.\n• Si une nouvelle version est disponible, l'app vous prévient à l'ouverture.\n• Si les notifications sont désactivées, l'app vous prévient en enregistrant une alarme.\n• Améliorations de la stabilité."
   },
   "de": {
-    "play": "• Ein Tipp auf die Mitteilung während ein Alarm klingelt öffnet jetzt den Alarmbildschirm, statt den Alarm auszuschalten.\n• Nach dem Ausschalten eines Alarms kehrt das Handy zum Sperrbildschirm zurück und bleibt geschützt.\n• Alte Mitteilungen ausgeschalteter Alarme sammeln sich nicht mehr an.\n• Alarmbildschirm und Mitteilung zeigen jetzt den App-Namen, damit sofort klar ist, von welcher App der Alarm kommt.",
-    "ios": "• Alte Mitteilungen ausgeschalteter Alarme sammeln sich nicht mehr in der Mitteilungszentrale an.\n• Verbesserte Stabilität."
+    "play": "• Ein Tipp auf die Mitteilung beim Klingeln öffnet den Alarmbildschirm, statt den Alarm auszuschalten.\n• Nach dem Ausschalten eines Alarms kehrt das Handy zum Sperrbildschirm zurück.\n• Mitteilungen ausgeschalteter Alarme sammeln sich nicht mehr an.\n• Alarmbildschirm und Mitteilung zeigen den App-Namen.\n• Gibt es eine neue Version, weist die App beim Öffnen darauf hin.\n• Beim Speichern meldet die App fehlende Berechtigungen. Neu in den Einstellungen: Akku-Optimierung.",
+    "ios": "• Alte Mitteilungen ausgeschalteter Alarme sammeln sich nicht mehr in der Mitteilungszentrale an.\n• Wenn eine neue Version verfügbar ist, weist die App beim Öffnen darauf hin.\n• Sind Mitteilungen aus, weist die App beim Speichern eines Alarms darauf hin.\n• Verbesserte Stabilität."
   },
   "pt": {
-    "play": "• Tocar na notificação enquanto um alarme toca agora abre a tela do alarme em vez de desligá-lo.\n• Depois de desligar um alarme, o celular volta para a tela de bloqueio e fica protegido.\n• Notificações antigas de alarmes desligados não se acumulam mais.\n• A tela do alarme e a notificação mostram o nome do app, para você saber na hora de qual app é o alarme.",
-    "ios": "• Notificações antigas de alarmes desligados não se acumulam mais na Central de Notificações.\n• Melhorias de estabilidade."
+    "play": "• Tocar na notificação durante o alarme abre a tela do alarme em vez de desligá-lo.\n• Depois de desligar um alarme, o celular volta para a tela de bloqueio e fica protegido.\n• Notificações antigas de alarmes desligados não se acumulam mais.\n• A tela do alarme e a notificação mostram o nome do app, para você saber na hora de qual app é o alarme.\n• Quando houver uma versão nova, o app avisa ao ser aberto.\n• Ao salvar um alarme, o app avisa se falta uma permissão. Nova opção de bateria em Ajustes.",
+    "ios": "• Notificações antigas de alarmes desligados não se acumulam mais na Central de Notificações.\n• Quando houver uma versão nova, o app avisa ao ser aberto.\n• Se as notificações estiverem desativadas, o app avisa ao salvar um alarme.\n• Melhorias de estabilidade."
   }
 }

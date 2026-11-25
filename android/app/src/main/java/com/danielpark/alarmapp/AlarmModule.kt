@@ -241,6 +241,58 @@ class AlarmModule(private val reactContext: ReactApplicationContext) :
         promise.resolve(ok)
     }
 
+    // ── 배터리 최적화·알림 설정(1.6.2) — 세이람 1.2.3 MalloAlarmModule.kt에서 가져옴(isIgnoringBatteryOptimizations·
+    //    openBatteryOptimizationSettings·openNotificationSettings). 배터리는 설정 화면 줄에서만 쓴다(시작·저장 때 안 띄움).
+
+    /** 배터리 최적화에서 빠져 있는지(빠져 있어야 절전 중에도 울림 화면이 제때 뜬다). 6.0 미만은 늘 true */
+    @ReactMethod
+    fun isIgnoringBatteryOptimizations(promise: Promise) {
+        val ok = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) true
+        else try {
+            (reactContext.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager).isIgnoringBatteryOptimizations(reactContext.packageName)
+        } catch (_: Exception) { true }
+        promise.resolve(ok)
+    }
+
+    /**
+     * 배터리 최적화 목록 화면을 연다(사용자가 교대알람을 찾아 "최적화 안 함"으로). 바로 묻는 창
+     * (ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)은 권한·Play 선언이 필요해 쓰지 않는다. 없는 기기는 앱 정보 화면.
+     */
+    @ReactMethod
+    fun openBatteryOptimizationSettings() {
+        var opened = false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                reactContext.startActivity(
+                    Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
+                )
+                opened = true
+            } catch (_: Exception) {}
+        }
+        if (!opened) openAppDetails()
+    }
+
+    /** 이 앱의 알림 설정 화면(알림 권한이 꺼져 있을 때 — 두 번 거부하면 시스템 창이 다시 안 뜬다). 없는 기기는 앱 정보 화면 */
+    @ReactMethod
+    fun openNotificationSettings() {
+        try {
+            reactContext.startActivity(
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, reactContext.packageName)
+                    .apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
+            )
+        } catch (_: Exception) { openAppDetails() }
+    }
+
+    private fun openAppDetails() {
+        try {
+            reactContext.startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${reactContext.packageName}"))
+                    .apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
+            )
+        } catch (_: Exception) {}
+    }
+
     /** Android 14+: 전체 화면 알림 허용 화면으로 보낸다(그 화면이 없는 기기는 앱 알림 설정으로) */
     @ReactMethod
     fun openFullScreenIntentSettings() {

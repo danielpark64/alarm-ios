@@ -467,4 +467,10 @@ export const PT: Record<string, string> = {
   "알람이 울릴 때 화면이 꺼져 있거나 잠겨 있어도 끄기 화면이 뜨게 하려면 \"전체 화면 알림\"을 허용해 주세요.\n\n\"설정으로 이동\"을 누르면 열리는 화면에서 스위치를 켜고 ← 버튼으로 돌아오면 돼요.": "Para que a tela para desligar apareça quando um alarme tocar, mesmo com a tela apagada ou bloqueada, permita \"Notificações em tela cheia\".\n\nToque em \"Ir para Ajustes\", ative a chave na tela que abrir e volte com o botão ←.",
   // 새 버전 안내(1.6.3)
   "새 버전이 있어요": "Há uma nova versão",
+  // 1.6.2 허용 안내(알림 권한·배터리 최적화 설정 줄)
+  "배터리 최적화 제외": "Excluir da otimização de bateria",
+  "알람 알림을 받으려면": "Para receber notificações de alarme",
+  "알람이 늦게 울리면 여기를 눌러 주세요": "Se os alarmes tocarem atrasados, toque aqui",
+  "알림이 꺼져 있으면 알람이 울릴 때 알림도 끄기 화면도 뜨지 않아요.\n\n\"설정으로 이동\"을 누르면 열리는 화면에서 알림을 켜고 돌아오면 돼요.": "Com as notificações desativadas, quando um alarme toca não aparecem nem a notificação nem a tela para desligá-lo.\n\nToque em \"Ir para Ajustes\", ative as notificações na tela que abrir e volte.",
+  "절전 중에도 알람이 제때 울려요": "Os alarmes tocam na hora mesmo no modo de economia de energia",
 };

@@ -1,12 +1,13 @@
-# 교대알람(AlarmApp) 인수인계 — 2026-11-25
+# 교대알람(AlarmApp) 인수인계 — 2026-11-25(vc15)
 
 새 대화에서 이 파일을 먼저 읽고 이어서 작업한다. 프로젝트 규칙은 `CLAUDE.md`, 버그 이력은 `.claude/bugs.md`, 여러 앱 현황은 `~/Desktop/daniel-project/본부/현황판.md`.
 **사용자에게 보이는 모든 글은 한국어로 쓴다**(전역 규칙).
 
 ## 지금 상태 한 줄
-**1.6.2(vc14·iOS 빌드 14) 개발·기기 확인 끝, 올리기 전(11-25).** AAB `~/Desktop/교대알람-1.6.2-vc14.aab`(Play 업로드는 사용자), TestFlight 13·14 업로드(14가 최종), iOS는 1.6.1 심사 중이라 제출 금지. 체크리스트 `docs/출시-체크리스트-1.6.2.md`, 출시 노트 `store-assets/listings/release-1.6.2.json`.
+**1.6.2(vc15·iOS 빌드 15) 개발·기기 확인 끝, 올리기 전(11-25).** AAB `~/Desktop/교대알람-1.6.2-vc15.aab`(Play 업로드는 사용자), TestFlight 15 업로드(최종), iOS 제출은 사용자 "올려" 때. 체크리스트 `docs/출시-체크리스트-1.6.2.md`(5절이 vc15 추가분), 출시 노트 `store-assets/listings/release-1.6.2.json`.
+vc15 추가: 새 버전 안내(6e08162, ⚠️ iOS 빌드 14엔 AppUpdate pod가 빠져 있었음 → pod install, testflight.sh에 가드) · 울리자마자 끄면 지연 맨앞 호출 취소(`AlarmService.cancelPendingRingLaunch`) · 최근 앱 낡은 울림 인텐트면 잠금 위 플래그 바로 해제(`MainActivity.isStaleRingingIntent`) · 저장 직후 허용 안내(알림 권한→다른 앱 위 표시→전체 화면 알림, `useAlarmScreenAsk.askAfterSave`) · 설정에 배터리 최적화 줄(창으로는 절대 안 띄움). 스위트 32·노트 107/0.
 1.6.2 = ① 울리는 중 Expo 알림 본문 누름 → Android는 끄지 않고 울림 화면(판정 `src/utils/alarmResponse.ts` responseAction, iOS는 그대로 끔) ② 끈 뒤 잠금 위 표시 해제(`MainActivity.onRingingEnded` ← AlarmService 끄기·스누즈·onDestroy, 커버 화면도 닫음) ③ 끈 알람의 표시된 알림 지우기(`dismissPresentedAlarm`) ④ 표시 권한 안내 "교대알람"/RotaWake ⑤ 울림 화면·상시 알림에 앱 이름(세이람 1.2.3 모양, AlarmKit 제목엔 안 붙임 — 시스템이 앱 이름 표시). 근무표 알람 울림 제목은 이미 근무일 기준 근무 이름("초번 출근", 자정 넘는 "야간 퇴근") — 32·노트 확인. 개발 딥링크 `testShift=<분>[&night=1]` 추가.
-남은 것: iOS 실기기 확인(TestFlight 14), 검사반 에이전트 미실행, 안드로이드 카톡 공유는 노트 카톡 미로그인이라 대화방 선택 전까지만(링크는 공유 글에 들어감 확인).
+남은 것: iOS 실기기 확인(TestFlight 15), 스토어 스크린샷 9개 언어 재촬영(공유 줄·오늘 버튼 변경분, 시안 승낙 필요), 32 잠금 위 확인(32는 화면 잠금 없음), 검사반 에이전트 미실행, 안드로이드 카톡 공유는 노트 카톡 미로그인이라 대화방 선택 전까지만(링크는 공유 글에 들어감 확인).
 
 (이전) **1.6.1 — Play vc13 공개(11-24 확인), iOS 빌드 12 심사 대기 — 재제출 금지.** (업로드는 서비스 계정 키 `~/.playconsole/play-upload.mjs`) 1.6.1 = 근무표 링크 바로 열기(유니버설 링크/App Links)·보낸 사람 이름, 새 형식 [업데이트] 안내, 알람 화면 맨 앞(Android)·시간 민감 알림(iOS), 달력 '오늘' 버튼 항상, 공유 탭 이름 줄바꿈. 출시 노트 `store-assets/listings/release-1.6.1.json`. App ID에 Associated Domains를 ASC API로 켬. 1.6.0은 두 스토어 공개 중.
 

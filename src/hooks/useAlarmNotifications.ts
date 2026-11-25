@@ -4,6 +4,7 @@ import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
 import { Alarm, notifSoundFor } from '../constants';
 import { requestNotificationPermission, registerNotificationCategories, rescheduleAll, refreshRepsOnly, cancelExpoGroupReps, cancelRepSeries, dismissPresentedAlarm } from '../utils/notifications';
+import { notificationPermissionGranted, openNotificationSettings } from '../utils/alarmScreenNative';
 import { responseAction, groupKeyFromBody } from '../utils/alarmResponse';
 import { getAlarmDefaults } from './useAlarmDefaults';
 import { getDayOverridesCache } from '../utils/dayOverrideStore';
@@ -99,7 +100,7 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
     if (Platform.OS !== 'android' || !AlarmModule?.canDrawOverlays) return;
     const check = async () => setOverlayGranted(await AlarmModule.canDrawOverlays());
     const sub = AppState.addEventListener('change', (next) => {
-      if (next === 'active') check();
+      if (next === 'active') { check(); notificationPermissionGranted().then(setNotifGranted).catch(() => {}); }
     });
     return () => sub.remove();
   }, []);
@@ -279,6 +280,8 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
   const requestPermission = async () => {
     const ok = await requestNotificationPermission();
     setNotifGranted(ok);
+    // 1.6.2: 이미 거부돼 시스템 창이 다시 안 뜨면 알림 설정 화면을 연다(돌아오면 아래 포그라운드 확인이 칩을 지운다)
+    if (!ok) openNotificationSettings();
   };
 
   const requestOverlayPermission = () => {

@@ -23,6 +23,16 @@ fi
 # 바탕화면(iCloud)이 만든 ' 2' 중복 파일이 있으면 코드젠이 duplicate symbol로 죽는다 — 지운다
 find ios/build/generated ios/Pods/Headers -name '* [0-9].*' -delete 2>/dev/null || true
 
+# 로컬 모듈(modules/*/ios/*.podspec)이 Podfile.lock에 없으면 pod install — 빠뜨리면 그 모듈이 iOS 빌드에서 조용히 빠진다
+# (2026-11-25: app-update를 추가하고 pod install을 안 해 1.6.2 빌드 14에 새 버전 안내가 빠짐. ios/는 git 밖이라 정적 검사로 못 잡음)
+for spec in modules/*/ios/*.podspec(N); do
+  name=${spec:t:r}
+  if ! grep -q "^  - $name (" ios/Podfile.lock 2>/dev/null; then
+    echo "▶ $name 이(가) Podfile.lock에 없음 — pod install"
+    (cd ios && pod install > $WORK/pod.log 2>&1) || { tail -20 $WORK/pod.log; echo "✗ pod install 실패"; exit 1; }
+  fi
+done
+
 # 빌드 번호(app.json·project.pbxproj(앱·위젯·공유 타깃 전부)·Info.plist를 같이)
 BUILD=$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' $PLIST)
 if [[ $MODE != check ]]; then

@@ -55,6 +55,9 @@ class MainActivity : ReactActivity() {
     if (ringingFlagsAt > 0 && AlarmService.currentRinging == null &&
         System.currentTimeMillis() - ringingFlagsAt > STALE_FLAGS_MS) {
       clearRingingWindowFlags()
+    } else if (ringingFlagsAt > 0 && isStaleRingingIntent(intent)) {
+      // 1.6.2: 최근 앱에서 옛 울림 인텐트로 다시 열렸거나, 끈 뒤에 늦게 도착한 울림 인텐트 — 5초를 기다리지 않고 바로 푼다
+      clearRingingWindowFlags()
     }
   }
 
@@ -106,6 +109,21 @@ class MainActivity : ReactActivity() {
     ringingFlagsAt = 0L
   }
 
+  /**
+   * 울림용 인텐트인데 그 울림이 이미 끝났는가(1.6.2).
+   *  - 최근 앱(FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY)에서 옛 인텐트로 다시 열렸고 지금 울리는 중이 아님
+   *  - 인텐트의 울림 시작 시각(ringAt)이 마지막으로 울림이 끝난 시각(AlarmService.lastRingEndedAt) 이하 —
+   *    워치·알림 버튼으로 울린 직후 끈 뒤 늦게 도착한 인텐트
+   * 판정이 안 되는 인텐트(ringAt 없음 — 예전 판의 알림)는 기존 5초 규칙(onResume)에 맡긴다.
+   * 전체 화면 인텐트가 currentRinging 기록보다 먼저 올 수 있어 "지금 안 울림"만으로는 판정하지 않는다.
+   */
+  private fun isStaleRingingIntent(i: Intent?): Boolean {
+    if (i == null) return false
+    if ((i.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0 && AlarmService.currentRinging == null) return true
+    val ringAt = i.getLongExtra("ringAt", 0L)
+    return ringAt > 0 && ringAt <= AlarmService.lastRingEndedAt
+  }
+
   // configChanges에 smallestScreenSize가 있어 폴더블을 접고 펼쳐도 액티비티가 재생성되지 않는다.
   // 펼친 상태(대형 화면, 제한 없음)로 켠 뒤 접으면 커버 화면이 폰 크기인데도 가로 회전이 허용돼
   // 버리므로, 구성이 바뀔 때마다 현재 화면 크기 기준으로 다시 건다. super 호출은 필수(RN 전달).
@@ -119,6 +137,12 @@ class MainActivity : ReactActivity() {
   // 레거시 WindowManager 플래그 + Android 8.1+ 권장 Activity API를 함께 사용
   private fun applyRingingWindowFlags(intent: Intent?) {
     if (intent?.getBooleanExtra("alarmRinging", false) != true) return
+    // 이미 끝난 울림의 인텐트면 걸지 않는다(1.6.2) — 최근 앱 재진입·울린 직후 끈 뒤 늦게 도착한 인텐트
+    if (isStaleRingingIntent(intent)) {
+      intent.removeExtra("alarmRinging")
+      if (ringingFlagsAt > 0) clearRingingWindowFlags()
+      return
+    }
     window.addFlags(
       WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
       WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or

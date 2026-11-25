@@ -55,7 +55,12 @@ export default function App() {
   const { notifGranted, requestPermission, overlayGranted, requestOverlayPermission, tick, ringing, stopRinging, snoozeRinging, startupPermsDone } = useAlarmNotifications(alarms, updateAlarm, loaded);
   // 알람 화면 권한 안내(3일에 한 번) — Android 14+ 전체 화면 알림, iOS 26+ AlarmKit 거부. 표시 권한이 꺼져 있으면
   // 아래 showOverlayPrompt가 먼저 묻고 이건 묻지 않는다(창 두 개가 겹치지 않게).
-  const { settled: screenAskSettled } = useAlarmScreenAsk(alarms, loaded, startupPermsDone && overlayGranted !== false);
+  // 1.6.2: 알람 저장 직후에도 꺼진 허용(알림·다른 앱 위에 표시·전체 화면 알림)을 한 실행에 한 번 안내 — '다른 앱 위에 표시'는 아래 같은 안내 창을 쓴다
+  const screenAsk = useAlarmScreenAsk(alarms, loaded, startupPermsDone && overlayGranted !== false, () => showOverlayPrompt());
+  const screenAskSettled = screenAsk.settled;
+  // 저장 직후 안내를 미룰 때 — 울리는 중·따라하기 중·새 버전 안내·표시 권한 안내가 떠 있으면 이번엔 안 묻는다(창이 겹치지 않게)
+  const askBlockedRef = useRef<() => boolean>(() => false);
+  const askAfterSave = (armed: boolean) => screenAsk.askAfterSave(armed, () => askBlockedRef.current());
   // 새 버전 안내(1.6.3)가 시작 창들과 겹치지 않게 — 표시 권한 안내가 떠 있는지·답했는지, 첫 실행 따라하기 권유를 띄웠는지
   const [overlayAskOpen, setOverlayAskOpen] = useState(false);
   const [overlayAskAnswered, setOverlayAskAnswered] = useState(false);
@@ -580,6 +585,8 @@ export default function App() {
       && !firstRunPrompt && tutorialStep === null && rotationTutorialStep === null,
   });
 
+  askBlockedRef.current = () => !!ringing || tutorialStep !== null || rotationTutorialStep !== null || appUpdate.visible || overlayAskOpen;
+
   if (!loaded)
     return <View style={s.loading}><Text style={s.loadingT}>⏰</Text></View>;
 
@@ -639,6 +646,7 @@ export default function App() {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setEditAlarm(null);
             if (pendingNav) { setTab(pendingNav); setPendingNav(null); }
+            askAfterSave(true);
           }}
           onSubmitPattern={async (groupId, pattern, sd, snd, vib, sound) => {
             // 비그룹 알람(일반/레거시)을 근무표로 전환 저장하는 경우 — 원본을 새 세트로
@@ -647,6 +655,7 @@ export default function App() {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setEditAlarm(null);
             if (pendingNav) { setTab(pendingNav); setPendingNav(null); }
+            askAfterSave(true);
           }}
           onCancel={tutorialStep !== null ? exitTutorial : handleEditClose}
           onDelete={() => handleDeleteOne(editAlarm.id)}
@@ -700,6 +709,7 @@ export default function App() {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 setTab(pendingNav ?? 'alarms');
                 setPendingNav(null);
+                askAfterSave(true);
                 if (tutorialStep !== null) {
                   setEditAlarm(created);
                   setEditTypeId(created.typeId ?? 'commute');
@@ -711,6 +721,7 @@ export default function App() {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 setTab(pendingNav ?? 'alarms');
                 setPendingNav(null);
+                askAfterSave(true);
                 if (rotationTutorialStep !== null) setRotationTutorialStep(ROTATION_TUTORIAL_LAST_STEP);
               }}
               onCancel={() => {

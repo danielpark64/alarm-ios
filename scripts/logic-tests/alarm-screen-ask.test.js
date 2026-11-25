@@ -19,6 +19,19 @@ module.exports = (U, M) => {
   check('iOS 허용 → 없음', A.nextAlarmScreenNeed(env({ os: 'ios', alarmKit: 'authorized' })) === null);
   check('이미 물은 것은 건너뜀', A.nextAlarmScreenNeed(env({ fullScreenIntent: false }), ['fsi']) === null);
 
+  // ── 1.6.2: 알림 권한·알람 저장 때 '다른 앱 위에 표시'(세이람 1.2.3 lib/alarmScreenAsk.ts에서 가져옴) ──
+  check('알림 권한 꺼짐 → notif가 먼저(Android)', A.nextAlarmScreenNeed(env({ notifications: false, fullScreenIntent: false })) === 'notif');
+  check('알림 권한 꺼짐 → notif(iOS)', A.nextAlarmScreenNeed(env({ os: 'ios', notifications: false, alarmKit: 'denied' })) === 'notif');
+  check('알림 권한을 모르면(undefined) 켜진 것으로', A.nextAlarmScreenNeed(env({})) === null);
+  check('모두 켜짐 + 저장 때 → 없음', A.nextAlarmScreenNeed(env({ notifications: true }), [], { withOverlay: true }) === null);
+  check('저장 때 오버레이 꺼짐 → overlay', A.nextAlarmScreenNeed(env({ overlay: false }), [], { withOverlay: true }) === 'overlay');
+  check('저장 때 알림·오버레이 둘 다 꺼짐 → notif 먼저', A.nextAlarmScreenNeed(env({ overlay: false, notifications: false }), [], { withOverlay: true }) === 'notif');
+  check('저장 때 오버레이 켜짐·전체 화면 꺼짐 → fsi', A.nextAlarmScreenNeed(env({ fullScreenIntent: false }), [], { withOverlay: true }) === 'fsi');
+  check('저장 때 iOS는 오버레이 없음 → 없음', A.nextAlarmScreenNeed(env({ os: 'ios', overlay: false, alarmKit: 'authorized' }), [], { withOverlay: true }) === null);
+  check('알람 저장 직후: 켜진 알람이고 이번 실행에 안 물었으면 물음', A.shouldAskAfterSave(true, false) === true);
+  check('알람 저장 직후: 이미 물었으면 안 물음', A.shouldAskAfterSave(true, true) === false);
+  check('알람 저장 직후: 꺼진 알람이면 안 물음', A.shouldAskAfterSave(false, false) === false);
+
   // ── 언제 물을지 ──
   const now = Date.UTC(2026, 10, 24, 3, 0, 0);
   check('켜진 알람이 없으면 안 물음', A.shouldAskAlarmScreen(0, now, false) === false);

@@ -12,7 +12,7 @@ import { useWeekStart, type WeekStartSetting } from '../../hooks/useWeekStart';
 import { useSayramShare } from '../../hooks/useSayramShare';
 import { useShiftShare } from '../../hooks/useShiftShare';
 import { SENDER_NAME_MAX } from '../../utils/shiftShareLink';
-import { alarmKitAuthState, canDrawOverlays, canUseFullScreenIntent, openAlarmKitPermission, openFullScreenIntentSettings, requestOverlayPermission } from '../../utils/alarmScreenNative';
+import { alarmKitAuthState, canDrawOverlays, canUseFullScreenIntent, isIgnoringBatteryOptimizations, openAlarmKitPermission, openBatteryOptimizationSettings, openFullScreenIntentSettings, requestOverlayPermission } from '../../utils/alarmScreenNative';
 
 const FONT_SCALES: { id: FontScaleName; label: string }[] = [
   { id: 'small',  label: N('작게') },
@@ -52,12 +52,16 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp, onSendShifts
   const showFsiRow = Platform.OS === 'android' && Number(Platform.Version) >= 34;
   const [overlayOk, setOverlayOk] = useState(true);
   const [fsiOk, setFsiOk] = useState(true);
+  // 배터리 최적화 제외(1.6.2, 세이람 1.2.3 SettingsSheet에서 가져옴) — 이 줄에서만 안내한다. 시작·알람 저장 때는 띄우지 않는다
+  // (처음 보는 안내라 거부감 — 사용자 결정 2026-11-25). 알람은 setAlarmClock이라 Doze에서도 울리고, 늦게 울리는 폰만 여기서 뺀다
+  const [batteryOk, setBatteryOk] = useState(true);
   const [akAuth, setAkAuth] = useState(() => alarmKitAuthState());
   useEffect(() => {
     const refresh = () => {
       if (Platform.OS === 'android') {
         canDrawOverlays().then(setOverlayOk);
         canUseFullScreenIntent().then(setFsiOk);
+        isIgnoringBatteryOptimizations().then(setBatteryOk);
       } else setAkAuth(alarmKitAuthState());
     };
     refresh();
@@ -217,6 +221,22 @@ export function SettingsView({ onStartRotationTutorial, onOpenHelp, onSendShifts
                       : t('눌러서 "전체 화면 알림"을 허용하면 화면이 꺼져 있거나 잠겨 있어도 알람 끄기 화면이 떠요')}</Text>
                   </View>
                   <Text style={[s.rowValue, fsiOk && { color: C.accent }]}>{fsiOk ? t('켜짐') : t('꺼짐 ›')}</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            {Platform.OS === 'android' && (
+              <>
+                <View style={s.divider} />
+                <TouchableOpacity style={s.row} activeOpacity={batteryOk ? 1 : 0.7}
+                  onPress={() => { if (!batteryOk) openBatteryOptimizationSettings(); }}
+                  accessibilityLabel={t('배터리 최적화 제외')}>
+                  <View style={{ flex: 1, minWidth: 0, marginRight: 12 }}>
+                    <Text style={s.rowLabel}>{t('배터리 최적화 제외')}</Text>
+                    <Text style={s.rowSub}>{batteryOk
+                      ? t('절전 중에도 알람이 제때 울려요')
+                      : t('알람이 늦게 울리면 여기를 눌러 주세요')}</Text>
+                  </View>
+                  <Text style={[s.rowValue, batteryOk && { color: C.accent }]}>{batteryOk ? t('켜짐') : t('꺼짐 ›')}</Text>
                 </TouchableOpacity>
               </>
             )}
