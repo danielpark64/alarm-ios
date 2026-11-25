@@ -151,3 +151,9 @@ adb -s RF9R3049REV shell am start -a android.intent.action.VIEW -d "alarmapp://?
 - (d) 미룬 뒤 알람 시간을 바꿔 저장 → 대기 스누즈 11개 → 0개 — 통과
 - (e) 잠금 화면 [알람 끄기]: 자동 잠그기(`mobile: lock`)가 안 되고 암호 유무도 확정 못 함(devicectl `passcodeRequired: false`는 풀린 상태 값) — 미확인
 - 끝: clearTestAlarms → 알람 0·대기 알림 0·AlarmKit 0 확인
+
+## 2026-11-26 01:23 — 1.6.4 (c) 고침, 미니에서 재확인 중 멈춤(사용자 시스템 재부팅)
+- 원인 2개: ① 종료 상태 알림 버튼 응답을 리스너 등록 전에 놓침 → `getLastNotificationResponseAsync`+`handleResponseOnce`(`801bf2c`) ② 알람 로드 전 판정 → `waitAlarmsLoaded`(`f6c374e`). 경쟁 수정 `1b27904`.
+- 미니(Release, 801bf2c): 종료 상태에서 [5분 후 다시] → `snooze_grp_1_22`+보조 10개 예약됨(통과). **5분 뒤 실제로 다시 오는지는 재부팅으로 못 봄** — 다시 볼 것.
+- 남은 것: 5분 뒤 재울림 확인, TestFlight 19(현재 18은 이 수정 전), (e) 잠금 화면 끄기, verify-fix 1회, 1.6.3 App Store 제출(1.6.2 통과 뒤).
+- 미니 시험 도구: main `scripts/ios-device-test.sh`(브랜치엔 없음 — scratchpad 복사본으로 씀). 정리: clearTestAlarms 함, 현황판 미니 줄 지움.
