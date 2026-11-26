@@ -171,3 +171,5 @@ adb -s RF9R3049REV shell am start -a android.intent.action.VIEW -d "alarmapp://?
 - **2026-11-26 오후 사용자 직접 "마무리 올려" — 1.6.4 업로드 승인됨.** 주간 사용량 95%에 닿아 여기서 멈춤(11-28 토 10시 뒤 이어서).
   이어서 할 순서: verify-fix 1회 → `docs/출시-체크리스트-1.6.4.md` 작성(✗ 없어야) → feature/ios-snooze를 main에 병합 → 정적 스위트 →
   AAB vc17 빌드(`~/Desktop/교대알람-1.6.4-vc17.aab`) → Play 업로드(노트 release-1.6.4.json). iOS는 App Store 1.6.3(11-26 제출, WAITING_FOR_REVIEW) 통과 즉시 빌드 19로 제출 — 다시 묻지 않음.
+- **2026-11-26 오후 1.6.4 올림(사용자 직접 "사용량 무시하고 전부 올려줘")**: verify-fix가 종료 상태 [알람 끄기] 로드 전 처리 버그 지적 → 3ac3895 고침·미니 확인.
+  Play vc17 production 검토로 보냄(편집 14401461705857977423). iOS 빌드 20 TestFlight 업로드 — App Store 1.6.3(WAITING_FOR_REVIEW) 통과 즉시 1.6.4 버전 만들고 빌드 20·iOS 노트 넣고 제출(되묻지 않음). 체크리스트 `docs/출시-체크리스트-1.6.4.md`. **재제출 금지.**
