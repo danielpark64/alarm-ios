@@ -1,14 +1,16 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { Alarm, SNOOZE_ENABLED, DayOverrides, REP_MAX, IOS_REP_COUNT_NEAREST, IOS_REP_COUNT_OTHERS, ANDROID_REP_COUNT } from '../../constants';
+import { Alarm, SNOOZE_ENABLED, DayOverrides, IOS_REP_COUNT_NEAREST, IOS_REP_COUNT_OTHERS, ANDROID_REP_COUNT } from '../../constants';
 import { getNextFireDate } from '../index';
-import { cancelNativeAlarms, syncActiveNativeAlarms, getPendingSnooze, cancelSnooze } from './android';
-import { snoozeStillDue } from '../snoozeCheck';
-import { scheduleAlarmTriggers, scheduleGroupReps, schedulePatternAlarmReps } from './core';
+import { cancelNativeAlarms, syncActiveNativeAlarms, getPendingSnooze } from './android';
+import { snoozeStillDue, iosSnoozeStillDue, iosSnoozeExpired, alarmKitKeepIds } from '../snoozeCheck';
+import { scheduleAlarmTriggers, scheduleGroupReps, schedulePatternAlarmReps, cancelRepSeries } from './core';
+import { cancelSnooze, cancelAllExceptSnooze, loadIosSnoozes, IOS_SNOOZE_RING_MS } from './snooze';
 import { nextGen, isStaleGen } from './rescheduleGen';
 import { usesAlarmKit } from '../alarmkitRoute';
-import { groupKeyFromBody, presentedToDismiss, DismissTarget } from '../alarmResponse';
-import { isAlarmKitMode, refreshAlarmKitMode, cancelAlarmKitFor, cancelAllAlarmKit } from './alarmkit';
+import { groupKeyFromBody, presentedToDismiss, DismissTarget, alarmCategoryActions } from '../alarmResponse';
+import { isAlarmKitMode, refreshAlarmKitMode, cancelAlarmKitFor, cancelAllAlarmKit, listAlarmKit } from './alarmkit';
+import { snoozeLabel } from '../ringCard';
 import { t } from '../../i18n/translate';
 
 Notifications.setNotificationHandler({
@@ -46,15 +48,8 @@ export async function cancelAllNotifications() {
   await Notifications.cancelAllScheduledNotificationsAsync();
 }
 
-// 보조 알림(`${idBase}_rep1..REP_MAX`) 전부 취소 — 그룹(grp_{h}_{m})·알람별(alarm_{id}) 공용.
-// 없는 식별자는 조용히 무시되므로 상한까지 돌려도 안전하다. 취소 지점이 여러 곳(응답 리스너·인앱 끄기·
-// 스누즈·네이티브 끄기)이라 반드시 이 함수를 쓴다 — 예전처럼 rep1/rep2만 직접 지우면 iOS의 긴 묶음이 남는다.
-export async function cancelRepSeries(idBase: string) {
-  await Promise.all(
-    Array.from({ length: REP_MAX }, (_, i) =>
-      Notifications.cancelScheduledNotificationAsync(`${idBase}_rep${i + 1}`).catch(() => {})),
-  );
-}
+// 보조 알림 전부 취소(REP_MAX까지) — 본체는 core.ts(예약 scheduleRepSeries와 짝). 쓰는 쪽은 예전처럼 여기서 가져간다.
+export { cancelRepSeries };
 
 // 네이티브 알람 울림(body="HH:MM 알람")에서 시간을 파싱해 expo 그룹 보조 알림 취소
 export async function cancelExpoGroupReps(body: string) {
@@ -136,7 +131,7 @@ export async function rescheduleAll(alarms: Alarm[], overrides: DayOverrides = {
   // 세대 번호 — 이 호출 도중 새 rescheduleAll이 시작되면 아래 await 뒤 검사에서 즉시 중단한다
   // (자세한 배경은 rescheduleGen.ts). 취소는 멱등이라 겹쳐도 무해하고, 재예약만 마지막 호출이 맡는다.
   const gen = nextGen();
-  await cancelAllNotifications();
+  await cancelAllExceptSnooze(); // iOS는 기록 있는 "5분 후 다시"를 남긴다(1.6.4 — 앱만 다시 열면 유지, 판정은 끝의 reconcileSnooze)
   if (isStaleGen(gen)) return;
   for (const alarm of alarms) cancelNativeAlarms(alarm.id);
   // 방식(AlarmKit/Expo)을 매번 다시 판정한다 — 설정 앱에서 권한을 바꾸거나 iOS를 올린 뒤 첫 재예약부터 따라간다.
@@ -144,7 +139,10 @@ export async function rescheduleAll(alarms: Alarm[], overrides: DayOverrides = {
   if (isStaleGen(gen)) return;
   // AlarmKit 원장 전체 정리 — 방식과 무관하게 항상. 방식이 Expo로 바뀌었으면 AlarmKit 쪽 잔여가, 삭제된 알람이면
   // 그 id의 예약이 여기서 지워진다(Expo 쪽은 바로 위 전체 취소가 같은 역할). 켜져 있는 알람의 울림·다시 울림만 남긴다.
-  await cancelAllAlarmKit(alarms.filter(a => a.active).map(a => a.id));
+  // 다시 울림(카운트다운) 중인데 일정이 바뀐 알람(이날 끄기·하루 근무 변경·시간 변경)은 남기지 않는다(1.6.4 — alarmKitKeepIds).
+  const akEntries = await listAlarmKit();
+  if (isStaleGen(gen)) return;
+  await cancelAllAlarmKit(alarmKitKeepIds(alarms, akEntries, overrides, Date.now()));
   if (isStaleGen(gen)) return;
   const active = alarms.filter(a => a.active);
 
@@ -184,7 +182,20 @@ export async function rescheduleAll(alarms: Alarm[], overrides: DayOverrides = {
 
 // 스누즈(Android 네이티브 9002)는 cancelNativeAlarms가 지우지 않는다(앱만 다시 열어도 사라지던 문제). 그래서 재예약이 끝날 때마다
 // 대기 중인 스누즈를 읽어, 지금 일정으로 그 알람이 "그 근무일·그 시각"에 더는 울리지 않으면 지운다. 그대로 울리면 둔다.
+// iOS Expo 스누즈(1.6.4)도 같다 — cancelAllExceptSnooze가 남긴 기록을 같은 snoozeStillDue로 판정하고, 다 울린 기록은 정리한다.
 async function reconcileSnooze(alarms: Alarm[], overrides: DayOverrides, gen: number) {
+  if (Platform.OS === 'ios') {
+    const recs = await loadIosSnoozes();
+    if (isStaleGen(gen)) return; // 더 새로운 rescheduleAll이 같은 판정을 다시 한다
+    const now = Date.now();
+    for (const r of recs) {
+      if (iosSnoozeExpired(r, now, IOS_SNOOZE_RING_MS) || !iosSnoozeStillDue(alarms, r, overrides)) {
+        await cancelSnooze(r.id);
+        if (isStaleGen(gen)) return;
+      }
+    }
+    return;
+  }
   const snooze = await getPendingSnooze();
   if (isStaleGen(gen)) return; // 더 새로운 rescheduleAll이 같은 판정을 다시 한다
   if (!snooze) return;
@@ -205,17 +216,16 @@ export async function scheduleAlarm(alarm: Alarm, overrides: DayOverrides = {}) 
 // 폰-워치 표준 Bluetooth 알림 브릿지는 이 알림을 그대로 워치에 띄우고, 워치에서 누른 액션이
 // 그대로 이 앱의 응답 리스너로 돌아온다. 즉 아래 버튼 목록 = 워치에서 사용자가 보게 될 버튼.
 export async function registerNotificationCategories() {
-  // 인앱 울림 화면과 알림/워치의 버튼 구성은 반드시 일치해야 한다 — 앱에선 스누즈를 없앴는데
-  // 알림에만 '5분 후'가 남아 있으면, 특히 액션 버튼이 크게 보이는 워치에서 사용자가 그 버튼을
-  // 누르게 된다. 그 경로는 Expo 예약만 걸고 네이티브 AlarmManager는 안 걸어서 Doze 구간에
-  // 들어가면 스누즈가 안 울린다 — 앱에서 제거한 기능이 워치에서만 살아나 가장 약한 경로로
-  // 동작하는 셈이라, SNOOZE_ENABLED와 묶어둔다.
-  const actions = [
-    { identifier: 'stop', buttonTitle: t('알람 끄기'), options: { isDestructive: false, isAuthenticationRequired: false } },
-    ...(SNOOZE_ENABLED
-      ? [{ identifier: 'snooze', buttonTitle: t('5분 후'), options: { isDestructive: false, isAuthenticationRequired: false } }]
-      : []),
-  ];
+  // 버튼 구성은 alarmCategoryActions(순수 함수, logic-tests) 한 곳에서 — 순서·문구는 세이람과 같다: [알람 끄기, 5분 후 다시].
+  // - iOS(1.6.4): [5분 후 다시]를 켠다. iOS 26 미만·AlarmKit 거부·진동만 알람은 Expo 알림으로 울리므로, 응답 리스너가
+  //   5분 뒤 Expo 알림(+ 보조 알림)을 다시 건다(notifications/snooze.ts scheduleIosSnooze). iOS는 Doze가 없어 Expo 예약이 정확하다.
+  // - Android: 알림·워치 스누즈는 계속 끈다. 그 경로는 Expo 예약만 걸고 네이티브 AlarmManager는 안 걸어서 Doze 구간에
+  //   들어가면 스누즈가 안 울린다(워치에서 버튼이 크게 보여 누르기 쉬운데 가장 약한 경로). Android의 [5분 후 다시]는
+  //   울림 카드·커버 화면의 네이티브 스누즈 한 길이다. SNOOZE_ENABLED(false)와 묶어 둔다.
+  const titles: Record<'stop' | 'snooze', string> = { stop: t('알람 끄기'), snooze: snoozeLabel() };
+  const actions = alarmCategoryActions(Platform.OS, SNOOZE_ENABLED).map(id => ({
+    identifier: id, buttonTitle: titles[id], options: { isDestructive: false, isAuthenticationRequired: false },
+  }));
 
   if (Platform.OS === 'ios') {
     // customDismissAction: 워치/배너에서 그냥 닫기(스와이프 등)만 해도 응답 리스너가 호출되도록 함.

@@ -210,7 +210,7 @@ export const EN: Record<string, string> = {
   "아니요": "No",
   "알람": "Alarms",
   "알람 기본값": "Alarm defaults",
-  "알람 끄기": "Dismiss alarm",
+  "알람 끄기": "Stop alarm",
   "알람 볼륨": "Alarm volume",
   "알람 삭제": "Delete alarm",
   "알람 소리 크기 (안드로이드)": "Alarm volume (Android)",

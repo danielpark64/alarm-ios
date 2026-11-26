@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { Alarm, DayOverrides, ShiftPeriod, IOS_REP_INTERVAL_SEC, ANDROID_REP_COUNT, notifSoundFor, normalizeTone, groupTone, crescendoOn } from '../../constants';
+import { Alarm, DayOverrides, ShiftPeriod, IOS_REP_INTERVAL_SEC, ANDROID_REP_COUNT, REP_MAX, notifSoundFor, normalizeTone, groupTone, crescendoOn } from '../../constants';
 import { getType, pad, getNextFireDate, lunarToSolarInYear, effectiveShift, effectiveTime, dayWorkFor, isOverridableAlarm, isHolidaySkipped, skipsStatutoryHoliday, overnightFrom, alarmLabel, workDateOfFire } from '../index';
 import { isStatutoryHoliday } from '../../constants/holidays';
 import { roleLabel } from '../workPattern';
@@ -23,7 +23,7 @@ function getVibrationPattern(vib: string): number[] | undefined {
 // 보고 진동을 울리게 한다 — 실제 소리는 안 난다(2026-10-10, 진동만 모드가 iOS에서 무음 배너로만 뜨던 문제).
 // Android는 vibrate 패턴을 따로 주므로 소리 없음 = undefined 그대로.
 // tone: 알람마다 고른 소리(2026-11-23) — 파일 이름은 constants/alarmTones.ts 한 곳에서만 정한다.
-function notifSound(soundOn: boolean, tone?: unknown): string | boolean | undefined {
+export function notifSound(soundOn: boolean, tone?: unknown): string | boolean | undefined {
   return notifSoundFor(Platform.OS, soundOn, tone, __DEV__);
 }
 // iOS 시간 민감 알림 — 집중 모드·방해금지를 뚫고 뜬다(app.entitlements time-sensitive 필요).
@@ -300,12 +300,23 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
   }
 }
 
+// 보조 알림(`${idBase}_rep1..REP_MAX`) 전부 취소 — 그룹(grp_{h}_{m})·알람별(alarm_{id})·iOS 스누즈(snooze_*) 공용.
+// 없는 식별자는 조용히 무시되므로 상한까지 돌려도 안전하다. 취소 지점이 여러 곳(응답 리스너·인앱 끄기·
+// 스누즈·네이티브 끄기)이라 반드시 이 함수를 쓴다 — 예전처럼 rep1/rep2만 직접 지우면 iOS의 긴 묶음이 남는다.
+// (1.6.4에 index.ts에서 옮겨 옴 — 예약 scheduleRepSeries와 짝으로 두고, notifications/snooze.ts가 순환 import 없이 쓰게. index.ts가 다시 내보낸다)
+export async function cancelRepSeries(idBase: string) {
+  await Promise.all(
+    Array.from({ length: REP_MAX }, (_, i) =>
+      Notifications.cancelScheduledNotificationAsync(`${idBase}_rep${i + 1}`).catch(() => {})),
+  );
+}
+
 // ── 보조 알림(반복 울림) 공통 — 식별자 `${idBase}_rep{i}` (i=1..count), 간격은 플랫폼별.
 // iOS: 30초 간격(소리가 30초라 끊김 없이 이어짐), Android: 60초 간격(네이티브가 이미 끌 때까지 울리므로 보조일 뿐).
 // 64개 한도 검사는 하지 않는다 — iOS는 넘치면 "발화 시각이 먼 것"부터 버리는데, 보조 알림은 가장 가까운
 // 알림이라 살아남고, 버려진 먼 메인 슬롯은 다음 재예약(앱 열기·알람 울림 뒤 응답) 때 다시 채워진다.
 // 예전엔 "60개 넘으면 보조 포기"였는데 그건 더 중요한 쪽을 우리가 먼저 버리는 거꾸로 된 순서였다.
-async function scheduleRepSeries(
+export async function scheduleRepSeries(
   idBase: string, base: Notifications.NotificationContentInput, data: Record<string, unknown>,
   next: Date, count: number, gen?: number,
 ) {

@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alarm, WorkSegment, SoundMode, VibMode, ALARMS_STORAGE_KEY } from '../constants';
 import { todayStr, pruneSkips } from '../utils';
 import { rescheduleAll } from '../utils/notifications';
-import { getPendingSnooze } from '../utils/notifications/android';
+import { getPendingSnoozes } from '../utils/notifications/snooze';
 import { keepOnceForSnooze } from '../utils/snoozeCheck';
 import { syncWidget } from '../utils/widgetSync';
 import { reconcileWorkPattern } from '../utils/workPattern';
@@ -44,7 +44,8 @@ export function useAlarms() {
       // 만료된 '한 번' 알람 자동 비활성화 — 단, 자정 직전에 "5분 후 다시"를 눌러 스누즈 대기 중인 알람은 남긴다
       // (끄면 스누즈가 비활성 게이트·rescheduleAll 스누즈 판정에 막혀 사라진다). 스누즈가 울리고 끄면 afterNativeStop이 끈다.
       const today = todayStr();
-      const snooze = await getPendingSnooze();
+      // Android 네이티브 기록 하나, iOS는 Expo 스누즈 기록 + AlarmKit 다시 울림 대기(1.6.4)
+      const snooze = await getPendingSnoozes();
       const migrated = loaded.map(a => (a.rm === 'once' && a.sd < today && a.active && !keepOnceForSnooze(a, snooze)) ? { ...a, active: false } : a);
       if (migrated.some((a, i) => a.active !== loaded[i].active)) {
         loaded = migrated;

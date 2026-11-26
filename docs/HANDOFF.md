@@ -4,6 +4,7 @@
 **사용자에게 보이는 모든 글은 한국어로 쓴다**(전역 규칙).
 
 ## 지금 상태 한 줄
+**1.6.4 iOS 다시 알림 — feature/ios-snooze(11-25, main 미병합·번호 안 올림).** 아이폰 알람에 [5분 후 다시](세이람과 문구·순서·5분 같게). AlarmKit은 snoozeMin 5(카운트다운, 일정 바뀌면 `alarmKitKeepIds`로 취소), Expo 경로(iOS 26 미만·거부·진동만)는 알림 버튼 → `notifications/snooze.ts scheduleIosSnooze`(기록 {알람 id, 근무일, 울린 시각}, `reconcileSnooze`가 `snoozeStillDue`로 판정, 앱만 열면 유지). 취소 단일 진입점 `snooze.ts cancelSnooze`. Android 알림·워치 스누즈는 계속 끔. 시뮬(알림 버튼·5분 뒤 예약·시간 변경/연차면 사라짐·다시 열면 유지)·32 스위트 112/0 확인. 남은 것: 폰에서 AlarmKit 울림 화면 [5분 후 다시] 버튼·카운트다운 뒤 재울림·카운트다운 중 근무 변경(시뮬은 버튼이 안 그려짐), 출시 노트 초안 `store-assets/listings/release-1.6.4.json`.
 **1.6.3: Play vc16 11-25 19시대 검토로 보냄(1.6.2 Play 공개 확인 뒤) — 재제출 금지. App Store는 1.6.2(빌드 15) 심사 통과 즉시 1.6.3(빌드 16) 버전 만들어 제출(사용자 승인됨, 되묻지 않음).** 1.6.3(vc16·iOS 빌드 16) 준비 끝(11-25): `feature/ring-card`를 main에 병합(7ad90af), AAB `~/Desktop/교대알람-1.6.3-vc16.aab`(vc15 AAB는 1.6.2 심사 끝날 때까지 둠), TestFlight 16 VALID, 출시 노트 `store-assets/listings/release-1.6.3.json`(iOS는 "안정성 개선" 한 줄 — 울림 카드·스누즈는 Android 전용), 체크리스트·대조표 `docs/출시-체크리스트-1.6.3.md`. 노트에서 울림 카드(한국어·영어, 야간 퇴근=근무일)·끄기·5분 후 재울림·스누즈 뒤 근무 변경/시간 변경이면 안 울림·앱 다시 열기 유지·맨 앞(화면 꺼짐·영상 위·뒤로·홈·본문 누름·종료 뒤)·울림 중 새 버전 안내 안 뜸·허용 안내 확인, 캡처 `~/Desktop/스크린샷/163-노트-*`·`163-32-*`. 올릴 때: Play는 `~/.playconsole/play-upload.mjs`로 vc16 + 노트, iOS는 버전 1.6.3 만들고 빌드 16 연결 + iOS 글. 남은 것: 스토어 스크린샷 9개 언어 재촬영(시안 승낙 필요), 보안 잠금 위 실기기(두 기기 보안 잠금 없음), 플립 커버, iOS 실기기(TestFlight 16).
 **1.6.2(vc15·iOS 빌드 15) — 11-25 두 스토어 제출: Play production 검토 중(vc15), App Store WAITING_FOR_REVIEW — 재제출 금지.** 사용자 "올려" 직접(11-25). 체크리스트 `docs/출시-체크리스트-1.6.2.md`, 출시 노트 `store-assets/listings/release-1.6.2.json`. 다음: 공개 뒤 Play판 1.6.1 폰에서 새 버전 안내 확인, 폰 TestFlight 15 확인. 1.6.3은 위 줄.
 **1.6.3 울림 카드 — main 병합됨(7ad90af, 11-25).** 시안 `docs/시안/울림화면-카드-시안.html` "바꿀 모양" — JS `AlarmRinging.tsx`·커버 `CoverAlarmActivity.kt` 같은 카드(밤하늘·근무 이름·근무일 날짜·보라 원 끄기·"5분 후 다시"), 시간·이모지 없음. 스누즈는 네이티브 ACTION_SNOOZE 한 길(지금 울림의 소리·진동 설정 유지, baseAlarmId 게이트, rescheduleAll이 스누즈를 더는 안 지움, JS `alarmSnoozed`로 Expo 보조 취소). 근무일은 예약→원장(`wdate`)→울림으로 전달. 32·노트 확인, 플립 커버는 기기 없어 못 봄. 캡처 `~/Desktop/스크린샷/울림카드-*`.
@@ -140,6 +141,22 @@ adb -s RF9R3049REV shell am start -a android.intent.action.VIEW -d "alarmapp://?
 - 자격증명 입력·결제·법적 선언은 사용자가 직접. Play Console 스토어 등록정보(스크린샷)는 사용자가 시키면 크롬(u/2 프로필, Susu Development)으로 Claude가 올린다. AAB 업로드는 사용자가 직접.
 - 계획은 Fable, 실행은 Opus 에이전트(`model: "opus"`), 결과 점검은 Fable이 직접.
 
+## 2026-11-26 미니 실기기 확인(1.6.4 빌드 18, iPadOS 27.2.1, 진동만, `scripts/ios-device-test.sh` 자동 조작 — main ddaa35c)
+- (a) 진동만 알람 알림에 [알람 끄기]·[5분 후 다시] 둘 다 있음 — 통과(`~/Desktop/스크린샷/미니-164-07-펼친알림.png`)
+- (b) 앱 백그라운드에서 [5분 후 다시] → `snooze_grp_*` + 보조 10개 예약, 5분 뒤 다시 옴 — 통과
+- **(c) 앱 완전 종료 상태에서 [5분 후 다시] → 남은 보조 알림은 지워지는데 스누즈가 예약되지 않음(대기 0개) — 두 번 재현, 실패.**
+  추정 원인: 응답 리스너(`useAlarmNotifications.ts` s2)가 `loaded`를 기다리지 않아, 콜드 스타트 때 `alarmsRef.current`가 `[]`인 채
+  `iosSnoozeTargets`/`snoozeStillDue`를 돌려 targets가 비고 `scheduleIosSnooze`를 건너뜀(뒷정리는 알람 목록이 필요 없어 그대로 됨).
+  고칠 방향: 스누즈 판정 전에 알람 로드를 기다리기(또는 AsyncStorage에서 직접 읽기) + 로직 테스트로 "빈 목록이면 로드 후 판정" 고정.
+- (d) 미룬 뒤 알람 시간을 바꿔 저장 → 대기 스누즈 11개 → 0개 — 통과
+- (e) 잠금 화면 [알람 끄기]: 자동 잠그기(`mobile: lock`)가 안 되고 암호 유무도 확정 못 함(devicectl `passcodeRequired: false`는 풀린 상태 값) — 미확인
+- 끝: clearTestAlarms → 알람 0·대기 알림 0·AlarmKit 0 확인
+
+## 2026-11-26 01:23 — 1.6.4 (c) 고침, 미니에서 재확인 중 멈춤(사용자 시스템 재부팅)
+- 원인 2개: ① 종료 상태 알림 버튼 응답을 리스너 등록 전에 놓침 → `getLastNotificationResponseAsync`+`handleResponseOnce`(`801bf2c`) ② 알람 로드 전 판정 → `waitAlarmsLoaded`(`f6c374e`). 경쟁 수정 `1b27904`.
+- 미니(Release, 801bf2c): 종료 상태에서 [5분 후 다시] → `snooze_grp_1_22`+보조 10개 예약됨(통과). 재부팅 뒤 다시: 01:38:28 종료 상태에서 [5분 후 다시] → 01:43:27 다시 옴 — **통과**(`~/Desktop/스크린샷/미니-164-c4-5분뒤재울림.png`).
+- 남은 것: 5분 뒤 재울림 확인, TestFlight 19(현재 18은 이 수정 전), (e) 잠금 화면 끄기, verify-fix 1회, 1.6.3 App Store 제출(1.6.2 통과 뒤).
+- 미니 시험 도구: main `scripts/ios-device-test.sh`(브랜치엔 없음 — scratchpad 복사본으로 씀). 정리: clearTestAlarms 함, 현황판 미니 줄 지움.
 ## 2026-11-26 오전 — 1.6.3 App Store 제출 · 미니 소리 시험 못 함
 - App Store 1.6.2 판매 시작 확인 뒤 1.6.3 버전을 만들고 빌드 16 연결·15개 언어 노트("안정성 개선")를 넣어 **심사 제출(WAITING_FOR_REVIEW)**. 사용자 승인분.
 - 미니 소리 시험(10:31~, 사용자 허락): **못 함**. WDA가 기기에서 "Timed out while enabling automation mode"로 3번 실패(설치 앱은 1.6.4(18), 잠금 상태 passcodeRequired=false).
@@ -154,3 +171,5 @@ adb -s RF9R3049REV shell am start -a android.intent.action.VIEW -d "alarmapp://?
 - **2026-11-26 오후 사용자 직접 "마무리 올려" — 1.6.4 업로드 승인됨.** 주간 사용량 95%에 닿아 여기서 멈춤(11-28 토 10시 뒤 이어서).
   이어서 할 순서: verify-fix 1회 → `docs/출시-체크리스트-1.6.4.md` 작성(✗ 없어야) → feature/ios-snooze를 main에 병합 → 정적 스위트 →
   AAB vc17 빌드(`~/Desktop/교대알람-1.6.4-vc17.aab`) → Play 업로드(노트 release-1.6.4.json). iOS는 App Store 1.6.3(11-26 제출, WAITING_FOR_REVIEW) 통과 즉시 빌드 19로 제출 — 다시 묻지 않음.
+- **2026-11-26 오후 1.6.4 올림(사용자 직접 "사용량 무시하고 전부 올려줘")**: verify-fix가 종료 상태 [알람 끄기] 로드 전 처리 버그 지적 → 3ac3895 고침·미니 확인.
+  Play vc17 production 검토로 보냄(편집 14401461705857977423). iOS 빌드 20 TestFlight 업로드 — App Store 1.6.3(WAITING_FOR_REVIEW) 통과 즉시 1.6.4 버전 만들고 빌드 20·iOS 노트 넣고 제출(되묻지 않음). 체크리스트 `docs/출시-체크리스트-1.6.4.md`. **재제출 금지.**

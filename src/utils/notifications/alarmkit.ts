@@ -9,7 +9,8 @@
 import { Platform } from 'react-native';
 import { requireOptionalNativeModule } from 'expo-modules-core';
 import { alarmKitEnabled, shouldAskAlarmKit, alarmKitUuid, alarmKitWeekdays, type AlarmKitAuth, type AlarmKitEnv } from '../alarmkitRoute';
-import { SNOOZE_ENABLED, toneIosFile } from '../../constants';
+import { SNOOZE_MIN, toneIosFile } from '../../constants';
+import { snoozeLabel } from '../ringCard';
 import { t } from '../../i18n/translate';
 
 type ScheduleOptions = {
@@ -27,10 +28,13 @@ type Native = {
   schedule(o: ScheduleOptions): Promise<boolean>;
   cancelForAlarm(alarmId: number): Promise<number>;
   cancelAll(keepActiveIds: number[]): Promise<number>;
-  listScheduled(): Promise<{ id: string; alarmId: number; state: string }[]>;
+  listScheduled(): Promise<AlarmKitListItem[]>;
   previewSound?(name: string, ms: number): void;
   stopPreview?(): void;
 };
+
+// when: 날짜 예약이면 원래 울릴 시각(ms), 요일 반복이면 "weekly HH:MM"(Swift listScheduled)
+export type AlarmKitListItem = { id: string; alarmId: number; state: string; when?: number | string | null };
 
 const native = Platform.OS === 'ios' ? requireOptionalNativeModule<Native>('AlarmappAlarmKit') : null;
 
@@ -64,9 +68,12 @@ export async function requestAlarmKitIfNeeded(): Promise<boolean> {
   return alarmKitEnabled(alarmKitEnv()) !== enabled;
 }
 
+// 울림 화면 버튼 — 문구·간격은 세이람과 같다(1.6.4): [알람 끄기] · [5분 후 다시](SNOOZE_MIN분 카운트다운 뒤 시스템이 다시 울림).
+// iOS 전용 값이라 SNOOZE_ENABLED(Android 알림·워치 스누즈, Doze 때문에 꺼 둠)와 떼어 둔다. 카운트다운 중 일정이 바뀌면
+// rescheduleAll이 snoozeCheck.alarmKitKeepIds로 판정해 cancelAllAlarmKit에서 지운다.
 function buttons() {
-  const snoozeMin = SNOOZE_ENABLED ? 5 : 0; // 앱에서 스누즈를 없앴으면(SNOOZE_ENABLED=false) [다시 울림] 버튼도 없다
-  return { stopText: t('알람 끄기'), snoozeText: t('다시 울림'), snoozeMin };
+  const snoozeMin = Platform.OS === 'ios' ? SNOOZE_MIN : 0;
+  return { stopText: t('알람 끄기'), snoozeText: snoozeLabel(), snoozeMin };
 }
 
 // 날짜 하나에 한 번 — key는 근무일(YYYY-MM-DD). 반환 false면 예약 실패(한도 초과 등).
@@ -98,7 +105,7 @@ export function cancelAllAlarmKit(keepActiveIds: number[] = []): Promise<number>
   return serial(() => native.cancelAll(keepActiveIds)).catch(() => 0);
 }
 
-export function listAlarmKit(): Promise<{ id: string; alarmId: number; state: string }[]> {
+export function listAlarmKit(): Promise<AlarmKitListItem[]> {
   if (!native || !native.isAvailable()) return Promise.resolve([]);
   return serial(() => native.listScheduled()).catch(() => []);
 }

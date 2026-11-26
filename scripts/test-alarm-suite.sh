@@ -487,7 +487,7 @@ fi
 printf "  보조 알림 취소가 cancelRepSeries를 거치는지(rep1/rep2 직접 취소 없음) ... "
 if grep -rn "_rep1\`\|_rep2\`" "$ROOT/src/hooks" "$ROOT/src/utils/notifications/index.ts" "$ROOT/app" 2>/dev/null | grep -v "^\s*//" | grep -q "cancelScheduledNotificationAsync"; then
   fail "rep1/rep2만 직접 취소하는 코드가 있음 — cancelRepSeries로 바꿀 것"
-elif ! grep -q "REP_MAX" "$_IDX" 2>/dev/null; then
+elif ! grep -q "REP_MAX" "$_IDX" "$ROOT/src/utils/notifications/core.ts" 2>/dev/null; then
   fail "cancelRepSeries가 REP_MAX 상한을 안 씀"
 else
   ok ""
@@ -867,11 +867,18 @@ else ok ""; fi
 #    판정은 순수 함수(src/utils/alarmResponse.ts responseAction, logic-tests) 한 곳. 울림 화면 열기 갈래가 있어야 한다.
 printf "  1.6.2: 알림 본문 탭은 끄지 않고 울림 화면 ... "
 _UAN="$ROOT/src/hooks/useAlarmNotifications.ts"
-_RB=$(awk '/addNotificationResponseReceivedListener/,/^    }\);$/' "$_UAN")
+_RB=$(awk '/const onResponse = async/,/^    };$/' "$_UAN")  # 1.6.4: 응답 처리기는 onResponse(리스너·시작 때 마지막 응답이 함께 씀)
 if [ ! -f "$ROOT/src/utils/alarmResponse.ts" ]; then fail "src/utils/alarmResponse.ts 없음"
 elif ! echo "$_RB" | grep -q "responseAction("; then fail "응답 리스너가 responseAction으로 판정 안 함 — 본문 탭도 끔"
 elif ! echo "$_RB" | grep -q "DEFAULT_ACTION_IDENTIFIER"; then fail "응답 리스너가 DEFAULT_ACTION_IDENTIFIER를 넘기지 않음"
 elif ! echo "$_RB" | grep -q "'openRinging'"; then fail "울림 화면 열기 갈래 없음"
+else ok ""; fi
+# 1.6.4 verify-fix(11-26): 앱이 종료된 채 누른 응답은 시작 때(getLastNotificationResponseAsync) 알람 로드 전에 처리된다.
+#   로드 전 alarms는 [] — 그대로 updateAlarm하면 저장소를 빈 목록으로 덮고 rescheduleAll([])로 예약을 전부 지운다.
+#   응답 처리기 안의 updateAlarmRef 호출은 모두 같은 줄에서 waitAlarmsLoaded()를 통과해야 한다.
+printf "  1.6.4: 응답 처리 중 알람 변경은 로드 뒤에만 ... "
+_UNSAFE=$(echo "$_RB" | grep "updateAlarmRef.current(" | grep -vc "waitAlarmsLoaded()")
+if [ "$_UNSAFE" != "0" ]; then fail "로드를 기다리지 않는 updateAlarmRef 호출 ${_UNSAFE}곳 — 종료 상태 [알람 끄기]가 알람 목록을 비울 수 있음"
 else ok ""; fi
 # ⑦ 끈 뒤에도 MainActivity가 보안 잠금 위에 남았다 — setShowWhenLocked(true)는 창 플래그(clearFlags)로 안 풀린다.
 #    울림이 끝나는 모든 길(끄기·스누즈·서비스 종료)에서 AlarmService가 MainActivity.onRingingEnded()를 불러 잠금 위 표시를 풀고,
@@ -1067,7 +1074,7 @@ grep -q "workDate" "$ROOT/src/hooks/useAlarmNotifications.ts" || _WD="$_WD JS울
 #    취소는 android.ts cancelSnooze 한 곳. 앱이 죽어 있을 때 커버 화면 스누즈의 Expo 보조 알림은 consumeLastSnoozed로 시작 때 지운다.
 printf "  1.6.3 스누즈 뒷정리: 바뀐 일정이면 취소·단일 진입점·대체 경로 ... "
 _SC=""; _IDX="$ROOT/src/utils/notifications/index.ts"; _AND="$ROOT/src/utils/notifications/android.ts"
-grep -q "export function cancelSnooze" "$_AND" || _SC="$_SC cancelSnooze없음"
+grep -q "export function cancelSnooze" "$ROOT/src/utils/notifications/snooze.ts" 2>/dev/null || _SC="$_SC cancelSnooze없음(snooze.ts)"
 _CSN=$(grep -rn "AlarmModule\(?\)\?\.cancelSnooze\|AlarmModule\.cancelSnooze" "$ROOT/src" "$ROOT/app" 2>/dev/null | grep -v "^$_AND:" | wc -l | tr -d ' ')
 [ "$_CSN" = "0" ] || _SC="$_SC 네이티브스누즈취소가여러곳($_CSN)"
 awk '/export async function rescheduleAll/,/^}$/' "$_IDX" | grep -q "reconcileSnooze(" || _SC="$_SC rescheduleAll이스누즈판정안함"
@@ -1085,6 +1092,43 @@ grep -q "keepOnceForSnooze(" "$ROOT/src/hooks/useAlarms.ts" || _SC="$_SC 한번�
 awk '/q.clearTestAlarms != null/,/return;/' "$ROOT/app/index.tsx" | grep -q "cancelSnooze(" || _SC="$_SC clearTestAlarms가스누즈안지움"
 grep -q "매 rescheduleAll이 지우는 대상" "$_AS" && _SC="$_SC AlarmService옛주석"
 [ -z "$_SC" ] && ok "" || fail "스누즈 뒷정리 —$_SC"
+
+# ⑤ 1.6.4 iOS [5분 후 다시](feature/ios-snooze) — 세이람과 문구·순서·간격을 맞추고, 고친버그 30·31번(바뀐 일정의 스누즈·앱만 열면 사라짐)이
+#    iOS에도 생기지 않게. 순수 판정은 logic-tests/ios-snooze.test.js. Android 알림·워치 스누즈는 계속 끈다(Doze).
+printf "  1.6.4 iOS 다시 울림: 버튼·AlarmKit·Expo 스누즈·뒷정리 ... "
+_IS=""; _SZF="$ROOT/src/utils/notifications/snooze.ts"; _AKF="$ROOT/src/utils/notifications/alarmkit.ts"; _UAN="$ROOT/src/hooks/useAlarmNotifications.ts"
+[ -f "$_SZF" ] || _IS="$_IS snooze.ts없음"
+awk '/export async function registerNotificationCategories/,/^}$/' "$_IDX" | grep -q "alarmCategoryActions(Platform.OS" || _IS="$_IS 버튼구성이순수함수아님"
+awk '/export async function registerNotificationCategories/,/^}$/' "$_IDX" | grep -q "customDismissAction: true" || _IS="$_IS iOScustomDismissAction없음"
+awk '/export async function registerNotificationCategories/,/^}$/' "$_IDX" | grep -q "snoozeLabel()" || _IS="$_IS 알림버튼문구가snoozeLabel아님"
+awk '/function buttons\(\)/,/^}$/' "$_AKF" | grep -q "SNOOZE_ENABLED" && _IS="$_IS AlarmKit스누즈가SNOOZE_ENABLED에묶임"
+awk '/function buttons\(\)/,/^}$/' "$_AKF" | grep -q "Platform.OS === 'ios'" || _IS="$_IS AlarmKit스누즈iOS전용아님"
+awk '/function buttons\(\)/,/^}$/' "$_AKF" | grep -q "snoozeLabel()" || _IS="$_IS AlarmKit버튼문구다름"
+grep -q "export function cancelSnooze" "$_SZF" 2>/dev/null && awk '/export function cancelSnooze/,/^}$/' "$_SZF" | grep -q "Platform.OS" || _IS="$_IS cancelSnooze가플랫폼안나눔"
+grep -q "notifSound(" "$_SZF" 2>/dev/null || _IS="$_IS 스누즈소리가notifSound아님"
+grep -q "sound: undefined" "$_SZF" 2>/dev/null && _IS="$_IS 스누즈sound:undefined"
+grep -q "scheduleRepSeries(" "$_SZF" 2>/dev/null || _IS="$_IS 스누즈보조가scheduleRepSeries아님"
+grep -q "cancelRepSeries(" "$_SZF" 2>/dev/null || _IS="$_IS 스누즈취소가cancelRepSeries아님"
+grep -q "categoryIdentifier: 'alarm'" "$_SZF" 2>/dev/null || _IS="$_IS 스누즈알림에버튼없음"
+awk '/async function reconcileSnooze/,/^}$/' "$_IDX" | grep -q "iosSnoozeStillDue(" || _IS="$_IS iOS판정없음"
+awk '/async function reconcileSnooze/,/^}$/' "$_IDX" | grep -A1 "await loadIosSnoozes" | grep -q "isStaleGen(gen)" || _IS="$_IS iOS기록읽은뒤isStaleGen없음"
+awk '/export async function rescheduleAll/,/^}$/' "$_IDX" | grep -q "cancelAllExceptSnooze(" || _IS="$_IS 재예약이iOS스누즈를지움"
+awk '/export async function rescheduleAll/,/^}$/' "$_IDX" | grep -q "alarmKitKeepIds(" || _IS="$_IS AlarmKit카운트다운판정없음"
+awk '/export async function rescheduleAll/,/^}$/' "$_IDX" | grep -A1 "await listAlarmKit" | grep -q "isStaleGen(gen)" || _IS="$_IS AlarmKit목록뒤isStaleGen없음"
+grep -q "getPendingSnoozes()" "$ROOT/src/hooks/useAlarms.ts" || _IS="$_IS 한번알람자동끄기가iOS기록무시"
+grep -q "scheduleIosSnooze(" "$_UAN" || _IS="$_IS 응답이iOS스누즈안검"
+grep -q "cancelSnooze(data.snoozeId)" "$_UAN" || _IS="$_IS 스누즈알림끄기가기록안지움"
+# 종료 상태에서 [5분 후 다시](미니 실기기 2회 재현, 11-26): 응답이 알람 로드보다 먼저 와 목록이 비어 스누즈를 안 걸었다 → 로드를 기다린다
+grep -q "waitAlarmsLoaded(" "$_UAN" || _IS="$_IS 종료상태스누즈가로드를안기다림"
+# 앱이 종료된 채 알림 버튼([알람 끄기]·[5분 후 다시])을 누르면 응답 리스너가 등록되기 전에 응답이 와서 놓친다(미니 11-26 재현)
+# → 시작 때 getLastNotificationResponseAsync로 받아 같은 처리기로 한 번만(중복 방지) 처리한다.
+grep -q "getLastNotificationResponseAsync" "$_UAN" || _IS="$_IS 종료상태알림응답을놓침"
+grep -q "handleResponseOnce" "$_UAN" || _IS="$_IS 알림응답중복처리방지없음"
+# 종료 상태에서 [5분 후 다시] → 앱 시작 재예약과 겹침(세이람 1.2.4 verify-fix와 같은 경쟁): iOS는 전체 취소(cancelAll) 금지,
+# 예약 목록을 먼저 읽고 그 뒤에 기록을 읽어야 한다(기록은 예약보다 먼저 쓰므로, 목록에 보인 스누즈는 기록에도 있다).
+awk '/export async function cancelAllExceptSnooze/,/^}$/' "$_SZF" | grep -q "Platform.OS !== 'ios' ||" && _IS="$_IS iOS기록없으면전체취소"
+awk '/export async function cancelAllExceptSnooze/,/^}$/' "$_SZF" | awk '/getAllScheduledNotificationsAsync/{a=NR} /loadIosSnoozes/{b=NR} END{exit !(a && b && a<b)}' || _IS="$_IS 목록보다기록을먼저읽음"
+[ -z "$_IS" ] && ok "" || fail "iOS 다시 울림 —$_IS"
 
 if $STATIC_ONLY; then
   echo ""

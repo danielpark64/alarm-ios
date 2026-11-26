@@ -168,12 +168,6 @@
   ]
  },
  {
-  "key": "5분 후",
-  "files": [
-   "src/utils/notifications/index.ts"
-  ]
- },
- {
   "key": "5월",
   "files": [
    "src/constants/index.ts"
@@ -1012,12 +1006,6 @@
   "key": "다른 앱을 쓰는 중에도 알람 끄기 화면이 맨 앞에 떠요",
   "files": [
    "src/components/Home/SettingsView.tsx"
-  ]
- },
- {
-  "key": "다시 울림",
-  "files": [
-   "src/utils/notifications/alarmkit.ts"
   ]
  },
  {

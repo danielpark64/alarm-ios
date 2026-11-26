@@ -2,7 +2,7 @@
   "expo": {
     "name": "교대알람",
     "slug": "alarm-app",
-    "version": "1.6.3",
+    "version": "1.6.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": [
@@ -95,7 +95,7 @@
         ],
         "com.apple.developer.usernotifications.time-sensitive": true
       },
-      "buildNumber": "16",
+      "buildNumber": "20",
       "associatedDomains": [
         "applinks:danielpark64.github.io"
       ]

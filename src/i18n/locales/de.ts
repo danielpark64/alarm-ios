@@ -209,7 +209,7 @@ export const DE: Record<string, string> = {
   "아니요": "Nein",
   "알람": "Wecker",
   "알람 기본값": "Wecker-Standards",
-  "알람 끄기": "Wecker ausschalten",
+  "알람 끄기": "Alarm stoppen",
   "알람 볼륨": "Weckerlautstärke",
   "알람 삭제": "Wecker löschen",
   "알람 소리 크기 (안드로이드)": "Weckerlautstärke (Android)",
