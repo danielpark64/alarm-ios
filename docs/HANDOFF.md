@@ -151,3 +151,6 @@ adb -s RF9R3049REV shell am start -a android.intent.action.VIEW -d "alarmapp://?
   - 통과: [끄기] → 멈춤, 카운트다운 사라짐. 정리 뒤 알람 0·Expo 예약 0·AlarmKit 예약 0.
   - 못 함: 잠금 화면 전체 화면 알람·(e) 잠금화면 [알람 끄기] — 미니에서 lock 자동화가 안 됨. 사용자 아이폰에서 볼 것.
   - Appium·WDA 끔(남은 프로세스 없음).
+- **2026-11-26 오후 사용자 직접 "마무리 올려" — 1.6.4 업로드 승인됨.** 주간 사용량 95%에 닿아 여기서 멈춤(11-28 토 10시 뒤 이어서).
+  이어서 할 순서: verify-fix 1회 → `docs/출시-체크리스트-1.6.4.md` 작성(✗ 없어야) → feature/ios-snooze를 main에 병합 → 정적 스위트 →
+  AAB vc17 빌드(`~/Desktop/교대알람-1.6.4-vc17.aab`) → Play 업로드(노트 release-1.6.4.json). iOS는 App Store 1.6.3(11-26 제출, WAITING_FOR_REVIEW) 통과 즉시 빌드 19로 제출 — 다시 묻지 않음.
