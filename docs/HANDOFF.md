@@ -139,3 +139,9 @@ adb -s RF9R3049REV shell am start -a android.intent.action.VIEW -d "alarmapp://?
 - 배터리를 더 쓰는 방식(iOS 백그라운드 오디오 등)은 하지 않는다.
 - 자격증명 입력·결제·법적 선언은 사용자가 직접. Play Console 스토어 등록정보(스크린샷)는 사용자가 시키면 크롬(u/2 프로필, Susu Development)으로 Claude가 올린다. AAB 업로드는 사용자가 직접.
 - 계획은 Fable, 실행은 Opus 에이전트(`model: "opus"`), 결과 점검은 Fable이 직접.
+
+## 2026-11-26 오전 — 1.6.3 App Store 제출 · 미니 소리 시험 못 함
+- App Store 1.6.2 판매 시작 확인 뒤 1.6.3 버전을 만들고 빌드 16 연결·15개 언어 노트("안정성 개선")를 넣어 **심사 제출(WAITING_FOR_REVIEW)**. 사용자 승인분.
+- 미니 소리 시험(10:31~, 사용자 허락): **못 함**. WDA가 기기에서 "Timed out while enabling automation mode"로 3번 실패(설치 앱은 1.6.4(18), 잠금 상태 passcodeRequired=false).
+  미니 화면이 꺼져 있거나 "UI 자동화 허용" 확인을 기기에서 기다리는 것으로 보임 — 사용자가 미니 화면을 켜 두면 이어서 한다.
+  남은 것: AlarmKit 시스템 화면·소리·[5분 후 다시]·카운트다운, (e) 잠금화면 [알람 끄기]. Appium·WDA는 끔(남은 프로세스 없음 확인).
