@@ -873,6 +873,13 @@ elif ! echo "$_RB" | grep -q "responseAction("; then fail "응답 리스너가 r
 elif ! echo "$_RB" | grep -q "DEFAULT_ACTION_IDENTIFIER"; then fail "응답 리스너가 DEFAULT_ACTION_IDENTIFIER를 넘기지 않음"
 elif ! echo "$_RB" | grep -q "'openRinging'"; then fail "울림 화면 열기 갈래 없음"
 else ok ""; fi
+# 1.6.4 verify-fix(11-26): 앱이 종료된 채 누른 응답은 시작 때(getLastNotificationResponseAsync) 알람 로드 전에 처리된다.
+#   로드 전 alarms는 [] — 그대로 updateAlarm하면 저장소를 빈 목록으로 덮고 rescheduleAll([])로 예약을 전부 지운다.
+#   응답 처리기 안의 updateAlarmRef 호출은 모두 같은 줄에서 waitAlarmsLoaded()를 통과해야 한다.
+printf "  1.6.4: 응답 처리 중 알람 변경은 로드 뒤에만 ... "
+_UNSAFE=$(echo "$_RB" | grep "updateAlarmRef.current(" | grep -vc "waitAlarmsLoaded()")
+if [ "$_UNSAFE" != "0" ]; then fail "로드를 기다리지 않는 updateAlarmRef 호출 ${_UNSAFE}곳 — 종료 상태 [알람 끄기]가 알람 목록을 비울 수 있음"
+else ok ""; fi
 # ⑦ 끈 뒤에도 MainActivity가 보안 잠금 위에 남았다 — setShowWhenLocked(true)는 창 플래그(clearFlags)로 안 풀린다.
 #    울림이 끝나는 모든 길(끄기·스누즈·서비스 종료)에서 AlarmService가 MainActivity.onRingingEnded()를 불러 잠금 위 표시를 풀고,
 #    커버 울림 화면(CoverAlarmActivity)도 닫는다. AlarmModule(JS 끄기·스누즈)도 같은 함수를 쓴다.

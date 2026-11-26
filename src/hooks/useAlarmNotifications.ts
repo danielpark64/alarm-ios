@@ -254,8 +254,10 @@ export function useAlarmNotifications(alarms: Alarm[], updateAlarm: (id: number,
         });
       } else {
         // 끄기 또는 탭 — '한 번' 알람이면 자동 비활성화
+        // 앱이 종료된 채 누른 응답은 시작 때 알람 로드 전에 온다 — 로드 전 updateAlarm은 빈 목록([])을 저장하고
+        // rescheduleAll([])로 예약을 전부 지운다(1.6.4 verify-fix). 로드를 기다리고, 끝내 못 읽으면 건너뛴다.
         if (rm === 'once' && alarmId != null) {
-          await updateAlarmRef.current(alarmId, { active: false });
+          if (await waitAlarmsLoaded()) await updateAlarmRef.current(alarmId, { active: false });
         }
       }
       // iOS: 응답 처리로 앱이 (백그라운드로라도) 깨어난 지금 보조 알림만 다시 걸어 다음 알람이 긴 묶음을
