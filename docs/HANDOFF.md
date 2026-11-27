@@ -179,3 +179,7 @@ adb -s RF9R3049REV shell am start -a android.intent.action.VIEW -d "alarmapp://?
   앱이 앞으로 안 열리고 백그라운드로 처리(상태 2) · 그 뒤 70초 보조 알림 안 옴 · 대기 예약 0 · '한 번' 알람만 꺼지고 목록 유지(41번 표 위험 없음).
   잠긴 상태는 지문이라 자동 시험 불가 — 잠금 해제 상태에서 확인. 남은 일: 1.6.5로 합치기(vc18·빌드 21·9개 언어 노트), 1.6.4 심사 통과 뒤 사용자 "올려"로 업로드.
   참고: `ios-device-test.sh link`는 주소 전체(`alarmapp://?k=…&…&n=난수`)를 넘겨야 한다 — 같은 주소는 앱이 한 번만 처리.
+- **2026-11-28 잠금 화면 진동 알람 끄기 — AlarmKit 진동 시험 준비** — A안(opensAppToForeground:false)은 잠긴 화면에서 실패(미니·폰: [알람 끄기]가 암호를 요구, 재알림 계속).
+  AlarmKit 무음(silent_short.wav 0.5초): 잠긴 미니에서 [끄기]가 바로 보이고 암호 없이 꺼짐(사용자 확인), 그러나 **폰 화면이 꺼진 상태에선 진동 없음**(화면 켜졌을 땐 옴, 사용자 폰).
+  → 시험 파일 2개 추가(assets/quiet_30s.wav 거의 안 들림·silent_30s.wav 무음, 30초)와 링크 `akTest=1&akSnd=quiet|long0`. TestFlight 1.6.5(22) 업로드.
+  iOS 1.6.4 READY_FOR_SALE 확인(11-28). 다음: 폰에서 두 파일로 진동 여부 → 오면 진동만 알람도 AlarmKit, 안 오면 사용자 결정. 세이람은 결과 나올 때까지 대기(관리 지시).

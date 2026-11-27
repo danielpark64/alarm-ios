@@ -344,7 +344,7 @@ export default function App() {
     if (q.updatePreview != null) { appUpdate.preview(); return; }
     // alarmapp://?k=…&akTest=<분> — iOS 26+ AlarmKit 무음 테스트 알람(앱 알람 목록과 무관, 울림 화면 확인용).
     if (q.akTest != null) {
-      scheduleAlarmKitTest(Math.max(1, parseInt(String(q.akTest), 10) || 1));
+      scheduleAlarmKitTest(Math.max(1, parseInt(String(q.akTest), 10) || 1), typeof q.akSnd === 'string' ? q.akSnd : undefined);
       return;
     }
     // alarmapp://?k=…&lang=en|ja|…|system — 언어 설정을 바꾼다(기기 테스트에서 언어별 화면을 찍는 용도).

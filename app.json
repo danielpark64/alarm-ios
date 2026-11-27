@@ -2,7 +2,7 @@
   "expo": {
     "name": "교대알람",
     "slug": "alarm-app",
-    "version": "1.6.4",
+    "version": "1.6.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": [
@@ -95,7 +95,7 @@
         ],
         "com.apple.developer.usernotifications.time-sensitive": true
       },
-      "buildNumber": "20",
+      "buildNumber": "22",
       "associatedDomains": [
         "applinks:danielpark64.github.io"
       ]
@@ -110,6 +110,8 @@
           "sounds": [
             "./assets/alarm_long.wav",
             "./assets/silent_short.wav",
+            "./assets/quiet_30s.wav",
+            "./assets/silent_30s.wav",
             "./assets/sounds/tone_beep.caf",
             "./assets/sounds/tone_chime.caf",
             "./assets/sounds/tone_oldclock.caf",
