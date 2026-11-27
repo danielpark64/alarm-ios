@@ -183,3 +183,6 @@ adb -s RF9R3049REV shell am start -a android.intent.action.VIEW -d "alarmapp://?
   AlarmKit 무음(silent_short.wav 0.5초): 잠긴 미니에서 [끄기]가 바로 보이고 암호 없이 꺼짐(사용자 확인), 그러나 **폰 화면이 꺼진 상태에선 진동 없음**(화면 켜졌을 땐 옴, 사용자 폰).
   → 시험 파일 2개 추가(assets/quiet_30s.wav 거의 안 들림·silent_30s.wav 무음, 30초)와 링크 `akTest=1&akSnd=quiet|long0`. TestFlight 1.6.5(22) 업로드.
   iOS 1.6.4 READY_FOR_SALE 확인(11-28). 다음: 폰에서 두 파일로 진동 여부 → 오면 진동만 알람도 AlarmKit, 안 오면 사용자 결정. 세이람은 결과 나올 때까지 대기(관리 지시).
+  11-28 아침 폰 확인(사용자): 진동만 "기타" 07:50 알림은 왔음(잠금 화면에 3개) — 워치 착용 중엔 **워치만 진동**, 폰은 화면 켰을 때만 진동(iOS가 잠긴 폰 알림을 워치로 보냄, 앱 문제 아님).
+  → 앞의 "AlarmKit 무음은 화면 꺼지면 진동 없음"도 워치 때문일 수 있음. **워치 뺀 상태 재시험 필요**. 사용자가 "워치 빼니 알람 자체가 안 옴"이라 함 — 손으로 맞춘 시각 문제인지 미확인.
+  다음(사용자 귀가 후): 워치 뺀 채 ① `testAlarm=2`(Expo 진동만) ② `akTest=1&akSnd=quiet` ③ `akSnd=long0`을 내가 링크로 보내 차례로 확인. 폰은 TestFlight 1.6.5(22) 필요.
