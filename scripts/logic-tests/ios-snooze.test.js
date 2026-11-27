@@ -40,6 +40,13 @@ module.exports = (U, M) => {
     check('Android도 SNOOZE_ENABLED면 예전처럼 둘', R.alarmCategoryActions('android', true).join(',') === 'stop,snooze');
   }
   check('iOS 5분 후 → 스누즈', R.responseAction('ios', 'snooze', false, 'DEF') === 'snooze');
+  // 1.6.5 A안(총괄 11-27, 세이람과 같게): iOS [알람 끄기]만 앱을 열지 않는다 — 잠금을 안 풀어도 끄기가 처리된다.
+  check('버튼별 앱 열기 함수가 있다', typeof R.actionOpensApp === 'function');
+  if (typeof R.actionOpensApp === 'function') {
+    check('iOS [알람 끄기]: 앱 안 엶', R.actionOpensApp('ios', 'stop') === false);
+    check('iOS [5분 후 다시]: 앱 엶(그대로)', R.actionOpensApp('ios', 'snooze') === true);
+    check('Android [알람 끄기]: 앱 엶(그대로)', R.actionOpensApp('android', 'stop') === true);
+  }
 
   // ── ③ 원래 발화 시각 ──
   const at = (y, mo, d, h, mi, s = 0, ms = 0) => new Date(y, mo - 1, d, h, mi, s, ms).getTime();

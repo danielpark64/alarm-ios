@@ -35,6 +35,13 @@ export function alarmCategoryActions(os: string, snoozeEnabled: boolean): ('stop
   return os === 'ios' || snoozeEnabled ? ['stop', 'snooze'] : ['stop'];
 }
 
+/** 알림 버튼을 누르면 앱을 앞으로 여는지(opensAppToForeground). 1.6.5 A안(총괄 11-27, 세이람과 같게):
+ *  iOS [알람 끄기]만 false — 앱을 열면 잠금 해제를 요구해, 잠금을 안 풀면 응답이 안 와 보조 알림이 계속 울렸다.
+ *  열지 않으면 백그라운드로 응답을 처리한다(못 받는 최악의 경우도 예전과 같음). [5분 후 다시]·Android는 그대로 연다. */
+export function actionOpensApp(os: string, id: 'stop' | 'snooze'): boolean {
+  return !(os === 'ios' && id === 'stop');
+}
+
 /** 네이티브 알람 본문("HH:MM 알람" — 키가 {time}으로 시작)에서 같은 시각 묶음 키("7_5"). 없으면 null */
 export function groupKeyFromBody(body: string | undefined | null): string | null {
   const m = (body ?? '').match(/^(\d{2}):(\d{2})/);

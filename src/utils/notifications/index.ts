@@ -8,7 +8,7 @@ import { scheduleAlarmTriggers, scheduleGroupReps, schedulePatternAlarmReps, can
 import { cancelSnooze, cancelAllExceptSnooze, loadIosSnoozes, IOS_SNOOZE_RING_MS } from './snooze';
 import { nextGen, isStaleGen } from './rescheduleGen';
 import { usesAlarmKit } from '../alarmkitRoute';
-import { groupKeyFromBody, presentedToDismiss, DismissTarget, alarmCategoryActions } from '../alarmResponse';
+import { groupKeyFromBody, presentedToDismiss, DismissTarget, alarmCategoryActions, actionOpensApp } from '../alarmResponse';
 import { isAlarmKitMode, refreshAlarmKitMode, cancelAlarmKitFor, cancelAllAlarmKit, listAlarmKit } from './alarmkit';
 import { snoozeLabel } from '../ringCard';
 import { t } from '../../i18n/translate';
@@ -224,7 +224,8 @@ export async function registerNotificationCategories() {
   //   울림 카드·커버 화면의 네이티브 스누즈 한 길이다. SNOOZE_ENABLED(false)와 묶어 둔다.
   const titles: Record<'stop' | 'snooze', string> = { stop: t('알람 끄기'), snooze: snoozeLabel() };
   const actions = alarmCategoryActions(Platform.OS, SNOOZE_ENABLED).map(id => ({
-    identifier: id, buttonTitle: titles[id], options: { isDestructive: false, isAuthenticationRequired: false },
+    identifier: id, buttonTitle: titles[id],
+    options: { isDestructive: false, isAuthenticationRequired: false, opensAppToForeground: actionOpensApp(Platform.OS, id) },
   }));
 
   if (Platform.OS === 'ios') {
