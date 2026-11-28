@@ -1,0 +1,12 @@
+{
+  "_note": "1.6.5 새로운 기능 (2026-11-28, feature/lock-dismiss). iOS만 — Android는 변경 없음(Play 1.6.4 그대로). 앱 밖 결제·후원 안내 없음, 이모지 없음. '진동만' 낱말은 앱 사전(src/i18n/locales)과 같게.",
+  "ko": { "ios": "• 잠금 화면에서 알람을 바로 끌 수 있어요(진동만 알람 포함).\n• 진동만 알람이 맥이나 Apple Watch로 넘어가지 않고 iPhone에서 진동해요.\n• 요일 반복 알람이 울리지 않던 문제를 고쳤어요." },
+  "en": { "ios": "• You can now turn off alarms right from the Lock Screen, including \"Vibrate only\" alarms.\n• \"Vibrate only\" alarms now vibrate on your iPhone instead of moving to your Mac or Apple Watch.\n• Fixed an issue where alarms repeating on certain weekdays didn't ring." },
+  "ja": { "ios": "• ロック画面からすぐにアラームを止められるようになりました(「バイブのみ」のアラームも含む)。\n• 「バイブのみ」のアラームがMacやApple Watchに移らず、iPhoneで振動するようになりました。\n• 曜日で繰り返すアラームが鳴らない問題を修正しました。" },
+  "zh-Hans": { "ios": "• 现在可以直接在锁定屏幕上关闭闹钟(包括“仅振动”闹钟)。\n• “仅振动”闹钟不再转到 Mac 或 Apple Watch,而是在 iPhone 上振动。\n• 修复了按星期重复的闹钟不响的问题。" },
+  "zh-Hant": { "ios": "• 現在可以直接在鎖定畫面上關閉鬧鐘(包括「僅震動」鬧鐘)。\n• 「僅震動」鬧鐘不再轉到 Mac 或 Apple Watch,而是在 iPhone 上震動。\n• 修正了依星期重複的鬧鐘不響的問題。" },
+  "es": { "ios": "• Ahora puedes apagar las alarmas directamente desde la pantalla de bloqueo, incluidas las de \"Solo vibración\".\n• Las alarmas de \"Solo vibración\" ahora vibran en el iPhone en lugar de pasar al Mac o al Apple Watch.\n• Se corrigió un problema por el que no sonaban las alarmas que se repiten ciertos días de la semana." },
+  "fr": { "ios": "• Vous pouvez désormais couper les alarmes directement depuis l'écran verrouillé, y compris celles en « Vibreur seul ».\n• Les alarmes en « Vibreur seul » vibrent maintenant sur l'iPhone au lieu de passer sur le Mac ou l'Apple Watch.\n• Correction d'un problème qui empêchait de sonner les alarmes répétées certains jours de la semaine." },
+  "de": { "ios": "• Du kannst Wecker jetzt direkt auf dem Sperrbildschirm ausschalten, auch Wecker mit \"Nur Vibration\".\n• Wecker mit \"Nur Vibration\" vibrieren jetzt auf dem iPhone, statt auf den Mac oder die Apple Watch zu wechseln.\n• Ein Fehler wurde behoben, durch den Wecker, die an bestimmten Wochentagen wiederholt werden, nicht klingelten." },
+  "pt": { "ios": "• Agora você pode desligar os alarmes direto na tela bloqueada, inclusive os de \"Só vibração\".\n• Os alarmes de \"Só vibração\" agora vibram no iPhone em vez de passar para o Mac ou o Apple Watch.\n• Corrigimos um problema em que alarmes repetidos em certos dias da semana não tocavam." }
+}
