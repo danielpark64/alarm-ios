@@ -111,7 +111,7 @@ async function schedulePatternAlarmTriggers(alarm: Alarm, overrides: DayOverride
     } as Notifications.NotificationContentInput;
 
     if (viaAK) {
-      await scheduleAlarmKitDate(alarm.id, ds, ft, title, tone); // Expo 알림은 걸지 않는다(두 번 울림 방지)
+      await scheduleAlarmKitDate(alarm.id, ds, ft, title, tone, alarm.snd); // Expo 알림은 걸지 않는다(두 번 울림 방지)
     } else {
       await Notifications.scheduleNotificationAsync({
         identifier: makeId(alarm.id, `date_${ds}`),
@@ -194,7 +194,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
   if (alarm.rm === 'wdcustom' && alarm.days.length > 0 && !hasUpcomingSkips && !hasUpcomingOverride && !hasUpcomingHoliday) {
     // AlarmKit은 요일 반복을 한 건(.relative weekly)으로 건다 — Expo WEEKLY처럼 앱을 안 열어도 끝없이 반복된다.
     if (viaAK) {
-      await scheduleAlarmKitWeekly(alarm.id, alarm.days, alarm.hour, alarm.min, title, tone);
+      await scheduleAlarmKitWeekly(alarm.id, alarm.days, alarm.hour, alarm.min, title, tone, alarm.snd);
       return;
     }
     const iw = (d: number) => (d + 2) % 7 || 7;
@@ -276,7 +276,7 @@ export async function scheduleAlarmTriggers(alarm: Alarm, overrides: DayOverride
     if (ft <= new Date()) continue;
 
     if (viaAK) {
-      await scheduleAlarmKitDate(alarm.id, ds, ft, title, tone); // Expo 알림은 걸지 않는다(두 번 울림 방지)
+      await scheduleAlarmKitDate(alarm.id, ds, ft, title, tone, alarm.snd); // Expo 알림은 걸지 않는다(두 번 울림 방지)
     } else {
       await Notifications.scheduleNotificationAsync({
         identifier: makeId(alarm.id, `date_${ds}`),

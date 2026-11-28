@@ -40,7 +40,7 @@ export function keepOnceForSnooze(alarm: Alarm, snooze: PendingSnooze | PendingS
 }
 
 // ── 1.6.4 iOS [5분 후 다시] ─────────────────────────────────────────────────────────
-// iOS 26 미만·AlarmKit 거부·진동만 알람(Expo 알림 경로)은 알림 버튼으로 미룬다. Android 네이티브 스누즈처럼 원래 알람의
+// iOS 26 미만·AlarmKit 거부(Expo 알림 경로 — 11-28부터 진동만 알람도 AlarmKit)는 알림 버튼으로 미룬다. Android 네이티브 스누즈처럼 원래 알람의
 // {알람 id, 근무일, 울린 시각}을 기록해 두고, rescheduleAll 끝(index.ts reconcileSnooze)에서 위 snoozeStillDue로 판정한다.
 // 식별자: 본 알림 `snooze_{grp_h_m | alarm_id}`, 보조 알림 `…_rep{i}`(core.ts scheduleRepSeries/cancelRepSeries 규칙 그대로).
 

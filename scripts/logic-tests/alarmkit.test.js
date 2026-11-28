@@ -18,12 +18,27 @@ module.exports = (U, M) => {
   check('iOS 26 미만은 안 물음', R.shouldAskAlarmKit({ os: 'ios', available: false, auth: 'unavailable' }) === false);
   check('Android는 안 물음', R.shouldAskAlarmKit({ os: 'android', available: false, auth: 'unavailable' }) === false);
 
-  // ── 알람별: 소리 알람만 AlarmKit, 진동만은 기존 Expo(무음 파일로 진동을 내는 방식)에 남는다 ──
+  // ── 알람별: 모드가 켜지면 소리 알람·진동만 알람 모두 AlarmKit(2026-11-28) ──
+  // 진동만을 Expo 알림으로 두면 맥 "iPhone 알림"·워치가 알림을 가져가 폰이 진동하지 않았다(사용자 폰 재현).
+  // AlarmKit + 완전 무음 30초 파일(silent_30s.wav)은 잠금 상태 폰에서 진동하고 맥에 안 뜬다(같은 날 폰 확인).
   const a = (snd, vib) => ({ snd, vib, active: true });
-  check('소리 알람 + 모드 켜짐 → AlarmKit', R.usesAlarmKit(a('default', 'pulse'), true) === true);
-  check('소리만(진동 없음) + 모드 켜짐 → AlarmKit', R.usesAlarmKit(a('default', 'none'), true) === true);
-  check('진동만 → Expo', R.usesAlarmKit(a('none', 'pulse'), true) === false);
-  check('모드 꺼짐 → Expo', R.usesAlarmKit(a('default', 'pulse'), false) === false);
+  const ENV_ON = R.alarmKitEnabled({ os: 'ios', available: true, auth: 'authorized' });
+  const ENV_OLD = R.alarmKitEnabled({ os: 'ios', available: false, auth: 'unavailable' });
+  const ENV_DENIED = R.alarmKitEnabled({ os: 'ios', available: true, auth: 'denied' });
+  check('소리 알람 + 모드 켜짐 → AlarmKit', R.usesAlarmKit(a('default', 'pulse'), ENV_ON) === true);
+  check('소리만(진동 없음) + 모드 켜짐 → AlarmKit', R.usesAlarmKit(a('default', 'none'), ENV_ON) === true);
+  check('진동만 + 모드 켜짐 → AlarmKit', R.usesAlarmKit(a('none', 'pulse'), ENV_ON) === true);
+  check('진동만 + iOS 26 미만 → Expo', R.usesAlarmKit(a('none', 'pulse'), ENV_OLD) === false);
+  check('진동만 + AlarmKit 거부 → Expo', R.usesAlarmKit(a('none', 'pulse'), ENV_DENIED) === false);
+  check('소리 알람 + 모드 꺼짐 → Expo', R.usesAlarmKit(a('default', 'pulse'), false) === false);
+
+  // ── AlarmKit 소리 파일: 소리 알람은 고른 소리 그대로, 진동만은 완전 무음 30초(0.5초 무음은 꺼진 화면에서 진동 없음) ──
+  check('AlarmKit 함수 alarmKitSound가 있다', typeof R.alarmKitSound === 'function');
+  if (typeof R.alarmKitSound === 'function') {
+    check('소리 알람 → 고른 소리 파일', R.alarmKitSound(a('default', 'pulse'), 'tone_piano.caf') === 'tone_piano.caf');
+    check('진동만 → silent_30s.wav', R.alarmKitSound(a('none', 'pulse'), 'tone_piano.caf') === 'silent_30s.wav');
+    check('silent_short.wav는 AlarmKit에 쓰지 않는다', R.alarmKitSound(a('none', 'pulse'), 'tone_beep.caf') !== 'silent_short.wav');
+  }
 
   // ── 예약 id: 같은 알람·같은 날은 항상 같은 UUID(겹쳐 돈 재예약이 덮어써서 두 번 울리지 않게), 다르면 다름 ──
   const UUID_RE = /^[0-9A-F]{8}-[0-9A-F]{4}-4[0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/;

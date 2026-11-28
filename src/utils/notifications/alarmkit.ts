@@ -8,8 +8,8 @@
 // 뒤 호출의 cancelAll보다 나중에 처리돼 꺼진 알람이 AlarmKit에 남을 수 있다 — JS 호출 순서대로 처리하면 막힌다.
 import { Platform } from 'react-native';
 import { requireOptionalNativeModule } from 'expo-modules-core';
-import { alarmKitEnabled, shouldAskAlarmKit, alarmKitUuid, alarmKitWeekdays, type AlarmKitAuth, type AlarmKitEnv } from '../alarmkitRoute';
-import { SNOOZE_MIN, toneIosFile } from '../../constants';
+import { alarmKitEnabled, shouldAskAlarmKit, alarmKitUuid, alarmKitSound, alarmKitWeekdays, type AlarmKitAuth, type AlarmKitEnv } from '../alarmkitRoute';
+import { SNOOZE_MIN, toneIosFile, type SoundMode } from '../../constants';
 import { snoozeLabel } from '../ringCard';
 import { t } from '../../i18n/translate';
 
@@ -19,7 +19,7 @@ type ScheduleOptions = {
   hour: number; minute: number; weekdays: string[]; // 요일 반복(.relative weekly)
   title: string; stopText: string; snoozeText: string; snoozeMin: number;
   silent: boolean;         // 개발 테스트 전용(무음 파일) — 사용자 알람은 항상 false
-  sound: string;           // 앱 번들 소리 파일 이름(알람마다 고른 소리, constants/alarmTones.ts)
+  sound: string;           // 앱 번들 소리 파일 이름 — 소리 알람은 고른 소리, 진동만은 silent_30s.wav(alarmKitSound)
 };
 type Native = {
   isAvailable(): boolean;
@@ -80,16 +80,17 @@ function buttons() {
 // title에 앱 이름("교대알람 · ")을 붙이지 않는다(1.6.2 결정) — AlarmKit 울림 화면은 시스템이 앱 이름을 함께 보여 준다
 // (WWDC25 "Wake up to the AlarmKit API": 알림에 "the custom alarm title, as well as the name of your app"이 나온다).
 // 붙이면 이름이 두 번 나오고 근무 이름(가장 중요한 글자)이 밀린다. title은 core.ts가 만든 근무 이름/알람 이름 그대로.
-export function scheduleAlarmKitDate(alarmId: number, key: string, fire: Date, title: string, tone?: unknown): Promise<boolean> {
+// snd: 알람의 소리 설정 — 'none'(진동만)이면 완전 무음 30초 파일로 울려 진동만 온다(alarmkitRoute.ts usesAlarmKit 주석).
+export function scheduleAlarmKitDate(alarmId: number, key: string, fire: Date, title: string, tone: unknown, snd: SoundMode): Promise<boolean> {
   if (!native) return Promise.resolve(false);
-  const o: ScheduleOptions = { id: alarmKitUuid(alarmId, key), alarmId, fireMs: fire.getTime(), hour: 0, minute: 0, weekdays: [], title, ...buttons(), silent: false, sound: toneIosFile(tone) };
+  const o: ScheduleOptions = { id: alarmKitUuid(alarmId, key), alarmId, fireMs: fire.getTime(), hour: 0, minute: 0, weekdays: [], title, ...buttons(), silent: false, sound: alarmKitSound({ snd }, toneIosFile(tone)) };
   return serial(() => native.schedule(o)).catch(() => false);
 }
 
 // 요일 반복 — 끝없이 반복되므로 14일 창이 필요 없다(Expo WEEKLY 경로와 같은 조건일 때만 쓴다).
-export function scheduleAlarmKitWeekly(alarmId: number, days: number[], hour: number, minute: number, title: string, tone?: unknown): Promise<boolean> {
+export function scheduleAlarmKitWeekly(alarmId: number, days: number[], hour: number, minute: number, title: string, tone: unknown, snd: SoundMode): Promise<boolean> {
   if (!native) return Promise.resolve(false);
-  const o: ScheduleOptions = { id: alarmKitUuid(alarmId, 'weekly'), alarmId, fireMs: 0, hour, minute, weekdays: alarmKitWeekdays(days), title, ...buttons(), silent: false, sound: toneIosFile(tone) };
+  const o: ScheduleOptions = { id: alarmKitUuid(alarmId, 'weekly'), alarmId, fireMs: 0, hour, minute, weekdays: alarmKitWeekdays(days), title, ...buttons(), silent: false, sound: alarmKitSound({ snd }, toneIosFile(tone)) };
   return serial(() => native.schedule(o)).catch(() => false);
 }
 

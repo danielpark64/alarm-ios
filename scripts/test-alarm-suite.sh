@@ -647,7 +647,7 @@ grep -q 'installedCache' "$N" 2>/dev/null \
   && ! grep -q 'AppState' "$ROOT/src/components/Home/PromoBanner.tsx" 2>/dev/null \
   && ok "" || { fail "sayramInstalled 결과를 기억하지 않거나 PromoBanner가 AppState마다 다시 확인함"; }
 
-# ── iOS 26+ AlarmKit(2026-11-21) — 허용되면 소리 알람은 AlarmKit만, 진동만·거부·iOS 26 미만은 기존 Expo 그대로 ──
+# ── iOS 26+ AlarmKit(2026-11-21) — 허용되면 모든 알람이 AlarmKit만(11-28부터 진동만도), 거부·iOS 26 미만은 기존 Expo 그대로 ──
 # ① AlarmKit 경로에선 Expo 메인 알림·보조(rep) 알림을 걸지 않는다 — 둘 다 걸면 같은 알람이 두 번 울린다.
 #    core.ts의 세 예약 지점(로테이션 루프·요일 WEEKLY·날짜 루프)이 모두 viaAK로 갈라지고, 보조 알림 두 함수가 AlarmKit 알람을 뺀다.
 _C="$ROOT/src/utils/notifications/core.ts"
@@ -687,6 +687,15 @@ printf "  AlarmKit 네이티브 호출이 직렬 큐를 거치는지 ... "
 _AK="$ROOT/src/utils/notifications/alarmkit.ts"
 if [ -f "$_AK" ] && ! grep -vE '^\s*//' "$_AK" | grep -E "native[!?]?\.(schedule|cancelForAlarm|cancelAll)\(" | grep -vq "serial("; then ok ""
 else fail "alarmkit.ts가 없거나 schedule/cancel 네이티브 호출이 serial()을 거치지 않음"; fi
+
+# ⑥ 진동만 알람도 AlarmKit(2026-11-28) — 실제 예약 두 함수(날짜·요일)가 alarmKitSound로 소리를 고르고, 진동만의 소리는
+#    완전 무음 30초 파일이다. 0.5초 무음(silent_short.wav)은 화면이 꺼진 폰에서 진동이 안 왔고, Expo 경로는 맥·워치가 가져갔다.
+printf "  진동만 AlarmKit 소리가 silent_30s.wav(예약 두 함수가 alarmKitSound 사용) ... "
+_RT="$ROOT/src/utils/alarmkitRoute.ts"
+if ! grep -q "silent_30s.wav" "$_RT" 2>/dev/null; then fail "alarmkitRoute.ts에 진동만용 silent_30s.wav 없음"
+elif [ "$(awk '/export function scheduleAlarmKit(Date|Weekly)\(/,/^}/' "$_AK" | grep -c "alarmKitSound(")" -lt 2 ]; then fail "scheduleAlarmKitDate/Weekly가 alarmKitSound로 소리를 고르지 않음 — 진동만 알람이 기본음으로 울림"
+elif ! grep -q '"./assets/silent_30s.wav"' "$ROOT/app.json"; then fail "app.json expo-notifications sounds에 silent_30s.wav 없음 — 번들에 안 들어감"
+else ok ""; fi
 
 # ── 근무표 공유(1.6.0, 2026-11-22) — 받은 근무표는 보기만, 알람 예약 경로에 절대 들어가지 않는다 ──
 # ① 알람 예약·위젯 파일은 공유 모듈·받은 목록을 모른다(import·저장 키 둘 다). 들어가면 남의 근무로 내 알람이 울린다.

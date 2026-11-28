@@ -3,7 +3,7 @@
 // - Android: 네이티브 스누즈(요청코드 9002, AlarmService.ACTION_SNOOZE) — 울림 카드·커버 화면이 건다. 여기선 읽기·취소만.
 // - iOS 26+ AlarmKit: [5분 후 다시]는 시스템 카운트다운(.countdown) — 앱 코드 없음. 일정이 바뀌면 rescheduleAll이
 //   alarmKitKeepIds(snoozeCheck.ts)로 판정해 cancelAllAlarmKit에서 뺀다.
-// - iOS 26 미만·AlarmKit 거부·진동만(Expo 알림 경로): 알림 버튼 [5분 후 다시] → 응답 리스너가 scheduleIosSnooze로 5분 뒤 Expo 알림 +
+// - iOS 26 미만·AlarmKit 거부(Expo 알림 경로, 11-28부터 진동만 알람도 AlarmKit): 알림 버튼 [5분 후 다시] → 응답 리스너가 scheduleIosSnooze로 5분 뒤 Expo 알림 +
 //   보조 알림 묶음을 건다. 원래 알람의 {알람 id, 근무일, 울린 시각}을 기록(AsyncStorage)해 두고, rescheduleAll 끝 reconcileSnooze가
 //   snoozeStillDue로 판정한다 — 이날 끄기·하루 근무 변경·시간 변경·끄기·삭제면 취소, 앱만 다시 열면 유지(고친버그 30·31번).
 //

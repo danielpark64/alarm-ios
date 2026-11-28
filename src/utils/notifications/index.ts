@@ -217,7 +217,7 @@ export async function scheduleAlarm(alarm: Alarm, overrides: DayOverrides = {}) 
 // 그대로 이 앱의 응답 리스너로 돌아온다. 즉 아래 버튼 목록 = 워치에서 사용자가 보게 될 버튼.
 export async function registerNotificationCategories() {
   // 버튼 구성은 alarmCategoryActions(순수 함수, logic-tests) 한 곳에서 — 순서·문구는 세이람과 같다: [알람 끄기, 5분 후 다시].
-  // - iOS(1.6.4): [5분 후 다시]를 켠다. iOS 26 미만·AlarmKit 거부·진동만 알람은 Expo 알림으로 울리므로, 응답 리스너가
+  // - iOS(1.6.4): [5분 후 다시]를 켠다. iOS 26 미만·AlarmKit 거부는 Expo 알림으로 울리므로(11-28부터 진동만 알람도 AlarmKit), 응답 리스너가
   //   5분 뒤 Expo 알림(+ 보조 알림)을 다시 건다(notifications/snooze.ts scheduleIosSnooze). iOS는 Doze가 없어 Expo 예약이 정확하다.
   // - Android: 알림·워치 스누즈는 계속 끈다. 그 경로는 Expo 예약만 걸고 네이티브 AlarmManager는 안 걸어서 Doze 구간에
   //   들어가면 스누즈가 안 울린다(워치에서 버튼이 크게 보여 누르기 쉬운데 가장 약한 경로). Android의 [5분 후 다시]는
