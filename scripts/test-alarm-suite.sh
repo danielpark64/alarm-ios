@@ -697,6 +697,15 @@ elif [ "$(awk '/export function scheduleAlarmKit(Date|Weekly)\(/,/^}/' "$_AK" | 
 elif ! grep -q '"./assets/silent_30s.wav"' "$ROOT/app.json"; then fail "app.json expo-notifications sounds에 silent_30s.wav 없음 — 번들에 안 들어감"
 else ok ""; fi
 
+# ⑦ 요일 반복 AlarmKit의 요일 변환(2026-11-28) — JS는 "monday"…를 넘기는데 Locale.Weekday(rawValue:)는 이 이름을
+#    못 읽어(nil) 요일이 비고 예약을 조용히 건너뛰었다 → iOS 26+ 요일 반복 알람(1.6.4 소리 알람 포함)이 안 울림.
+#    Swift는 이름→요일 표를 직접 써야 한다(rawValue 금지).
+printf "  AlarmKit 요일 변환이 rawValue가 아니라 이름 표인지 ... "
+_AKS="$ROOT/modules/alarmapp-alarmkit/ios/AlarmappAlarmKitModule.swift"
+if grep -vE '^\s*//' "$_AKS" | grep -q "Locale.Weekday(rawValue"; then fail "Locale.Weekday(rawValue:) 사용 — \"monday\"를 못 읽어 요일 반복 알람이 예약되지 않음"
+elif ! grep -q '"monday": .monday' "$_AKS"; then fail "Swift에 요일 이름 표(\"monday\": .monday …) 없음"
+else ok ""; fi
+
 # ── 근무표 공유(1.6.0, 2026-11-22) — 받은 근무표는 보기만, 알람 예약 경로에 절대 들어가지 않는다 ──
 # ① 알람 예약·위젯 파일은 공유 모듈·받은 목록을 모른다(import·저장 키 둘 다). 들어가면 남의 근무로 내 알람이 울린다.
 printf "  받은 근무표가 알람 예약 경로에 안 들어가는지 ... "

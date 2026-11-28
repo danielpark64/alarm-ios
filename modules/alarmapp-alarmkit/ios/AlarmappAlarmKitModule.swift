@@ -124,6 +124,8 @@ public class AlarmappAlarmKitModule: Module {
     Function("stopPreview") { () in
       DispatchQueue.main.async { Self.endPreview() }
     }
+    // 진단: 예약 실패 기록(최근 10건) — 개발 딥링크 report=1이 dev_report에 담는다(11-28 요일 반복 예약 누락 조사).
+    Function("failures") { () -> [String] in Self.failures }
 
     AsyncFunction("listScheduled") { () -> [[String: Any]] in
       #if canImport(AlarmKit)
@@ -142,6 +144,8 @@ public class AlarmappAlarmKitModule: Module {
     }
   }
 
+  static var failures: [String] = []
+  static func noteFailure(_ m: String) { failures.append(m); if failures.count > 10 { failures.removeFirst() } }
   private static var previewPlayer: AVAudioPlayer?
   private static var previewStop: DispatchWorkItem?
 
@@ -188,14 +192,17 @@ public class AlarmappAlarmKitModule: Module {
 
   @available(iOS 26.0, *)
   static func schedule(_ o: ScheduleOptions) async -> Bool {
-    guard AlarmManager.shared.authorizationState == .authorized, let uuid = UUID(uuidString: o.id) else { return false }
+    guard AlarmManager.shared.authorizationState == .authorized, let uuid = UUID(uuidString: o.id) else { noteFailure("\(o.alarmId) 권한/UUID"); return false }
 
     let sched: Alarm.Schedule
     if o.weekdays.isEmpty {
       sched = .fixed(Date(timeIntervalSince1970: o.fireMs / 1000))
     } else {
-      let days = o.weekdays.compactMap { Locale.Weekday(rawValue: $0) }
-      guard !days.isEmpty else { return false }
+      // 이름 표로 바꾼다 — rawValue(init)는 "monday"를 못 읽어 nil이 됐고, 요일 반복 알람이 조용히 예약되지 않았다(11-28 폰).
+      let names: [String: Locale.Weekday] = ["monday": .monday, "tuesday": .tuesday, "wednesday": .wednesday, "thursday": .thursday,
+                                             "friday": .friday, "saturday": .saturday, "sunday": .sunday]
+      let days = o.weekdays.compactMap { names[$0] }
+      guard !days.isEmpty else { noteFailure("\(o.alarmId) 요일 비어 있음 \(o.weekdays)"); return false }
       sched = .relative(.init(time: .init(hour: o.hour, minute: o.minute), repeats: .weekly(days)))
     }
 
@@ -232,6 +239,7 @@ public class AlarmappAlarmKitModule: Module {
       return true
     } catch {
       NSLog("[AlarmKit] 예약 실패 %@: %@", o.id, String(describing: error))
+      noteFailure("\(o.alarmId) \(o.weekdays.isEmpty ? "fixed" : "weekly") \(o.sound): \(String(describing: error))")
       return false
     }
   }

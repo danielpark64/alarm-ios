@@ -11,7 +11,7 @@ import * as Linking from 'expo-linking';
 import { useT, LANGS, type LanguageSetting } from '../src/i18n';
 import { syncWidget } from '../src/utils/widgetSync';
 import { rescheduleAll, registerNotificationCategories } from '../src/utils/notifications';
-import { alarmKitEnv, isAlarmKitMode, listAlarmKit, scheduleAlarmKitTest } from '../src/utils/notifications/alarmkit';
+import { alarmKitEnv, alarmKitFailures, isAlarmKitMode, listAlarmKit, scheduleAlarmKitTest } from '../src/utils/notifications/alarmkit';
 import { getPendingSnooze } from '../src/utils/notifications/android';
 import { cancelSnooze } from '../src/utils/notifications/snooze';
 import * as Notifications from 'expo-notifications';
@@ -333,7 +333,7 @@ export default function App() {
           alarms: alarms.map(a => ({ id: a.id, typeId: a.typeId, rm: a.rm, label: a.label, active: a.active, snd: a.snd, vib: a.vib, role: a.groupRole })),
           pending: pending.map(n => ({ id: n.identifier, when: fmtT(n.trigger), title: n.content.title, body: n.content.body, sound: (n.content as any).sound ?? null }))
             .sort((a, b) => String(a.when).localeCompare(String(b.when))),
-          alarmkit: { ...alarmKitEnv(), mode: isAlarmKitMode(), scheduled: await listAlarmKit() },
+          alarmkit: { ...alarmKitEnv(), mode: isAlarmKitMode(), scheduled: await listAlarmKit(), failures: alarmKitFailures() },
           presented: presented.map(n => ({ id: n.request.identifier, title: n.request.content.title, body: n.request.content.body, date: new Date(n.date).toISOString() })),
         };
         await AsyncStorage.setItem('dev_report', JSON.stringify(report));

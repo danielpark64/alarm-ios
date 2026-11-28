@@ -30,6 +30,7 @@ type Native = {
   cancelAll(keepActiveIds: number[]): Promise<number>;
   listScheduled(): Promise<AlarmKitListItem[]>;
   previewSound?(name: string, ms: number): void;
+  failures?(): string[];
   stopPreview?(): void;
 };
 
@@ -114,6 +115,11 @@ export function listAlarmKit(): Promise<AlarmKitListItem[]> {
 // 개발 딥링크(akTest) 전용 — 앱 알람 목록과 무관한 무음 테스트 알람(alarmId -1). 울림 화면 확인용.
 // snd(11-28 진동 시험): 'quiet'=거의 안 들리는 30초(quiet_30s.wav), 'long0'=완전 무음 30초(silent_30s.wav).
 // 0.5초 무음(silent_short.wav)은 화면이 꺼진 폰에서 진동이 안 왔다(11-28 사용자 폰) — 길이·소리 유무로 진동이 오는지 가린다.
+// 진단(개발 딥링크 report=1) — 네이티브 예약 실패 기록(최근 10건)
+export function alarmKitFailures(): string[] {
+  try { return native?.failures?.() ?? []; } catch { return []; }
+}
+
 export function scheduleAlarmKitTest(minutes: number, snd?: string): Promise<boolean> {
   if (!native) return Promise.resolve(false);
   const fire = new Date(Date.now() + minutes * 60_000);
